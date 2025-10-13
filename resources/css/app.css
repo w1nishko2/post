@@ -1,0 +1,20 @@
+/* Fonts */
+@import url('https://fonts.bunny.net/css?family=Nunito');
+
+/* Bootstrap CSS */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* Variables and Custom Styles */
+:root {
+    --bs-body-bg: #f8fafc;
+    --bs-body-font-family: 'Nunito', sans-serif;
+    --bs-body-font-size: 0.9rem;
+    --bs-body-line-height: 1.6;
+}
+
+body {
+    background-color: var(--bs-body-bg);
+    font-family: var(--bs-body-font-family);
+    font-size: var(--bs-body-font-size);
+    line-height: var(--bs-body-line-height);
+}
