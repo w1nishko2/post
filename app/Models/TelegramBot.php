@@ -24,6 +24,10 @@ class TelegramBot extends Model
         'commands',
         'is_active',
         'last_updated_at',
+        'forum_auto_login',
+        'forum_auto_pass',
+        'forum_auto_enabled',
+        'forum_auto_last_check',
     ];
 
     protected $casts = [
@@ -31,11 +35,14 @@ class TelegramBot extends Model
         'commands' => 'array',
         'is_active' => 'boolean',
         'last_updated_at' => 'datetime',
+        'forum_auto_enabled' => 'boolean',
+        'forum_auto_last_check' => 'datetime',
     ];
 
     protected $hidden = [
         'bot_token',
         'api_hash',
+        'forum_auto_pass',
     ];
 
     /**
@@ -120,11 +127,64 @@ class TelegramBot extends Model
     }
 
     /**
+     * Проверить настроен ли Forum-Auto API
+     */
+    public function hasForumAutoApi(): bool
+    {
+        return $this->forum_auto_enabled && 
+               !empty($this->forum_auto_login) && 
+               !empty($this->forum_auto_pass);
+    }
+
+    /**
+     * Получить замаскированный логин Forum-Auto для отображения
+     */
+    public function getMaskedForumAutoLoginAttribute(): string
+    {
+        if (empty($this->forum_auto_login)) {
+            return 'Не настроен';
+        }
+
+        $login = $this->forum_auto_login;
+        if (strlen($login) <= 6) {
+            return substr($login, 0, 2) . str_repeat('*', strlen($login) - 2);
+        }
+
+        return substr($login, 0, 3) . str_repeat('*', strlen($login) - 6) . substr($login, -3);
+    }
+
+    /**
+     * Получить сервис Forum-Auto для этого бота
+     */
+    public function getForumAutoService(): ?\App\Services\ForumAutoService
+    {
+        if (!$this->hasForumAutoApi()) {
+            return null;
+        }
+
+        try {
+            return new \App\Services\ForumAutoService($this);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * Scope для активных ботов
      */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope для ботов с настроенным Forum-Auto API
+     */
+    public function scopeWithForumAuto($query)
+    {
+        return $query->where('forum_auto_enabled', true)
+                    ->whereNotNull('forum_auto_login')
+                    ->whereNotNull('forum_auto_pass');
     }
 
     /**

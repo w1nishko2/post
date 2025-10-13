@@ -10,6 +10,7 @@ use App\Services\TelegramBotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class TelegramBotController extends Controller
@@ -178,6 +179,133 @@ class TelegramBotController extends Controller
 
         return redirect()->route('home')
                         ->with('success', 'Mini App настроен!');
+    }
+
+    /**
+     * Настроить Forum-Auto API для бота
+     */
+    public function setupForumAuto(Request $request, TelegramBot $telegramBot)
+    {
+        $this->authorize('update', $telegramBot);
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'forum_auto_login' => 'required|string|max:255',
+            'forum_auto_pass' => 'nullable|string|max:255',
+            'forum_auto_enabled' => 'boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->route('home')
+                            ->withErrors($validator)
+                            ->withInput();
+        }
+
+        $validated = $validator->validated();
+
+        // Подготавливаем данные для обновления
+        $updateData = [
+            'forum_auto_login' => $validated['forum_auto_login'],
+            'forum_auto_enabled' => $request->has('forum_auto_enabled'),
+            'forum_auto_last_check' => now()
+        ];
+
+        // Если передан новый пароль, шифруем его
+        if (!empty($validated['forum_auto_pass'])) {
+            $updateData['forum_auto_pass'] = encrypt($validated['forum_auto_pass']);
+        }
+
+        // Если включаем API и есть все необходимые данные - тестируем подключение
+        if ($updateData['forum_auto_enabled'] && ($telegramBot->forum_auto_pass || !empty($validated['forum_auto_pass']))) {
+            try {
+                $testPass = !empty($validated['forum_auto_pass']) ? 
+                           $validated['forum_auto_pass'] : 
+                           decrypt($telegramBot->forum_auto_pass);
+
+                $response = Http::timeout(10)
+                    ->withoutVerifying() // Игнорируем SSL сертификаты
+                    ->get('https://api.forum-auto.ru/v2/clientinfo', [
+                        'login' => $validated['forum_auto_login'],
+                        'pass' => $testPass
+                    ]);
+
+                $data = $response->json();
+                if (!$response->successful() || !is_array($data) || empty($data)) {
+                    return redirect()->route('home')
+                                    ->withErrors(['forum_auto_login' => 'Не удалось подключиться к Forum-Auto API. Проверьте логин и пароль.'])
+                                    ->withInput();
+                }
+            } catch (\Exception $e) {
+                return redirect()->route('home')
+                                ->withErrors(['forum_auto_login' => 'Ошибка соединения с Forum-Auto API.'])
+                                ->withInput();
+            }
+        }
+
+        // Обновляем бота
+        $telegramBot->update($updateData);
+
+        $message = $updateData['forum_auto_enabled'] ? 
+                  'Forum-Auto API успешно настроен и активирован!' : 
+                  'Настройки Forum-Auto API сохранены!';
+
+        return redirect()->route('home')->with('success', $message);
+    }
+
+    /**
+     * Тестировать подключение к Forum-Auto API
+     */
+    public function testForumAutoConnection(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'login' => 'required|string',
+            'pass' => 'required|string'
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'error' => 'Неверные данные']);
+        }
+        
+        try {
+            $login = $request->get('login');
+            $pass = $request->get('pass');
+            
+            // Тестируем подключение напрямую к API
+            $response = Http::timeout(10)
+                ->withoutVerifying() // Игнорируем SSL сертификаты
+                ->get('https://api.forum-auto.ru/v2/clientinfo', [
+                    'login' => $login,
+                    'pass' => $pass
+                ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (is_array($data) && !empty($data)) {
+                    // Преобразуем массив в более удобный формат
+                    $clientInfo = [];
+                    foreach ($data as $item) {
+                        if (isset($item['name']) && isset($item['value'])) {
+                            $clientInfo[$item['name']] = $item['value'];
+                        }
+                    }
+                    
+                    return response()->json([
+                        'success' => true,
+                        'client_info' => $clientInfo
+                    ]);
+                }
+            }
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Неверные данные для входа или ошибка API'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Ошибка соединения с сервером Forum-Auto: ' . $e->getMessage()
+            ]);
+        }
     }
 
 

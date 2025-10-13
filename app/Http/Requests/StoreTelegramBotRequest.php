@@ -42,6 +42,9 @@ class StoreTelegramBotRequest extends FormRequest
             'api_hash' => 'nullable|string|max:255',
             'mini_app_url' => 'nullable|string|max:255',
             'mini_app_short_name' => 'nullable|string|max:64|regex:/^[a-zA-Z0-9_]+$/',
+            'forum_auto_login' => 'nullable|string|max:255',
+            'forum_auto_pass' => 'nullable|string|max:255',
+            'forum_auto_enabled' => 'boolean',
         ];
     }
 
@@ -67,6 +70,9 @@ class StoreTelegramBotRequest extends FormRequest
             
             'mini_app_short_name.max' => 'Короткое имя Mini App не должно превышать 64 символа.',
             'mini_app_short_name.regex' => 'Короткое имя может содержать только буквы, цифры и подчеркивания.',
+            
+            'forum_auto_login.max' => 'Логин Forum-Auto не должен превышать 255 символов.',
+            'forum_auto_pass.max' => 'Пароль Forum-Auto не должен превышать 255 символов.',
         ];
     }
 

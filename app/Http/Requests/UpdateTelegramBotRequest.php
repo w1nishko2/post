@@ -34,6 +34,9 @@ class UpdateTelegramBotRequest extends FormRequest
             'api_hash' => 'nullable|string|max:255',
             'mini_app_url' => 'nullable|string|max:255',
             'mini_app_short_name' => 'nullable|string|max:64|regex:/^[a-zA-Z0-9_]+$/',
+            'forum_auto_login' => 'nullable|string|max:255',
+            'forum_auto_pass' => 'nullable|string|max:255',
+            'forum_auto_enabled' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

@@ -100,6 +100,25 @@
                                                     </button>
                                                 </div>
                                             @endif
+                                            <div class="mb-2">
+                                                <strong>Forum-Auto API:</strong>
+                                                @if($bot->hasForumAutoApi())
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Настроен
+                                                    </span>
+                                                    <br>
+                                                    <small class="text-muted">Логин: {{ $bot->masked_forum_auto_login }}</small>
+                                                @else
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-times"></i> Не настроен
+                                                    </span>
+                                                    <br>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning mt-1" 
+                                                            data-bs-toggle="modal" data-bs-target="#setupForumAutoModal{{ $bot->id }}">
+                                                        <i class="fas fa-cog"></i> Настроить Forum-Auto
+                                                    </button>
+                                                @endif
+                                            </div>
                                             <small class="text-muted">
                                                 Обновлен: {{ $bot->updated_at->format('d.m.Y H:i') }}
                                             </small>
@@ -320,6 +339,82 @@
             </div>
         </div>
     </div>
+
+    <!-- Модальное окно настройки Forum-Auto API -->
+    <div class="modal fade" id="setupForumAutoModal{{ $bot->id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ route('telegram-bots.setup-forum-auto', $bot) }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Настроить Forum-Auto API для {{ $bot->bot_name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Внимание:</strong> Эти данные будут использоваться для доступа к API Forum-Auto в вашем Mini App. 
+                            Убедитесь, что у вас есть активный аккаунт на forum-auto.ru.
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="forum_auto_login_{{ $bot->id }}" class="form-label">Логин Forum-Auto</label>
+                            <input type="text" class="form-control @error('forum_auto_login') is-invalid @enderror" 
+                                   id="forum_auto_login_{{ $bot->id }}" name="forum_auto_login" 
+                                   value="{{ old('forum_auto_login', $bot->forum_auto_login) }}" 
+                                   placeholder="615286_pynzaru_andrey" required>
+                            @error('forum_auto_login')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Логин для доступа к API Forum-Auto</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="forum_auto_pass_{{ $bot->id }}" class="form-label">Пароль Forum-Auto</label>
+                            <input type="password" class="form-control @error('forum_auto_pass') is-invalid @enderror" 
+                                   id="forum_auto_pass_{{ $bot->id }}" name="forum_auto_pass" 
+                                   placeholder="ji45fDI9nCbj" {{ $bot->forum_auto_pass ? '' : 'required' }}>
+                            @error('forum_auto_pass')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">
+                                @if($bot->forum_auto_pass)
+                                    Пароль сохранен. Оставьте пустым, если не хотите изменять.
+                                @else
+                                    Пароль для доступа к API Forum-Auto
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" 
+                                       id="forum_auto_enabled_{{ $bot->id }}" name="forum_auto_enabled" 
+                                       value="1" {{ old('forum_auto_enabled', $bot->forum_auto_enabled) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="forum_auto_enabled_{{ $bot->id }}">
+                                    Включить Forum-Auto API для этого бота
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6>Тестирование подключения:</h6>
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="testForumAutoConnection({{ $bot->id }})">
+                                <i class="fas fa-vial"></i> Проверить подключение
+                            </button>
+                            <div id="connection-test-result-{{ $bot->id }}" class="mt-2"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Сохранить настройки
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endforeach
 
 @push('scripts')
@@ -382,6 +477,62 @@
             updateMiniAppUrl(this, document.getElementById('mini_app_url_setup_{{ $bot->id }}'), previewElement);
         });
     @endforeach
+
+    // Функция для тестирования подключения к Forum-Auto API
+    function testForumAutoConnection(botId) {
+        const resultDiv = document.getElementById(`connection-test-result-${botId}`);
+        const loginInput = document.getElementById(`forum_auto_login_${botId}`);
+        const passInput = document.getElementById(`forum_auto_pass_${botId}`);
+        
+        const login = loginInput.value.trim();
+        const pass = passInput.value.trim();
+        
+        if (!login || !pass) {
+            resultDiv.innerHTML = '<div class="alert alert-warning alert-sm">Введите логин и пароль для тестирования</div>';
+            return;
+        }
+        
+        resultDiv.innerHTML = '<div class="alert alert-info alert-sm"><i class="fas fa-spinner fa-spin"></i> Проверяем подключение...</div>';
+        
+        // Отправляем AJAX запрос для проверки подключения
+        fetch('/test-forum-auto-connection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                login: login,
+                pass: pass
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let clientInfoText = '';
+                if (data.client_info && data.client_info['ИД клиента']) {
+                    clientInfoText = `<br><small>Клиент ID: ${data.client_info['ИД клиента']}</small>`;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success alert-sm">
+                        <i class="fas fa-check"></i> Подключение успешно!
+                        ${clientInfoText}
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger alert-sm">
+                        <i class="fas fa-times"></i> Ошибка подключения: ${data.error || 'Неизвестная ошибка'}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Connection test error:', error);
+            resultDiv.innerHTML = '<div class="alert alert-danger alert-sm"><i class="fas fa-times"></i> Произошла ошибка при проверке подключения</div>';
+        });
+    }
 
 
 </script>
