@@ -12,6 +12,10 @@
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
+    <!-- Мета-теги для Telegram WebApp -->
+    <meta name="telegram-web-app-init" content="true">
+    <meta name="telegram-web-app-theme-params" content="{{ json_encode(['bg_color' => '#ffffff', 'text_color' => '#000000']) }}">
+    
     <style>
         body {
             background: var(--tg-theme-bg-color, #ffffff);
@@ -291,43 +295,78 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        let tg = window.Telegram.WebApp;
+        let tg = null;
         let userData = null;
+        let isTelegramEnv = false;
 
         // Инициализация Mini App
         function initApp() {
             try {
-                // Проверяем доступность Telegram WebApp
-                const isTelegramWebApp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData;
-                const isDevelopmentMode = !isTelegramWebApp && (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('ospanel'));
+                console.log('Начинаем инициализацию Mini App...');
                 
-                if (isTelegramWebApp) {
+                // Ждем загрузки Telegram WebApp
+                setTimeout(() => {
+                    initTelegramWebApp();
+                }, 100);
+                
+            } catch (error) {
+                console.error('Критическая ошибка инициализации:', error);
+                showError('Критическая ошибка при запуске приложения');
+            }
+        }
+
+        function initTelegramWebApp() {
+            try {
+                // Проверяем доступность Telegram WebApp
+                console.log('window.Telegram:', window.Telegram);
+                console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
+                
+                const isDevelopmentMode = window.location.hostname === 'localhost' || 
+                                        window.location.hostname.includes('127.0.0.1') || 
+                                        window.location.hostname.includes('ospanel') ||
+                                        window.location.hostname.includes('post');
+
+                if (window.Telegram && window.Telegram.WebApp) {
+                    tg = window.Telegram.WebApp;
+                    isTelegramEnv = true;
+                    
+                    console.log('Telegram WebApp обнаружен');
+                    console.log('initData:', tg.initData);
+                    console.log('initDataUnsafe:', tg.initDataUnsafe);
+                    
                     // Настраиваем Telegram WebApp
                     tg.ready();
-                    tg.expand();
+                    
+                    // Разворачиваем приложение на весь экран
+                    if (tg.expand) {
+                        tg.expand();
+                    }
 
                     // Применяем тему Telegram
-                    document.body.style.backgroundColor = tg.themeParams.bg_color || '#ffffff';
-                    document.body.style.color = tg.themeParams.text_color || '#000000';
+                    applyTelegramTheme();
 
-                    // Показываем кнопку "Назад" если нужно
-                    if (tg.BackButton) {
-                        tg.BackButton.show();
-                        tg.BackButton.onClick(() => {
-                            tg.close();
-                        });
-                    }
+                    // Настраиваем кнопки
+                    setupTelegramButtons();
 
                     // Получаем данные пользователя
                     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                         userData = tg.initDataUnsafe.user;
                         displayUserInfo(userData);
+                        console.log('Данные пользователя получены:', userData);
+                    } else if (tg.initData) {
+                        console.log('initData есть, но пользователь не найден в initDataUnsafe');
+                        // Попробуем парсить initData
+                        parseInitData(tg.initData);
+                    } else {
+                        console.warn('Данные пользователя не найдены');
                     }
 
-                    console.log('Mini App инициализирован в Telegram');
-                    console.log('Telegram WebApp данные:', tg.initDataUnsafe);
+                    console.log('Mini App успешно инициализирован в Telegram');
                     
                 } else if (isDevelopmentMode) {
+                    console.log('Режим разработки активен');
+                    isTelegramEnv = false;
+                    
                     // Режим разработки - создаем фиктивные данные пользователя
                     userData = {
                         id: 12345,
@@ -344,42 +383,139 @@
                     console.log('Mini App запущен в режиме разработки');
                     
                     // Показываем предупреждение о режиме разработки
-                    const devWarning = document.createElement('div');
-                    devWarning.className = 'alert alert-warning text-center';
-                    devWarning.innerHTML = `
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>Режим разработки</strong><br>
-                        Приложение работает вне Telegram WebApp
-                    `;
-                    document.querySelector('.container').insertBefore(devWarning, document.querySelector('.container').firstChild);
+                    showDevWarning();
                     
                 } else {
                     // Показываем ошибку для продакшн-среды
-                    throw new Error('Telegram WebApp недоступен');
+                    console.error('Telegram WebApp недоступен в продакшн-среде');
+                    throw new Error('Приложение должно быть запущено из Telegram');
                 }
 
-                // Скрываем загрузку и показываем приложение
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-
-                // Загружаем начальные товары
-                loadInitialGoods();
+                // Показываем приложение
+                showApp();
 
             } catch (error) {
-                console.error('Ошибка инициализации:', error);
-                document.getElementById('loading').innerHTML = `
-                    <div class="alert alert-danger">
-                        <h5>Ошибка инициализации</h5>
-                        <p>Не удалось подключиться к Telegram WebApp</p>
-                        <small>Убедитесь, что приложение запущено из Telegram</small>
-                        <div class="mt-3">
-                            <button class="btn btn-outline-primary" onclick="location.reload()">
-                                <i class="fas fa-redo"></i> Попробовать снова
-                            </button>
-                        </div>
-                    </div>
-                `;
+                console.error('Ошибка инициализации Telegram WebApp:', error);
+                showError(error.message);
             }
+        }
+
+        function applyTelegramTheme() {
+            if (!tg || !tg.themeParams) return;
+            
+            const themeParams = tg.themeParams;
+            console.log('Применяем тему Telegram:', themeParams);
+            
+            if (themeParams.bg_color) {
+                document.body.style.backgroundColor = themeParams.bg_color;
+            }
+            if (themeParams.text_color) {
+                document.body.style.color = themeParams.text_color;
+            }
+            if (themeParams.hint_color) {
+                document.documentElement.style.setProperty('--bs-secondary', themeParams.hint_color);
+            }
+            if (themeParams.button_color) {
+                document.documentElement.style.setProperty('--bs-primary', themeParams.button_color);
+            }
+            if (themeParams.button_text_color) {
+                document.documentElement.style.setProperty('--bs-primary-text', themeParams.button_text_color);
+            }
+        }
+
+        function setupTelegramButtons() {
+            if (!tg) return;
+            
+            // Настраиваем кнопку "Назад"
+            if (tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(() => {
+                    console.log('Нажата кнопка назад');
+                    tg.close();
+                });
+            }
+
+            // Настраиваем главную кнопку (если нужна)
+            if (tg.MainButton) {
+                tg.MainButton.setText('Готово');
+                tg.MainButton.onClick(() => {
+                    console.log('Нажата главная кнопка');
+                    sendDataToBot();
+                });
+            }
+        }
+
+        function parseInitData(initData) {
+            try {
+                const urlParams = new URLSearchParams(initData);
+                const userParam = urlParams.get('user');
+                if (userParam) {
+                    userData = JSON.parse(decodeURIComponent(userParam));
+                    displayUserInfo(userData);
+                    console.log('Пользователь извлечен из initData:', userData);
+                }
+            } catch (error) {
+                console.error('Ошибка парсинга initData:', error);
+            }
+        }
+
+        function showApp() {
+            // Скрываем загрузку и показываем приложение
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+
+            // Загружаем начальные товары
+            loadInitialGoods();
+        }
+
+        function showError(message) {
+            document.getElementById('loading').innerHTML = `
+                <div class="alert alert-danger text-center">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Ошибка инициализации</h5>
+                    <p>${message}</p>
+                    <small class="text-muted">
+                        ${isTelegramEnv ? 
+                            'Проверьте настройки бота в Telegram' : 
+                            'Убедитесь, что приложение запущено из Telegram'}
+                    </small>
+                    <div class="mt-3">
+                        <button class="btn btn-outline-primary" onclick="location.reload()">
+                            <i class="fas fa-redo"></i> Попробовать снова
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="showDebugInfo()">
+                            <i class="fas fa-bug"></i> Отладка
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showDevWarning() {
+            const devWarning = document.createElement('div');
+            devWarning.className = 'alert alert-warning text-center mb-3';
+            devWarning.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Режим разработки</strong><br>
+                Приложение работает вне Telegram WebApp
+            `;
+            document.querySelector('.container').insertBefore(devWarning, document.querySelector('.container').firstChild);
+        }
+
+        function showDebugInfo() {
+            const debugInfo = `
+                <div class="alert alert-info">
+                    <h6>Отладочная информация:</h6>
+                    <small>
+                        <strong>URL:</strong> ${window.location.href}<br>
+                        <strong>User Agent:</strong> ${navigator.userAgent}<br>
+                        <strong>Telegram:</strong> ${window.Telegram ? 'Доступен' : 'Недоступен'}<br>
+                        <strong>WebApp:</strong> ${window.Telegram?.WebApp ? 'Доступен' : 'Недоступен'}<br>
+                        <strong>initData:</strong> ${window.Telegram?.WebApp?.initData || 'Отсутствует'}<br>
+                        <strong>Platform:</strong> ${window.Telegram?.WebApp?.platform || 'Неизвестно'}
+                    </small>
+                </div>
+            `;
+            document.getElementById('loading').innerHTML += debugInfo;
         }
 
         // Отображение информации о пользователе
@@ -410,6 +546,10 @@
 
         // Отправить данные боту
         function sendData() {
+            sendDataToBot();
+        }
+
+        function sendDataToBot() {
             const data = {
                 action: 'save_data',
                 user_data: userData,
@@ -417,32 +557,48 @@
                 bot_short_name: '{{ $shortName }}'
             };
 
-            if (tg.sendData) {
-                tg.sendData(JSON.stringify(data));
-                showAlert('Данные отправлены боту!');
+            console.log('Отправляем данные боту:', data);
+
+            if (isTelegramEnv && tg && tg.sendData) {
+                try {
+                    tg.sendData(JSON.stringify(data));
+                    showAlert('Данные отправлены боту!');
+                } catch (error) {
+                    console.error('Ошибка отправки данных:', error);
+                    showAlert('Ошибка при отправке данных');
+                }
             } else {
-                console.log('Данные для отправки:', data);
-                showAlert('Данные подготовлены к отправке');
+                console.log('Данные для отправки (режим разработки):', data);
+                showAlert('Данные подготовлены к отправке (режим разработки)');
             }
         }
 
         // Закрыть приложение
         function closeApp() {
-            if (tg.close) {
+            if (isTelegramEnv && tg && tg.close) {
+                console.log('Закрываем приложение через Telegram API');
                 tg.close();
             } else {
+                console.log('Закрываем приложение (режим разработки)');
                 showAlert('Приложение будет закрыто');
+                // В режиме разработки можно просто перенаправить
+                window.history.back();
             }
         }
 
         // Haptic Feedback для кнопок
-        document.querySelectorAll('.feature-card, .btn').forEach(el => {
-            el.addEventListener('click', () => {
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
-                }
+        function setupHapticFeedback() {
+            document.querySelectorAll('.feature-card, .btn').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (isTelegramEnv && tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('light');
+                    }
+                });
             });
-        });
+        }
+
+        // Вызываем после загрузки DOM
+        setTimeout(setupHapticFeedback, 500);
 
         // ===== FORUM-AUTO МАГАЗИН =====
         
@@ -991,26 +1147,27 @@
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM загружен, запускаем инициализацию...');
             initApp();
         });
 
-        // Дополнительная инициализация для старых версий браузеров
-        if (!window.Telegram || !window.Telegram.WebApp) {
-            console.warn('Telegram WebApp недоступен или устаревшая версия');
-            // Создаем заглушку для совместимости
-            if (!window.Telegram) {
-                window.Telegram = {
-                    WebApp: {
-                        ready: () => {},
-                        expand: () => {},
-                        close: () => {},
-                        themeParams: {},
-                        initData: '',
-                        initDataUnsafe: {}
-                    }
-                };
-            }
+        // Дополнительная инициализация если DOM уже загружен
+        if (document.readyState === 'loading') {
+            console.log('DOM загружается...');
+        } else {
+            console.log('DOM уже загружен, запускаем инициализацию...');
+            initApp();
         }
+
+        // Глобальная обработка ошибок
+        window.addEventListener('error', (event) => {
+            console.error('Глобальная ошибка:', event.error);
+        });
+
+        // Логирование для отладки
+        console.log('Mini App script загружен');
+        console.log('Telegram доступен:', !!window.Telegram);
+        console.log('Telegram WebApp доступен:', !!window.Telegram?.WebApp);
     </script>
 </body>
 </html>
