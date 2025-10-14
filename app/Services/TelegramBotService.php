@@ -9,6 +9,31 @@ use Illuminate\Support\Facades\Log;
 class TelegramBotService
 {
     /**
+     * Получить настроенный HTTP клиент для Telegram API
+     */
+    private function getTelegramHttpClient()
+    {
+        return Http::timeout(60) // Увеличиваем общий таймаут
+            ->withOptions([
+                'verify' => false, // Отключаем проверку SSL для решения проблем с сертификатами
+                'http_errors' => false,
+                'connect_timeout' => 30, // Увеличиваем таймаут подключения
+                'timeout' => 60, // Общий таймаут
+                'read_timeout' => 45, // Таймаут чтения
+                'curl' => [
+                    CURLOPT_CONNECTTIMEOUT => 30,
+                    CURLOPT_TIMEOUT => 60,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_USERAGENT => 'Laravel HTTP Client',
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, // Принудительно используем IPv4
+                ]
+            ])
+            ->retry(3, 2000, null, false); // 3 попытки с задержкой 2 секунды
+    }
+
+    /**
      * Проверить валидность токена бота
      */
     public function validateBotToken(string $token): bool
@@ -22,32 +47,98 @@ class TelegramBotService
                 return false;
             }
 
-            $response = Http::timeout(15)->get("https://api.telegram.org/bot{$token}/getMe");
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['ok']) && $data['ok']) {
-                    Log::info('Токен бота валиден', [
-                        'bot_username' => $data['result']['username'] ?? 'unknown'
-                    ]);
-                    return true;
+            // Первая попытка с Laravel HTTP Client
+            try {
+                $response = $this->getTelegramHttpClient()
+                    ->get("https://api.telegram.org/bot{$token}/getMe");
+                
+                if ($response->successful()) {
+                    $data = $response->json();
+                    if (isset($data['ok']) && $data['ok']) {
+                        Log::info('Токен бота валиден (Laravel HTTP)', [
+                            'bot_username' => $data['result']['username'] ?? 'unknown'
+                        ]);
+                        return true;
+                    }
                 }
+                
+                Log::warning('Первая попытка неудачна, пробуем cURL напрямую', [
+                    'status' => $response->status(),
+                ]);
+            } catch (\Exception $httpException) {
+                Log::warning('Laravel HTTP Client неудачен, пробуем cURL', [
+                    'error' => $httpException->getMessage()
+                ]);
+            }
+
+            // Вторая попытка с прямым cURL
+            $isValid = $this->validateTokenWithCurl($token);
+            if ($isValid) {
+                Log::info('Токен бота валиден (cURL)', ['token' => substr($token, 0, 10) . '...']);
+                return true;
             }
             
             Log::warning('Токен бота не валиден', [
-                'token' => substr($token, 0, 10) . '...',
-                'status' => $response->status(),
-                'response' => $response->json()
+                'token' => substr($token, 0, 10) . '...'
             ]);
             
             return false;
         } catch (\Exception $e) {
-            Log::error('Ошибка при валидации токена бота', [
+            Log::error('Критическая ошибка при валидации токена бота', [
                 'token' => substr($token, 0, 10) . '...',
                 'error' => $e->getMessage()
             ]);
             return false;
         }
+    }
+
+    /**
+     * Дополнительная проверка токена через прямой cURL
+     */
+    private function validateTokenWithCurl(string $token): bool
+    {
+        $url = "https://api.telegram.org/bot{$token}/getMe";
+        
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT => 'Laravel Bot Validator/1.0',
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Cache-Control: no-cache'
+            ]
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($curlError) {
+            Log::error('cURL ошибка при проверке токена', [
+                'curl_error' => $curlError,
+                'http_code' => $httpCode
+            ]);
+            return false;
+        }
+        
+        if ($httpCode !== 200) {
+            Log::warning('HTTP код не 200 при проверке токена', [
+                'http_code' => $httpCode,
+                'response' => substr($response, 0, 200)
+            ]);
+            return false;
+        }
+        
+        $data = json_decode($response, true);
+        return isset($data['ok']) && $data['ok'];
     }
 
     /**
@@ -56,33 +147,99 @@ class TelegramBotService
     public function getBotInfo(string $token): ?array
     {
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getMe");
-            
-            if ($response->successful() && $response->json('ok')) {
-                return $response->json('result');
+            // Первая попытка с Laravel HTTP Client
+            try {
+                $response = $this->getTelegramHttpClient()
+                    ->get("https://api.telegram.org/bot{$token}/getMe");
+                
+                if ($response->successful() && $response->json('ok')) {
+                    return $response->json('result');
+                }
+                
+                Log::warning('Laravel HTTP не сработал для getBotInfo, пробуем cURL');
+            } catch (\Exception $httpException) {
+                Log::warning('Laravel HTTP Client исключение в getBotInfo', [
+                    'error' => $httpException->getMessage()
+                ]);
             }
+            
+            // Вторая попытка с прямым cURL
+            return $this->getBotInfoWithCurl($token);
+            
         } catch (\Exception $e) {
-            Log::error('Ошибка при получении информации о боте', [
+            Log::error('Критическая ошибка при получении информации о боте', [
                 'token' => substr($token, 0, 10) . '...',
                 'error' => $e->getMessage()
             ]);
         }
-
+        
         return null;
     }
 
     /**
+     * Получить информацию о боте через прямой cURL
+     */
+    private function getBotInfoWithCurl(string $token): ?array
+    {
+        $url = "https://api.telegram.org/bot{$token}/getMe";
+        
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT => 'Laravel Bot Info/1.0',
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Cache-Control: no-cache'
+            ]
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($curlError) {
+            Log::error('cURL ошибка при получении информации о боте', [
+                'curl_error' => $curlError,
+                'http_code' => $httpCode
+            ]);
+            return null;
+        }
+        
+        if ($httpCode !== 200) {
+            Log::warning('HTTP код не 200 при получении информации о боте', [
+                'http_code' => $httpCode,
+                'response' => substr($response, 0, 200)
+            ]);
+            return null;
+        }
+        
+        $data = json_decode($response, true);
+        if (isset($data['ok']) && $data['ok'] && isset($data['result'])) {
+            return $data['result'];
+        }
+        
+        return null;
+    }    /**
      * Установить webhook для бота
      */
     public function setWebhook(TelegramBot $bot, string $webhookUrl): bool
     {
         try {
-            $response = Http::timeout(15)->post("https://api.telegram.org/bot{$bot->bot_token}/setWebhook", [
-                'url' => $webhookUrl,
-                'allowed_updates' => ['message', 'callback_query', 'inline_query', 'web_app_data'],
-                'drop_pending_updates' => true,
-                'secret_token' => $this->generateSecretToken()
-            ]);
+            $response = $this->getTelegramHttpClient()
+                ->post("https://api.telegram.org/bot{$bot->bot_token}/setWebhook", [
+                    'url' => $webhookUrl,
+                    'allowed_updates' => ['message', 'callback_query', 'inline_query', 'web_app_data'],
+                    'drop_pending_updates' => true,
+                    'secret_token' => $this->generateSecretToken()
+                ]);
 
             $result = $response->successful() && $response->json('ok');
             
