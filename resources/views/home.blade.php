@@ -4,14 +4,21 @@
 @if($errors->any())
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Альтернативный способ открытия модального окна через data-атрибуты
-            const modalTrigger = document.createElement('button');
-            modalTrigger.setAttribute('data-bs-toggle', 'modal');
-            modalTrigger.setAttribute('data-bs-target', '#addBotModal');
-            modalTrigger.style.display = 'none';
-            document.body.appendChild(modalTrigger);
-            modalTrigger.click();
-            document.body.removeChild(modalTrigger);
+            // Ждем полной загрузки Bootstrap и всех модальных окон
+            setTimeout(function() {
+                try {
+                    const addBotModal = document.getElementById('addBotModal');
+                    if (addBotModal) {
+                        // Используем Bootstrap API для открытия модального окна
+                        const modal = new bootstrap.Modal(addBotModal);
+                        modal.show();
+                    } else {
+                        console.warn('Модальное окно addBotModal не найдено');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при открытии модального окна:', error);
+                }
+            }, 100);
         });
     </script>
 @endif
@@ -419,63 +426,92 @@
 
 @push('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', function() {
     const baseUrl = '{{ config("app.url") }}';
 
     // Функция для обновления URL Mini App
     function updateMiniAppUrl(shortNameInput, urlInput, previewElement = null) {
-        const shortName = shortNameInput.value.trim();
-        if (shortName) {
-            const fullUrl = `${baseUrl}/${shortName}`;
-            urlInput.value = fullUrl;
+        try {
+            if (!shortNameInput || !urlInput) {
+                console.warn('updateMiniAppUrl: недостающие элементы DOM');
+                return;
+            }
             
-            if (previewElement) {
-                previewElement.textContent = shortName;
+            const shortName = shortNameInput.value.trim();
+            if (shortName) {
+                const fullUrl = `${baseUrl}/${shortName}`;
+                urlInput.value = fullUrl;
+                
+                if (previewElement) {
+                    previewElement.textContent = shortName;
+                }
+            } else {
+                urlInput.value = '';
+                if (previewElement) {
+                    previewElement.textContent = 'ваше_имя';
+                }
             }
-        } else {
-            urlInput.value = '';
-            if (previewElement) {
-                previewElement.textContent = 'ваше_имя';
-            }
+        } catch (error) {
+            console.error('Ошибка в updateMiniAppUrl:', error);
         }
     }
 
     // Автоматическое заполнение username из токена
-    document.getElementById('bot_token').addEventListener('input', function() {
-        const token = this.value.trim();
-        const usernameInput = document.getElementById('bot_username');
-        
-        if (token && token.includes(':')) {
-            // Пытаемся получить информацию о боте через AJAX
-            fetch(`https://api.telegram.org/bot${token}/getMe`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ok && data.result.username) {
-                        usernameInput.value = data.result.username;
-                        document.getElementById('bot_name').value = data.result.first_name || '';
-                    }
-                })
-                .catch(error => {
-                    // Игнорируем ошибки CORS в браузере
-                });
-        }
-    });
+    const botTokenInput = document.getElementById('bot_token');
+    if (botTokenInput) {
+        botTokenInput.addEventListener('input', function() {
+            const token = this.value.trim();
+            const usernameInput = document.getElementById('bot_username');
+            
+            if (token && token.includes(':') && usernameInput) {
+                // Пытаемся получить информацию о боте через AJAX
+                fetch(`https://api.telegram.org/bot${token}/getMe`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.ok && data.result.username) {
+                            usernameInput.value = data.result.username;
+                            const botNameInput = document.getElementById('bot_name');
+                            if (botNameInput) {
+                                botNameInput.value = data.result.first_name || '';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        // Игнорируем ошибки CORS в браузере
+                        console.log('CORS error ignored:', error);
+                    });
+            }
+        });
+    }
 
     // Автоматическое формирование URL для новых ботов
-    document.getElementById('mini_app_short_name').addEventListener('input', function() {
-        updateMiniAppUrl(this, document.getElementById('mini_app_url'));
-    });
+    const miniAppShortNameInput = document.getElementById('mini_app_short_name');
+    const miniAppUrlInput = document.getElementById('mini_app_url');
+    if (miniAppShortNameInput && miniAppUrlInput) {
+        miniAppShortNameInput.addEventListener('input', function() {
+            updateMiniAppUrl(this, miniAppUrlInput);
+        });
+    }
 
     // Автоматическое формирование URL для редактирования ботов
     @foreach(auth()->user()->telegramBots ?? [] as $bot)
-        document.getElementById('mini_app_short_name_{{ $bot->id }}').addEventListener('input', function() {
-            updateMiniAppUrl(this, document.getElementById('mini_app_url_{{ $bot->id }}'));
-        });
+        const editShortNameInput{{ $bot->id }} = document.getElementById('mini_app_short_name_{{ $bot->id }}');
+        const editUrlInput{{ $bot->id }} = document.getElementById('mini_app_url_{{ $bot->id }}');
+        if (editShortNameInput{{ $bot->id }} && editUrlInput{{ $bot->id }}) {
+            editShortNameInput{{ $bot->id }}.addEventListener('input', function() {
+                updateMiniAppUrl(this, editUrlInput{{ $bot->id }});
+            });
+        }
 
         // Для модального окна настройки Mini App
-        document.getElementById('mini_app_short_name_setup_{{ $bot->id }}').addEventListener('input', function() {
-            const previewElement = this.closest('.modal-body').querySelector('.mini-app-preview');
-            updateMiniAppUrl(this, document.getElementById('mini_app_url_setup_{{ $bot->id }}'), previewElement);
-        });
+        const setupShortNameInput{{ $bot->id }} = document.getElementById('mini_app_short_name_setup_{{ $bot->id }}');
+        const setupUrlInput{{ $bot->id }} = document.getElementById('mini_app_url_setup_{{ $bot->id }}');
+        if (setupShortNameInput{{ $bot->id }} && setupUrlInput{{ $bot->id }}) {
+            setupShortNameInput{{ $bot->id }}.addEventListener('input', function() {
+                const previewElement = this.closest('.modal-body').querySelector('.mini-app-preview');
+                updateMiniAppUrl(this, setupUrlInput{{ $bot->id }}, previewElement);
+            });
+        }
     @endforeach
 
     // Функция для тестирования подключения к Forum-Auto API
@@ -533,7 +569,8 @@
             resultDiv.innerHTML = '<div class="alert alert-danger alert-sm"><i class="fas fa-times"></i> Произошла ошибка при проверке подключения</div>';
         });
     }
-
+    
+}); // Закрытие DOMContentLoaded
 
 </script>
 @endpush

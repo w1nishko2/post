@@ -297,34 +297,73 @@
         // Инициализация Mini App
         function initApp() {
             try {
-                // Настраиваем Telegram WebApp
-                tg.ready();
-                tg.expand();
+                // Проверяем доступность Telegram WebApp
+                const isTelegramWebApp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData;
+                const isDevelopmentMode = !isTelegramWebApp && (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('ospanel'));
+                
+                if (isTelegramWebApp) {
+                    // Настраиваем Telegram WebApp
+                    tg.ready();
+                    tg.expand();
 
-                // Применяем тему Telegram
-                document.body.style.backgroundColor = tg.themeParams.bg_color || '#ffffff';
-                document.body.style.color = tg.themeParams.text_color || '#000000';
+                    // Применяем тему Telegram
+                    document.body.style.backgroundColor = tg.themeParams.bg_color || '#ffffff';
+                    document.body.style.color = tg.themeParams.text_color || '#000000';
 
-                // Показываем кнопку "Назад" если нужно
-                if (tg.BackButton) {
-                    tg.BackButton.show();
-                    tg.BackButton.onClick(() => {
-                        tg.close();
-                    });
-                }
+                    // Показываем кнопку "Назад" если нужно
+                    if (tg.BackButton) {
+                        tg.BackButton.show();
+                        tg.BackButton.onClick(() => {
+                            tg.close();
+                        });
+                    }
 
-                // Получаем данные пользователя
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    userData = tg.initDataUnsafe.user;
+                    // Получаем данные пользователя
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                        userData = tg.initDataUnsafe.user;
+                        displayUserInfo(userData);
+                    }
+
+                    console.log('Mini App инициализирован в Telegram');
+                    console.log('Telegram WebApp данные:', tg.initDataUnsafe);
+                    
+                } else if (isDevelopmentMode) {
+                    // Режим разработки - создаем фиктивные данные пользователя
+                    userData = {
+                        id: 12345,
+                        first_name: 'Разработчик',
+                        last_name: 'Тестовый',
+                        username: 'developer'
+                    };
                     displayUserInfo(userData);
+                    
+                    // Применяем базовую тему
+                    document.body.style.backgroundColor = '#ffffff';
+                    document.body.style.color = '#000000';
+                    
+                    console.log('Mini App запущен в режиме разработки');
+                    
+                    // Показываем предупреждение о режиме разработки
+                    const devWarning = document.createElement('div');
+                    devWarning.className = 'alert alert-warning text-center';
+                    devWarning.innerHTML = `
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Режим разработки</strong><br>
+                        Приложение работает вне Telegram WebApp
+                    `;
+                    document.querySelector('.container').insertBefore(devWarning, document.querySelector('.container').firstChild);
+                    
+                } else {
+                    // Показываем ошибку для продакшн-среды
+                    throw new Error('Telegram WebApp недоступен');
                 }
 
                 // Скрываем загрузку и показываем приложение
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
 
-                console.log('Mini App инициализирован');
-                console.log('Telegram WebApp данные:', tg.initDataUnsafe);
+                // Загружаем начальные товары
+                loadInitialGoods();
 
             } catch (error) {
                 console.error('Ошибка инициализации:', error);
@@ -333,6 +372,11 @@
                         <h5>Ошибка инициализации</h5>
                         <p>Не удалось подключиться к Telegram WebApp</p>
                         <small>Убедитесь, что приложение запущено из Telegram</small>
+                        <div class="mt-3">
+                            <button class="btn btn-outline-primary" onclick="location.reload()">
+                                <i class="fas fa-redo"></i> Попробовать снова
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -948,19 +992,24 @@
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
             initApp();
-            // Загружаем товары в магазине
-            if (document.getElementById('goods-results')) {
-                loadInitialGoods();
-            }
         });
 
-        // Для тестирования вне Telegram
-        if (!window.Telegram) {
-            console.warn('Telegram WebApp не обнаружен. Режим отладки.');
-            setTimeout(() => {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-            }, 1000);
+        // Дополнительная инициализация для старых версий браузеров
+        if (!window.Telegram || !window.Telegram.WebApp) {
+            console.warn('Telegram WebApp недоступен или устаревшая версия');
+            // Создаем заглушку для совместимости
+            if (!window.Telegram) {
+                window.Telegram = {
+                    WebApp: {
+                        ready: () => {},
+                        expand: () => {},
+                        close: () => {},
+                        themeParams: {},
+                        initData: '',
+                        initDataUnsafe: {}
+                    }
+                };
+            }
         }
     </script>
 </body>

@@ -14,8 +14,33 @@ class TelegramBotService
     public function validateBotToken(string $token): bool
     {
         try {
-            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getMe");
-            return $response->successful() && $response->json('ok');
+            // Дополнительная проверка формата токена
+            if (!preg_match('/^\d+:[a-zA-Z0-9_-]+$/', $token)) {
+                Log::warning('Неверный формат токена бота', [
+                    'token_format' => 'Invalid format'
+                ]);
+                return false;
+            }
+
+            $response = Http::timeout(15)->get("https://api.telegram.org/bot{$token}/getMe");
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['ok']) && $data['ok']) {
+                    Log::info('Токен бота валиден', [
+                        'bot_username' => $data['result']['username'] ?? 'unknown'
+                    ]);
+                    return true;
+                }
+            }
+            
+            Log::warning('Токен бота не валиден', [
+                'token' => substr($token, 0, 10) . '...',
+                'status' => $response->status(),
+                'response' => $response->json()
+            ]);
+            
+            return false;
         } catch (\Exception $e) {
             Log::error('Ошибка при валидации токена бота', [
                 'token' => substr($token, 0, 10) . '...',

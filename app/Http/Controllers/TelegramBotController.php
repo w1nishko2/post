@@ -55,15 +55,20 @@ class TelegramBotController extends Controller
         $validated = $request->validated();
 
         // Проверяем валидность токена бота через Telegram API
-        if (!$this->telegramBotService->validateBotToken($validated['bot_token'])) {
-            return back()->withErrors(['bot_token' => 'Неверный токен бота или бот недоступен.'])
-                        ->withInput();
-        }
+        try {
+            if (!$this->telegramBotService->validateBotToken($validated['bot_token'])) {
+                return back()->withErrors(['bot_token' => 'Неверный токен бота или бот недоступен. Проверьте токен и убедитесь, что бот создан в @BotFather.'])
+                            ->withInput();
+            }
 
-        // Получаем информацию о боте
-        $botInfo = $this->telegramBotService->getBotInfo($validated['bot_token']);
-        if (!$botInfo) {
-            return back()->withErrors(['bot_token' => 'Не удалось получить информацию о боте.'])
+            // Получаем информацию о боте
+            $botInfo = $this->telegramBotService->getBotInfo($validated['bot_token']);
+            if (!$botInfo) {
+                return back()->withErrors(['bot_token' => 'Не удалось получить информацию о боте. Проверьте подключение к интернету.'])
+                            ->withInput();
+            }
+        } catch (\Exception $e) {
+            return back()->withErrors(['bot_token' => 'Произошла ошибка при проверке токена: ' . $e->getMessage()])
                         ->withInput();
         }
 
