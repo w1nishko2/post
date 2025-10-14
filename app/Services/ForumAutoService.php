@@ -348,6 +348,7 @@ class ForumAutoService
 
     /**
      * Поиск товаров по всем полям с процентом совпадения
+     * Использует интеллектуальные стратегии поиска вместо жестко заданного словаря
      */
     public function advancedSearchGoods(string $search, int $page = 1, int $limit = 20): array
     {
@@ -361,63 +362,105 @@ class ForumAutoService
             
             return Cache::remember($cacheKey, 300, function () use ($search, $page, $limit) {
                 $allGoods = [];
+                $searchStrategies = [];
                 
-                // 1. Прямой поиск по артикулу с кроссами
-                $directGoods = $this->getGoods(['art' => $search, 'cross' => 1]);
-                if (is_array($directGoods)) {
-                    $allGoods = array_merge($allGoods, $directGoods);
-                }
+                // 1. Прямой поиск по оригинальному запросу
+                $searchStrategies[] = ['type' => 'direct', 'term' => $search];
                 
-                // 2. Поиск по брендам для данного артикула
-                $brands = $this->getBrandsByArticle($search);
-                if (is_array($brands)) {
-                    foreach ($brands as $brand) {
-                        $brandGoods = $this->getGoods(['art' => $search, 'br' => $brand['brand'], 'cross' => 1]);
-                        if (is_array($brandGoods)) {
-                            $allGoods = array_merge($allGoods, $brandGoods);
+                // 2. Если запрос длинный, разбиваем на части
+                if (mb_strlen($search) > 4) {
+                    // Ищем по частям различной длины
+                    for ($len = 3; $len <= min(6, mb_strlen($search)); $len++) {
+                        $searchStrategies[] = ['type' => 'prefix', 'term' => mb_substr($search, 0, $len)];
+                        if ($len < mb_strlen($search)) {
+                            $searchStrategies[] = ['type' => 'suffix', 'term' => mb_substr($search, -$len)];
                         }
                     }
                 }
                 
-                // 3. Дополнительный поиск по частичным совпадениям
-                if (mb_strlen($search) >= 3) {
-                    // Поиск по частичным артикулам (если поиск содержит более 3 символов)
-                    $partialSearches = [
-                        mb_substr($search, 0, 3),  // Первые 3 символа
-                        mb_substr($search, 0, 4),  // Первые 4 символа
-                        mb_substr($search, -3),    // Последние 3 символа
-                    ];
+                // 3. Ищем похожие артикулы с различными вариациями
+                $variations = $this->generateSearchVariations($search);
+                foreach ($variations as $variation) {
+                    $searchStrategies[] = ['type' => 'variation', 'term' => $variation];
+                }
+                
+                // 4. Если поиск содержит пробелы, ищем по каждому слову отдельно
+                if (mb_strpos($search, ' ') !== false) {
+                    $words = explode(' ', $search);
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (mb_strlen($word) >= 2) {
+                            $searchStrategies[] = ['type' => 'word', 'term' => $word];
+                        }
+                    }
+                }
+                
+                // 5. Поиск по регулярным выражениям для типовых артикулов
+                $patterns = $this->detectArticlePatterns($search);
+                foreach ($patterns as $pattern) {
+                    $searchStrategies[] = ['type' => 'pattern', 'term' => $pattern];
+                }
+                
+                // 6. Поиск по описательным запросам через популярные артикулы
+                $suggestedArticles = $this->getSuggestedArticles($search);
+                foreach ($suggestedArticles as $article) {
+                    $searchStrategies[] = ['type' => 'suggested', 'term' => $article];
+                }
+
+                // Выполняем все стратегии поиска
+                $maxSearches = 15; // Ограничиваем количество запросов к API
+                $searchCount = 0;
+                
+                foreach (array_slice($searchStrategies, 0, $maxSearches) as $strategy) {
+                    if ($searchCount >= $maxSearches) break;
                     
-                    foreach ($partialSearches as $partial) {
-                        if (mb_strlen($partial) >= 2) {
-                            $partialGoods = $this->getGoods(['art' => $partial, 'cross' => 1]);
-                            if (is_array($partialGoods)) {
-                                $allGoods = array_merge($allGoods, $partialGoods);
+                    try {
+                        // Прямой поиск по артикулу
+                        $goods = $this->getGoods(['art' => $strategy['term'], 'cross' => 1]);
+                        if (is_array($goods) && count($goods) > 0) {
+                            foreach ($goods as $item) {
+                                $item['search_strategy'] = $strategy['type'];
+                                $item['search_term'] = $strategy['term'];
+                                $allGoods[] = $item;
                             }
                         }
-                    }
-                }
-                
-                // 4. Поиск по ключевым словам и типам товаров
-                $searchKeywords = $this->extractKeywordsFromSearch($search);
-                foreach ($searchKeywords as $keyword) {
-                    // Поиск популярных артикулов, содержащих ключевое слово
-                    $keywordGoods = $this->searchByKeyword($keyword);
-                    if (is_array($keywordGoods)) {
-                        $allGoods = array_merge($allGoods, $keywordGoods);
-                    }
-                }
-                
-                // 5. Поиск по популярным брендам если поиск похож на название товара
-                $popularBrands = ['BOSCH', 'MANN', 'MAHLE', 'KNECHT', 'FILTRON', 'JP GROUP', 'FEBI'];
-                foreach ($popularBrands as $brandName) {
-                    if ($this->calculateSimilarityPercent($search, $brandName) >= 60) {
-                        // Если поиск похож на название бренда, ищем популярные товары этого бренда
-                        $brandSearch = ['br' => $brandName];
-                        $brandGoods = $this->getGoods($brandSearch);
-                        if (is_array($brandGoods)) {
-                            $allGoods = array_merge($allGoods, array_slice($brandGoods, 0, 10));
+                        
+                        // Поиск по брендам для данного артикула
+                        if ($strategy['type'] === 'direct' || $strategy['type'] === 'variation') {
+                            $brands = $this->getBrandsByArticle($strategy['term']);
+                            if (is_array($brands)) {
+                                foreach (array_slice($brands, 0, 5) as $brand) { // Ограничиваем количество брендов
+                                    $brandGoods = $this->getGoods([
+                                        'art' => $strategy['term'], 
+                                        'br' => $brand['brand'], 
+                                        'cross' => 1
+                                    ]);
+                                    if (is_array($brandGoods)) {
+                                        foreach ($brandGoods as $item) {
+                                            $item['search_strategy'] = $strategy['type'] . '_brand';
+                                            $item['search_term'] = $strategy['term'];
+                                            $item['found_brand'] = $brand['brand'];
+                                            $allGoods[] = $item;
+                                        }
+                                    }
+                                }
+                            }
                         }
+                        
+                        $searchCount++;
+                        
+                        // Если уже нашли достаточно товаров, можем остановиться
+                        if (count($allGoods) >= $limit * 3) {
+                            break;
+                        }
+                        
+                    } catch (\Exception $e) {
+                        Log::debug('Search strategy failed', [
+                            'bot_id' => $this->bot->id,
+                            'strategy' => $strategy,
+                            'error' => $e->getMessage()
+                        ]);
+                        continue;
                     }
                 }
 
@@ -426,64 +469,32 @@ class ForumAutoService
                 $results = [];
                 
                 foreach ($allGoods as $item) {
-                    $key = $item['gid'] ?? ($item['art'] . '_' . $item['brand']);
+                    $key = $item['gid'] ?? ($item['art'] . '_' . ($item['brand'] ?? ''));
                     if (isset($unique[$key])) continue;
                     $unique[$key] = true;
 
-                    // Рассчитываем максимальный процент совпадения по всем полям
-                    $fields = [
-                        'art' => $item['art'] ?? '',
-                        'name' => $item['name'] ?? '',
-                        'brand' => $item['brand'] ?? '',
-                        'gid' => $item['gid'] ?? ''
-                    ];
+                    // Рассчитываем процент совпадения с оригинальным запросом
+                    $matchPercent = $this->calculateMatchPercent($search, $item);
+                    $item['match_percent'] = $matchPercent['percent'];
+                    $item['matching_field'] = $matchPercent['field'];
                     
-                    $maxPercent = 0;
-                    $matchingField = '';
-                    
-                    foreach ($fields as $fieldName => $fieldValue) {
-                        if (empty($fieldValue)) continue;
-                        
-                        // Точное совпадение
-                        if (mb_strtolower($search) === mb_strtolower($fieldValue)) {
-                            $maxPercent = 100;
-                            $matchingField = $fieldName;
-                            break;
-                        }
-                        
-                        // Содержит поисковой запрос
-                        if (mb_stripos($fieldValue, $search) !== false) {
-                            $percent = max(85, $this->calculateSimilarityPercent($search, $fieldValue));
-                            if ($percent > $maxPercent) {
-                                $maxPercent = $percent;
-                                $matchingField = $fieldName;
-                            }
-                        }
-                        
-                        // Похожесть строк
-                        $percent = $this->calculateSimilarityPercent($search, $fieldValue);
-                        if ($percent > $maxPercent) {
-                            $maxPercent = $percent;
-                            $matchingField = $fieldName;
-                        }
-                    }
-                    
-                    $item['match_percent'] = $maxPercent;
-                    $item['matching_field'] = $matchingField;
-                    
-                    // Фильтруем только товары с совпадением 70% и выше
-                    if ($maxPercent >= 70) {
-                        $results[] = $item;
-                    }
+                    $results[] = $item;
                 }
 
-                // Сортировка по убыванию совпадения
+                // Сортировка по убыванию совпадения и релевантности
                 usort($results, function($a, $b) {
                     $aPercent = $a['match_percent'] ?? 0;
                     $bPercent = $b['match_percent'] ?? 0;
                     
                     if ($aPercent === $bPercent) {
-                        // При одинаковом проценте сортируем по наличию товара
+                        // При одинаковом проценте приоритет прямому поиску
+                        $aStrategy = $a['search_strategy'] ?? '';
+                        $bStrategy = $b['search_strategy'] ?? '';
+                        
+                        if ($aStrategy === 'direct' && $bStrategy !== 'direct') return -1;
+                        if ($bStrategy === 'direct' && $aStrategy !== 'direct') return 1;
+                        
+                        // Затем по наличию товара
                         $aStock = $a['num'] ?? 0;
                         $bStock = $b['num'] ?? 0;
                         return $bStock <=> $aStock;
@@ -769,79 +780,7 @@ class ForumAutoService
         ];
     }
 
-    /**
-     * Извлечь ключевые слова для поиска по названию товара
-     */
-    private function extractKeywordsFromSearch(string $search): array
-    {
-        $search = mb_strtolower(trim($search));
-        
-        // Словарь соответствий для поиска товаров
-        $keywords = [
-            // Фильтры
-            'фильтр' => ['OC', 'LF', 'W7', 'HU', 'P55', 'WK'],
-            'масляный' => ['OC', 'W7', 'LF'],
-            'воздушный' => ['LX', 'C14', 'SB'],
-            'топливный' => ['WK', 'KL', 'P55'],
-            'салонный' => ['LAK', 'CU', 'AH'],
-            
-            // Тормоза
-            'колодки' => ['GDB', 'P85', 'FDB', '0986'],
-            'тормозные' => ['GDB', 'P85', 'FDB', '0986'],
-            'диск' => ['DF', 'BD', '09'],
-            
-            // Свечи
-            'свеча' => ['BKR', 'FR', 'NGK', 'DENSO'],
-            'зажигания' => ['BKR', 'FR', 'NGK'],
-            
-            // Масла и жидкости
-            'масло' => ['5W30', '5W40', '0W20', '10W40'],
-            'моторное' => ['5W30', '5W40', '0W20'],
-            'антифриз' => ['G11', 'G12', 'G13'],
-            
-            // Запчасти двигателя
-            'поршень' => ['STD', '+0.25', '+0.50'],
-            'кольца' => ['STD', '+0.25', '+0.50'],
-            'прокладка' => ['ELRING', 'AJUSA'],
-            'ремень' => ['6PK', '5PK', '4PK'],
-            
-            // Подвеска
-            'амортизатор' => ['B4', 'B6', 'B8', 'KYB'],
-            'стойка' => ['B4', 'B6', 'G', 'KYB'],
-            'сайлентблок' => ['LEMFORDER', 'FEBI'],
-            
-            // Электрика
-            'лампа' => ['H1', 'H4', 'H7', 'H11'],
-            'лампочка' => ['H1', 'H4', 'H7', 'H11'],
-            'предохранитель' => ['MAXI', 'MINI'],
-        ];
-        
-        $foundKeywords = [];
-        
-        // Ищем прямые совпадения ключевых слов
-        foreach ($keywords as $keyword => $articles) {
-            if (mb_strpos($search, $keyword) !== false) {
-                $foundKeywords = array_merge($foundKeywords, $articles);
-            }
-        }
-        
-        // Если не нашли ключевых слов, пробуем разбить поиск на слова
-        if (empty($foundKeywords)) {
-            $words = explode(' ', $search);
-            foreach ($words as $word) {
-                $word = trim($word);
-                if (mb_strlen($word) >= 3) {
-                    foreach ($keywords as $keyword => $articles) {
-                        if ($this->calculateSimilarityPercent($word, $keyword) >= 70) {
-                            $foundKeywords = array_merge($foundKeywords, $articles);
-                        }
-                    }
-                }
-            }
-        }
-        
-        return array_unique($foundKeywords);
-    }
+
 
     /**
      * Поиск товаров по ключевому слову (артикулу или части артикула)
@@ -890,5 +829,240 @@ class ForumAutoService
             ]);
             return [];
         }
+    }
+
+    /**
+     * Генерация вариаций поискового запроса
+     */
+    private function generateSearchVariations(string $search): array
+    {
+        $variations = [];
+        $search = mb_strtoupper(trim($search));
+        
+        // Убираем пробелы и дефисы
+        $cleanSearch = str_replace([' ', '-', '.', '_'], '', $search);
+        if ($cleanSearch !== $search) {
+            $variations[] = $cleanSearch;
+        }
+        
+        // Добавляем дефисы в разных местах для артикулов
+        if (preg_match('/^([A-Z]+)(\d+)([A-Z]*)$/', $cleanSearch, $matches)) {
+            $variations[] = $matches[1] . '-' . $matches[2] . $matches[3];
+            $variations[] = $matches[1] . $matches[2] . '-' . $matches[3];
+        }
+        
+        // Для номеров типа 1234567890 пробуем группировки
+        if (preg_match('/^\d+$/', $cleanSearch) && mb_strlen($cleanSearch) >= 6) {
+            $variations[] = mb_substr($cleanSearch, 0, 3) . '-' . mb_substr($cleanSearch, 3);
+            $variations[] = mb_substr($cleanSearch, 0, 4) . '-' . mb_substr($cleanSearch, 4);
+        }
+        
+        // Убираем ведущие нули
+        $withoutLeadingZeros = ltrim($cleanSearch, '0');
+        if ($withoutLeadingZeros !== $cleanSearch && !empty($withoutLeadingZeros)) {
+            $variations[] = $withoutLeadingZeros;
+        }
+        
+        // Добавляем ведущие нули
+        if (preg_match('/^\d+$/', $cleanSearch)) {
+            $variations[] = '0' . $cleanSearch;
+            $variations[] = '00' . $cleanSearch;
+        }
+        
+        return array_unique($variations);
+    }
+
+    /**
+     * Определение паттернов для типовых артикулов
+     */
+    private function detectArticlePatterns(string $search): array
+    {
+        $patterns = [];
+        $search = mb_strtoupper(trim($search));
+        
+        // Паттерн для OEM номеров (например, для европейских авто)
+        if (preg_match('/^[A-Z0-9]{8,17}$/', $search)) {
+            // Возможные вариации с разделителями
+            $patterns[] = mb_substr($search, 0, 3) . ' ' . mb_substr($search, 3);
+            $patterns[] = mb_substr($search, 0, 4) . ' ' . mb_substr($search, 4);
+        }
+        
+        // Паттерн для фильтров и масел
+        if (preg_match('/^([A-Z]+)(\d+)([A-Z]?)$/', $search, $matches)) {
+            $patterns[] = $matches[1] . ' ' . $matches[2] . $matches[3];
+            $patterns[] = $matches[1] . '-' . $matches[2] . $matches[3];
+        }
+        
+        return array_unique($patterns);
+    }
+
+    /**
+     * Рассчитывает процент совпадения поискового запроса с товаром
+     */
+    private function calculateMatchPercent(string $search, array $item): array
+    {
+        $search = mb_strtolower(trim($search));
+        
+        $fields = [
+            'art' => $item['art'] ?? '',
+            'name' => $item['name'] ?? '',
+            'brand' => $item['brand'] ?? '',
+            'gid' => $item['gid'] ?? ''
+        ];
+        
+        $maxPercent = 0;
+        $matchingField = '';
+        
+        foreach ($fields as $fieldName => $fieldValue) {
+            if (empty($fieldValue)) continue;
+            
+            $fieldValue = mb_strtolower($fieldValue);
+            $percent = 0;
+            
+            // Точное совпадение
+            if ($search === $fieldValue) {
+                return ['percent' => 100, 'field' => $fieldName];
+            }
+            
+            // Содержит поисковой запрос (высокий приоритет)
+            if (mb_stripos($fieldValue, $search) !== false) {
+                $percent = 90 + (mb_strlen($search) / mb_strlen($fieldValue)) * 10;
+                $percent = min(99, $percent); // Максимум 99%, чтобы точное совпадение было выше
+            } else {
+                // Похожесть строк через similar_text
+                similar_text($search, $fieldValue, $similarity);
+                $percent = $similarity;
+                
+                // Дополнительные бонусы за частичные совпадения
+                if (mb_strlen($search) >= 3) {
+                    // Бонус за совпадение начала
+                    if (mb_substr($fieldValue, 0, mb_strlen($search)) === $search) {
+                        $percent += 15;
+                    }
+                    
+                    // Бонус за совпадение конца
+                    if (mb_substr($fieldValue, -mb_strlen($search)) === $search) {
+                        $percent += 10;
+                    }
+                }
+            }
+            
+            if ($percent > $maxPercent) {
+                $maxPercent = $percent;
+                $matchingField = $fieldName;
+            }
+        }
+        
+        return [
+            'percent' => min(100, max(0, round($maxPercent))),
+            'field' => $matchingField
+        ];
+    }
+
+    /**
+     * Получение предложенных артикулов для описательных запросов
+     */
+    private function getSuggestedArticles(string $search): array
+    {
+        $search = mb_strtolower(trim($search));
+        
+        // Словарь популярных артикулов для описательных запросов
+        $suggestions = [
+            // Фильтры масляные
+            'масляный' => ['OC90', 'OC23', 'W712', 'W933', 'HU711'],
+            'фильтр масляный' => ['OC90', 'OC23', 'W712', 'W933', 'HU711'],
+            'масло фильтр' => ['OC90', 'OC23', 'W712', 'W933', 'HU711'],
+            
+            // Фильтры воздушные
+            'воздушный' => ['C14130', 'LX568', 'SB046', 'AP130', 'A1083'],
+            'фильтр воздушный' => ['C14130', 'LX568', 'SB046', 'AP130', 'A1083'],
+            'воздух фильтр' => ['C14130', 'LX568', 'SB046', 'AP130', 'A1083'],
+            
+            // Фильтры топливные
+            'топливный' => ['WK512', 'P550588', 'KL104', 'WK8158', 'P551329'],
+            'фильтр топливный' => ['WK512', 'P550588', 'KL104', 'WK8158', 'P551329'],
+            'бензин фильтр' => ['WK512', 'P550588', 'KL104', 'WK8158', 'P551329'],
+            
+            // Фильтры салонные
+            'салонный' => ['LAK28', 'CU2442', 'AH109', 'K1068', 'LAK337'],
+            'фильтр салонный' => ['LAK28', 'CU2442', 'AH109', 'K1068', 'LAK337'],
+            'салон фильтр' => ['LAK28', 'CU2442', 'AH109', 'K1068', 'LAK337'],
+            
+            // Свечи зажигания
+            'свеча' => ['BKR6E', 'FR78', 'W20EP', 'K16PR', 'BPR6ES'],
+            'свеча зажигания' => ['BKR6E', 'FR78', 'W20EP', 'K16PR', 'BPR6ES'],
+            'зажигание' => ['BKR6E', 'FR78', 'W20EP', 'K16PR', 'BPR6ES'],
+            
+            // Тормозные колодки
+            'колодки' => ['GDB1330', 'P85020', 'FDB1323', '0986494405'],
+            'тормозные колодки' => ['GDB1330', 'P85020', 'FDB1323', '0986494405'],
+            'тормоза' => ['GDB1330', 'P85020', 'FDB1323', '0986494405'],
+            'brake' => ['GDB1330', 'P85020', 'FDB1323', '0986494405'],
+            
+            // Тормозные диски
+            'диск' => ['DF4823', 'BD7394', '09A90711'],
+            'тормозной диск' => ['DF4823', 'BD7394', '09A90711'],
+            'диск тормозной' => ['DF4823', 'BD7394', '09A90711'],
+            
+            // Масла моторные
+            'масло' => ['5W30', '5W40', '0W20', '10W40'],
+            'моторное масло' => ['5W30', '5W40', '0W20', '10W40'],
+            'engine oil' => ['5W30', '5W40', '0W20', '10W40'],
+            
+            // Антифриз
+            'антифриз' => ['G11', 'G12', 'G13', 'BLUE'],
+            'охлаждающая жидкость' => ['G11', 'G12', 'G13', 'BLUE'],
+            'тосол' => ['G11', 'G12', 'G13', 'BLUE'],
+            
+            // Ремни
+            'ремень' => ['6PK1195', '5PK875', '4PK865', '6K1195'],
+            'приводной ремень' => ['6PK1195', '5PK875', '4PK865', '6K1195'],
+            'ремень грм' => ['CT1028', 'ZRK1160', 'K015559XS'],
+            
+            // Амортизаторы
+            'амортизатор' => ['B4', 'B6', 'G7065', 'KYB333'],
+            'стойка' => ['B4', 'B6', 'G7065', 'KYB333'],
+            'shock' => ['B4', 'B6', 'G7065', 'KYB333'],
+            
+            // Лампы
+            'лампа' => ['H1', 'H4', 'H7', 'H11'],
+            'лампочка' => ['H1', 'H4', 'H7', 'H11'],
+            'bulb' => ['H1', 'H4', 'H7', 'H11'],
+        ];
+        
+        $foundArticles = [];
+        
+        // Прямой поиск по ключевым словам
+        foreach ($suggestions as $keyword => $articles) {
+            if (mb_strpos($search, $keyword) !== false) {
+                $foundArticles = array_merge($foundArticles, $articles);
+            }
+        }
+        
+        // Если прямого совпадения нет, ищем по словам
+        if (empty($foundArticles) && mb_strpos($search, ' ') !== false) {
+            $words = explode(' ', $search);
+            foreach ($words as $word) {
+                $word = trim($word);
+                if (mb_strlen($word) >= 3) {
+                    foreach ($suggestions as $keyword => $articles) {
+                        if ($this->calculateSimilarityPercent($word, $keyword) >= 80) {
+                            $foundArticles = array_merge($foundArticles, array_slice($articles, 0, 3));
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Если все еще ничего не нашли, пробуем fuzzy matching
+        if (empty($foundArticles)) {
+            foreach ($suggestions as $keyword => $articles) {
+                if ($this->calculateSimilarityPercent($search, $keyword) >= 70) {
+                    $foundArticles = array_merge($foundArticles, array_slice($articles, 0, 2));
+                }
+            }
+        }
+        
+        return array_unique($foundArticles);
     }
 }
