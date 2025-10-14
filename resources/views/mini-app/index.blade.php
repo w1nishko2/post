@@ -213,33 +213,6 @@
             <p class="text-muted mb-0">Добро пожаловать в наше Mini App!</p>
         </div>
 
-        <!-- Информация о пользователе -->
-        <div id="user-info" class="user-info" style="display: none;">
-            <h6>👤 Информация о пользователе</h6>
-            <div id="user-details"></div>
-        </div>
-
-        <!-- Функции приложения -->
-        <div class="feature-grid">
-            <div class="feature-card" onclick="showAlert('Профиль')">
-                <div class="feature-icon">👤</div>
-                <h6>Профиль</h6>
-                <small>Ваши данные</small>
-            </div>
-            <div class="feature-card" onclick="sendData()">
-                <div class="feature-icon">💾</div>
-                <h6>Сохранить</h6>
-                <small>Отправить данные боту</small>
-            </div>
-            <div class="feature-card" onclick="closeApp()">
-                <div class="feature-icon">❌</div>
-                <h6>Выйти</h6>
-                <small>Закрыть приложение</small>
-            </div>
-        </div>
-
-        
-
         @if($bot->hasForumAutoApi())
         <!-- Магазин Forum-Auto -->
         <div class="shop-section">
@@ -468,26 +441,18 @@
             }
         }
 
-        // Отображение информации о пользователе
+        // Отображение информации о пользователе (заглушка - элементы удалены из HTML)
         function displayUserInfo(user) {
-            const userInfoEl = document.getElementById('user-info');
-            const userDetailsEl = document.getElementById('user-details');
-            
-            if (user && userInfoEl && userDetailsEl) {
-                userDetailsEl.innerHTML = `
-                    <p><strong>Имя:</strong> ${user.first_name || 'Не указано'}</p>
-                    ${user.last_name ? `<p><strong>Фамилия:</strong> ${user.last_name}</p>` : ''}
-                    ${user.username ? `<p><strong>Username:</strong> @${user.username}</p>` : ''}
-                    <p><strong>ID:</strong> ${user.id}</p>
-                    <p><strong>Язык:</strong> ${user.language_code || 'Не определен'}</p>
-                `;
-                userInfoEl.style.display = 'block';
-            } else {
-                console.warn('Не удалось отобразить информацию о пользователе:', {
-                    user: !!user,
-                    userInfoEl: !!userInfoEl,
-                    userDetailsEl: !!userDetailsEl
+            if (user) {
+                console.log('Данные пользователя получены:', {
+                    id: user.id,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    username: user.username,
+                    language_code: user.language_code
                 });
+            } else {
+                console.warn('Данные пользователя не переданы');
             }
         }
 
