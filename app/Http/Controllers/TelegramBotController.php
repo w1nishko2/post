@@ -209,9 +209,9 @@ class TelegramBotController extends Controller
             'forum_auto_last_check' => now()
         ];
 
-        // Если передан новый пароль, шифруем его
+        // Если передан новый пароль, сохраняем его без шифрования
         if (!empty($validated['forum_auto_pass'])) {
-            $updateData['forum_auto_pass'] = encrypt($validated['forum_auto_pass']);
+            $updateData['forum_auto_pass'] = $validated['forum_auto_pass'];
         }
 
         // Если включаем API и есть все необходимые данные - тестируем подключение
@@ -219,7 +219,7 @@ class TelegramBotController extends Controller
             try {
                 $testPass = !empty($validated['forum_auto_pass']) ? 
                            $validated['forum_auto_pass'] : 
-                           decrypt($telegramBot->forum_auto_pass);
+                           $telegramBot->forum_auto_pass;
 
                 $response = Http::timeout(10)
                     ->withoutVerifying() // Игнорируем SSL сертификаты

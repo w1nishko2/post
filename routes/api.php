@@ -94,7 +94,9 @@ Route::prefix('forum-auto')->group(function () {
         Route::get('/brands', [App\Http\Controllers\ForumAutoController::class, 'getBrands']);
         Route::get('/goods', [App\Http\Controllers\ForumAutoController::class, 'getGoods']);
         Route::get('/goods/popular', [App\Http\Controllers\ForumAutoController::class, 'getPopularGoods']);
+        Route::get('/goods/random', [App\Http\Controllers\ForumAutoController::class, 'getRandomGoods']);
         Route::get('/goods/search', [App\Http\Controllers\ForumAutoController::class, 'searchGoods']);
+        Route::get('/goods/advanced-search', [App\Http\Controllers\ForumAutoController::class, 'advancedSearch']);
         Route::get('/goods/{goodsCode}', [App\Http\Controllers\ForumAutoController::class, 'getGoodsDetails']);
         Route::post('/cart/add', [App\Http\Controllers\ForumAutoController::class, 'addToCart']);
         Route::get('/orders', [App\Http\Controllers\ForumAutoController::class, 'getOrders']);

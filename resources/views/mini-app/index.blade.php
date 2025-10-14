@@ -229,9 +229,17 @@
             <!-- Поиск товаров -->
             <div class="search-section mb-3">
                 <div class="input-group">
-                    <input type="text" id="search-input" class="form-control" placeholder="Поиск по артикулу...">
+                    <input type="text" id="search-input" class="form-control" placeholder="Поиск по артикулу или названию товара..." onkeypress="if(event.key==='Enter') searchGoods()">
                     <button class="btn btn-primary" onclick="searchGoods()">
                         <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-center mt-2 gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="loadRandomGoods()">
+                        <i class="fas fa-random"></i> Случайные товары
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="loadInitialGoods()">
+                        <i class="fas fa-star"></i> Популярные товары
                     </button>
                 </div>
             </div>
@@ -397,68 +405,198 @@
         let cart = [];
         const apiBase = '/api/forum-auto/{{ $shortName }}';
 
-        // Загрузить популярные товары при старте
-        async function loadPopularGoods() {
+        // Загрузить товары при старте (случайные или популярные)
+        async function loadInitialGoods() {
             const resultsContainer = document.getElementById('goods-results');
             resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Загружаем товары...</div>';
 
             try {
-                const response = await fetch(`${apiBase}/goods/popular`);
-                const data = await response.json();
+                // Сначала проверим статус API
+                let response = await fetch(`${apiBase}/test-credentials`);
+                let testResult = await response.json();
+                
+                console.log('API credentials test:', testResult);
+                
+                if (!testResult.success) {
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Добро пожаловать в демо-версию каталога!</strong><br>
+                            ${testResult.error || 'API Forum-Auto не настроен - показываем демонстрационные товары'}
+                            <div class="mt-2">
+                                <small class="text-muted">Для доступа к реальному каталогу обратитесь к администратору</small>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+
+                            <button class="btn btn-outline-secondary" onclick="searchSampleGoods()">
+                                <i class="fas fa-search"></i> Попробовать поиск
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Сначала пробуем случайные товары
+                response = await fetch(`${apiBase}/goods/random?limit=12`);
+                let data = await response.json();
+
+                console.log('Random goods response:', data);
+
+                if (data.success && data.data && data.data.length > 0) {
+                    displayGoods(data.data);
+                    return;
+                }
+
+                // Если случайные не загрузились, пробуем популярные
+                response = await fetch(`${apiBase}/goods/popular`);
+                data = await response.json();
+
+                console.log('Popular goods response:', data);
 
                 if (data.success && data.data && data.data.length > 0) {
                     displayGoods(data.data);
                 } else {
+                    // Показываем сообщение, что нет данных
                     resultsContainer.innerHTML = `
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-box fa-2x mb-2"></i>
-                            <p>Товары временно недоступны</p>
-                            <small>Попробуйте воспользоваться поиском</small>
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Нет данных для отображения</strong><br>
+                            Попробуйте выполнить поиск по артикулу или названию товара.
                         </div>
                     `;
                 }
             } catch (error) {
-                console.error('Popular goods error:', error);
+                console.error('Initial goods loading error:', error);
                 resultsContainer.innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="fas fa-info-circle"></i>
-                        Не удалось загрузить товары. Воспользуйтесь поиском.
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Ошибка загрузки товаров</strong><br>
+                        Не удалось подключиться к каталогу товаров.
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadInitialGoods()">
+                                <i class="fas fa-redo"></i> Повторить попытку
+                            </button>
+                        </div>
                     </div>
                 `;
             }
         }
 
-        // Поиск товаров
+        // Загрузить случайные товары
+        async function loadRandomGoods() {
+            const resultsContainer = document.getElementById('goods-results');
+            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Загружаем случайные товары...</div>';
+
+            try {
+                const response = await fetch(`${apiBase}/goods/random?limit=15`);
+                const data = await response.json();
+
+                console.log('Random goods response:', data);
+
+                if (data.success && data.data && data.data.length > 0) {
+                    displayGoods(data.data);
+                } else {
+                    // Если API не вернул данные, показываем сообщение
+                    resultsContainer.innerHTML = `
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Нет случайных товаров</strong><br>
+                            Попробуйте выполнить поиск.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Random goods loading error:', error);
+                await loadInitialGoods();
+            }
+        }
+
+        // Поиск по примерам популярных артикулов
+        async function searchSampleGoods() {
+            const sampleArticles = ['OC47', 'W712', 'LF787', 'OX123D', 'HU7008z'];
+            const randomArticle = sampleArticles[Math.floor(Math.random() * sampleArticles.length)];
+            
+            const searchInput = document.getElementById('search-input');
+            searchInput.value = randomArticle;
+            
+            await searchGoods();
+        }
+
+
+
+        // Расширенный поиск товаров по всем критериям
         async function searchGoods() {
             const searchInput = document.getElementById('search-input');
             const searchTerm = searchInput.value.trim();
             
             if (!searchTerm || searchTerm.length < 2) {
-                showAlert('Введите минимум 2 символа для поиска (артикул товара)');
+                showAlert('Введите минимум 2 символа для поиска (артикул или название товара)');
                 return;
             }
 
             const resultsContainer = document.getElementById('goods-results');
-            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Поиск по артикулу...</div>';
+            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Расширенный поиск товаров...</div>';
 
             try {
+                // Используем новый расширенный поиск с фильтрацией по 70% совпадению
+                const response = await fetch(`${apiBase}/goods/advanced-search?search=${encodeURIComponent(searchTerm)}&min_match=70&limit=20`);
+                const data = await response.json();
+
+                console.log('Advanced search response:', data);
+
+                if (data.success && data.data && data.data.length > 0) {
+                    displayGoods(data.data);
+                    
+                    // Показываем информацию о найденных результатах
+                    const totalFound = data.filter ? data.filter.total_found : data.data.length;
+                    if (totalFound > 0) {
+                        const infoElement = document.createElement('div');
+                        infoElement.className = 'alert alert-info mt-2';
+                        infoElement.innerHTML = `
+                            <i class="fas fa-info-circle"></i>
+                            Найдено ${totalFound} товаров с совпадением 70% и выше для запроса "${searchTerm}"
+                        `;
+                        resultsContainer.insertBefore(infoElement, resultsContainer.firstChild);
+                    }
+                } else {
+                    // Если по расширенному поиску ничего не найдено, попробуем базовый поиск
+                    await fallbackSearch(searchTerm, resultsContainer);
+                }
+            } catch (error) {
+                console.error('Advanced search error:', error);
+                // При ошибке пробуем базовый поиск
+                await fallbackSearch(searchTerm, resultsContainer);
+            }
+        }
+
+        // Резервный поиск, если расширенный не дал результатов
+        async function fallbackSearch(searchTerm, resultsContainer) {
+            try {
+                resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Поиск по артикулу...</div>';
+                
                 const response = await fetch(`${apiBase}/goods/search?search=${encodeURIComponent(searchTerm)}`);
                 const data = await response.json();
 
-                console.log('Search response:', data);
+                console.log('Fallback search response:', data);
 
                 if (data.success && data.data && data.data.length > 0) {
                     displayGoods(data.data);
                 } else {
-                    // Если товары не найдены, покажем доступные бренды для этого артикула
+                    // Если и базовый поиск не дал результатов, покажем доступные бренды
                     await searchBrands(searchTerm, resultsContainer);
                 }
             } catch (error) {
-                console.error('Search error:', error);
+                console.error('Fallback search error:', error);
                 resultsContainer.innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-triangle"></i>
-                        Ошибка поиска. Попробуйте позже.
+                        Ошибка поиска. Попробуйте позже или загрузите случайные товары.
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-primary" onclick="loadRandomGoods()">
+                            <i class="fas fa-random"></i> Показать случайные товары
+                        </button>
                     </div>
                 `;
             }
@@ -476,7 +614,7 @@
                     let html = `
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i>
-                            Найдены бренды для артикула "${searchTerm}":
+                            Найдены бренды для артикула "${searchTerm}". Выберите бренд для поиска:
                         </div>
                         <div class="row">
                     `;
@@ -491,14 +629,33 @@
                         `;
                     });
                     
-                    html += '</div>';
+                    html += `
+                        </div>
+                        <div class="text-center mt-3">
+                            <button class="btn btn-secondary btn-sm me-2" onclick="loadRandomGoods()">
+                                <i class="fas fa-random"></i> Случайные товары
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="loadInitialGoods()">
+                                <i class="fas fa-star"></i> Популярные товары
+                            </button>
+                        </div>
+                    `;
+                    
                     resultsContainer.innerHTML = html;
                 } else {
                     resultsContainer.innerHTML = `
                         <div class="text-center text-muted py-4">
                             <i class="fas fa-search fa-2x mb-2"></i>
-                            <p>По артикулу "${searchTerm}" ничего не найдено</p>
-                            <small>Убедитесь, что артикул введен правильно</small>
+                            <p>По запросу "${searchTerm}" ничего не найдено</p>
+                            <small>Попробуйте изменить поисковый запрос или посмотрите товары ниже</small>
+                            <div class="mt-3">
+                                <button class="btn btn-primary btn-sm me-2" onclick="loadRandomGoods()">
+                                    <i class="fas fa-random"></i> Случайные товары
+                                </button>
+                                <button class="btn btn-info btn-sm" onclick="loadInitialGoods()">
+                                    <i class="fas fa-star"></i> Популярные товары
+                                </button>
+                            </div>
                         </div>
                     `;
                 }
@@ -507,8 +664,16 @@
                 resultsContainer.innerHTML = `
                     <div class="text-center text-muted py-4">
                         <i class="fas fa-search fa-2x mb-2"></i>
-                        <p>По артикулу "${searchTerm}" ничего не найдено</p>
-                        <small>Убедитесь, что артикул введен правильно</small>
+                        <p>Произошла ошибка при поиске "${searchTerm}"</p>
+                        <small>Попробуйте еще раз или посмотрите другие товары</small>
+                        <div class="mt-3">
+                            <button class="btn btn-primary btn-sm me-2" onclick="loadRandomGoods()">
+                                <i class="fas fa-random"></i> Случайные товары
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="loadInitialGoods()">
+                                <i class="fas fa-star"></i> Популярные товары
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -550,25 +715,70 @@
         function displayGoods(goods) {
             const resultsContainer = document.getElementById('goods-results');
             
+            if (!goods || goods.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-search fa-2x mb-2"></i>
+                        <p>Товары не найдены</p>
+                        <small>Попробуйте изменить поисковый запрос</small>
+                        <div class="mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="loadRandomGoods()">
+                                <i class="fas fa-random"></i> Показать случайные товары
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
             let html = '';
             goods.forEach(item => {
+                // Определяем цвет badge в зависимости от процента совпадения
+                let matchBadge = '';
+                if (typeof item.match_percent !== 'undefined') {
+                    let badgeClass = 'bg-secondary';
+                    if (item.match_percent >= 95) badgeClass = 'bg-success';
+                    else if (item.match_percent >= 85) badgeClass = 'bg-info';
+                    else if (item.match_percent >= 75) badgeClass = 'bg-warning';
+                    
+                    matchBadge = `<span class="badge ${badgeClass} ms-2">Совпадение: ${item.match_percent}%</span>`;
+                }
+
+                // Информация о поле, в котором найдено совпадение
+                let matchingFieldInfo = '';
+                if (item.matching_field) {
+                    const fieldNames = {
+                        'art': 'артикул',
+                        'name': 'название', 
+                        'brand': 'бренд',
+                        'gid': 'код'
+                    };
+                    const fieldName = fieldNames[item.matching_field] || item.matching_field;
+                    matchingFieldInfo = `<small class="text-info ms-1">(найдено в: ${fieldName})</small>`;
+                }
+
                 html += `
                     <div class="goods-item">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <h6>${item.name}</h6>
+                                <h6 class="mb-1">${item.name || 'Название не указано'}</h6>
                                 <div class="mb-2">
-                                    <span class="brand-badge">${item.brand}</span>
-                                    <small class="text-muted ms-2">Арт: ${item.art}</small>
-                                    ${typeof item.match_percent !== 'undefined' ? `<span class="badge bg-info ms-2">Совпадение: ${item.match_percent}%</span>` : ''}
+                                    <span class="brand-badge">${item.brand || 'Неизвестный бренд'}</span>
+                                    <small class="text-muted ms-2">Арт: ${item.art || 'N/A'}</small>
+                                    ${matchBadge}
+                                    ${matchingFieldInfo}
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div>
-                                        <span class="price-highlight">${parseFloat(item.price).toFixed(2)} ₽</span>
-                                        ${item.num > 0 ? `<small class="text-success ms-2">В наличии: ${item.num}</small>` : '<small class="text-danger ms-2">Нет в наличии</small>'}
+                                        <span class="price-highlight">${item.price ? parseFloat(item.price).toFixed(2) : '0.00'} ₽</span>
+                                        ${(item.num && item.num > 0) ? 
+                                            `<small class="text-success ms-2">В наличии: ${item.num} шт.</small>` : 
+                                            '<small class="text-danger ms-2">Нет в наличии</small>'
+                                        }
+                                        ${item.kr && item.kr > 1 ? `<small class="text-muted ms-2">Кратность: ${item.kr}</small>` : ''}
                                     </div>
-                                    ${item.num > 0 ? `
-                                        <button class="btn btn-sm btn-primary" onclick="addToCart('${item.gid}', '${item.name}', ${item.price}, '${item.brand}', '${item.art}')">
+                                    ${(item.num && item.num > 0) ? `
+                                        <button class="btn btn-sm btn-primary" onclick="addToCart('${item.gid}', '${(item.name || '').replace(/'/g, '\\\'') }', ${item.price || 0}, '${(item.brand || '').replace(/'/g, '\\\'')}', '${(item.art || '').replace(/'/g, '\\\'')}')">
                                             <i class="fas fa-cart-plus"></i>
                                         </button>
                                     ` : ''}
@@ -738,9 +948,9 @@
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
             initApp();
-            // Загружаем популярные товары в магазине
+            // Загружаем товары в магазине
             if (document.getElementById('goods-results')) {
-                loadPopularGoods();
+                loadInitialGoods();
             }
         });
 

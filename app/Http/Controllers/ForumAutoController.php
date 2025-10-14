@@ -183,26 +183,28 @@ class ForumAutoController extends Controller
         try {
             $bot = $this->findBotByShortName($shortName);
             
-            if (!$bot || !$bot->hasForumAutoApi()) {
+            if (!$bot) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Forum-Auto API не настроен для данного бота'
+                    'error' => 'Бот не найден'
                 ], 404);
+            }
+
+            // Если API не настроен, возвращаем пустой результат (будут показаны демо-товары в JS)
+            if (!$bot->hasForumAutoApi()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'API не настроен - демо-режим'
+                ]);
             }
 
             $forumAutoService = new ForumAutoService($bot);
             $result = $forumAutoService->getPopularGoods();
 
-            if ($result === null) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Не удалось получить популярные товары'
-                ], 500);
-            }
-
             return response()->json([
                 'success' => true,
-                'data' => $result
+                'data' => $result ?? []
             ]);
 
         } catch (\Exception $e) {
@@ -269,6 +271,134 @@ class ForumAutoController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Произошла ошибка при поиске товаров'
+            ], 500);
+        }
+    }
+
+    /**
+     * Расширенный поиск товаров с фильтрацией по проценту совпадения
+     */
+    public function advancedSearch(Request $request, string $shortName): JsonResponse
+    {
+        try {
+            $bot = $this->findBotByShortName($shortName);
+            
+            if (!$bot || !$bot->hasForumAutoApi()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Forum-Auto API не настроен для данного бота'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'search' => 'required|string|min:2|max:255',
+                'page' => 'integer|min:1',
+                'limit' => 'integer|min:1|max:50',
+                'min_match' => 'integer|min:0|max:100'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Поисковый запрос должен содержать минимум 2 символа',
+                    'details' => $validator->errors()
+                ], 400);
+            }
+
+            $search = $request->get('search');
+            $page = $request->get('page', 1);
+            $limit = $request->get('limit', 20);
+            $minMatch = $request->get('min_match', 70);
+
+            $forumAutoService = new ForumAutoService($bot);
+            $result = $forumAutoService->advancedSearchGoods($search, $page, $limit);
+
+            // Фильтруем по проценту совпадения
+            if (is_array($result) && $minMatch > 0) {
+                $filtered = array_filter($result, function($item) use ($minMatch) {
+                    return isset($item['match_percent']) && $item['match_percent'] >= $minMatch;
+                });
+                $result = array_values($filtered);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $result ?? [],
+                'filter' => [
+                    'min_match' => $minMatch,
+                    'total_found' => is_array($result) ? count($result) : 0
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to perform advanced search in Forum-Auto', [
+                'short_name' => $shortName,
+                'search' => $request->get('search'),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Произошла ошибка при расширенном поиске товаров'
+            ], 500);
+        }
+    }
+
+    /**
+     * Получить случайные товары для отображения
+     */
+    public function getRandomGoods(Request $request, string $shortName): JsonResponse
+    {
+        try {
+            $bot = $this->findBotByShortName($shortName);
+            
+            if (!$bot) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Бот не найден'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'limit' => 'integer|min:1|max:50'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Неверные параметры запроса',
+                    'details' => $validator->errors()
+                ], 400);
+            }
+
+            $limit = $request->get('limit', 12);
+            
+            // Если API не настроен, возвращаем пустой результат (будут показаны демо-товары в JS)
+            if (!$bot->hasForumAutoApi()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'API не настроен - демо-режим'
+                ]);
+            }
+            
+            $forumAutoService = new ForumAutoService($bot);
+            $result = $forumAutoService->getRandomGoods($limit);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result ?? []
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get random goods in Forum-Auto', [
+                'short_name' => $shortName,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Произошла ошибка при получении случайных товаров'
             ], 500);
         }
     }
