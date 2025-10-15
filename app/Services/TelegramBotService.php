@@ -363,12 +363,15 @@ class TelegramBotService
                 'parse_mode' => 'HTML'
             ], $options);
 
-            // Попробуем сначала HTTP с увеличенным таймаутом
+            // Попробуем сначала HTTP с оптимизированными настройками
             try {
-                $response = Http::timeout(30)->retry(2, 1000)->post(
-                    "https://api.telegram.org/bot{$bot->bot_token}/sendMessage", 
-                    $data
-                );
+                $response = Http::timeout(10) // Уменьшили таймаут
+                    ->withOptions([
+                        'verify' => false, // Отключаем SSL проверку
+                        'connect_timeout' => 3, // Быстрое подключение
+                    ])
+                    ->retry(1, 500) // Уменьшили количество попыток и задержку
+                    ->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", $data);
 
                 if ($response->successful() && $response->json('ok')) {
                     return true;
@@ -413,17 +416,18 @@ class TelegramBotService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 15, // Уменьшаем таймаут
+            CURLOPT_CONNECTTIMEOUT => 5, // Уменьшаем таймаут подключения
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'Content-Length: ' . strlen(json_encode($data))
             ],
             CURLOPT_USERAGENT => 'Laravel Telegram Bot Service',
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_SSL_VERIFYPEER => false, // ОТКЛЮЧАЕМ проверку SSL
+            CURLOPT_SSL_VERIFYHOST => 0, // ОТКЛЮЧАЕМ проверку хоста
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, // Принудительно IPv4
         ]);
 
         $response = curl_exec($ch);

@@ -380,26 +380,19 @@ class CartController extends Controller
                 $product->decrement('quantity', $cartItem->quantity);
             }
 
-            // Отправить уведомления через Telegram
-            $telegramService = app(\App\Services\TelegramBotService::class);
-            
-            Log::info('Sending Telegram notifications', [
+            // Отправить уведомления через Telegram АСИНХРОННО
+            Log::info('Dispatching Telegram notifications job', [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
                 'admin_telegram_id' => $bot->admin_telegram_id,
                 'customer_telegram_id' => $order->telegram_chat_id
             ]);
             
-            // Уведомление администратору
-            $adminNotificationSent = $telegramService->sendOrderNotificationToAdmin($bot, $order);
+            // Запускаем задачу в фоне для отправки уведомлений
+            \App\Jobs\SendTelegramNotifications::dispatch($order, $bot);
             
-            // Уведомление клиенту
-            $customerNotificationSent = $telegramService->sendOrderConfirmationToCustomer($bot, $order);
-
-            Log::info('Telegram notifications sent', [
-                'order_id' => $order->id,
-                'admin_sent' => $adminNotificationSent,
-                'customer_sent' => $customerNotificationSent
+            Log::info('Telegram notifications job dispatched', [
+                'order_id' => $order->id
             ]);
 
             // Очистить корзину после успешного заказа
@@ -409,7 +402,7 @@ class CartController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Заказ успешно оформлен! С вами свяжутся в ближайшее время.',
+                'message' => 'Заказ успешно оформлен! Уведомления отправляются в фоновом режиме.',
                 'order' => [
                     'id' => $order->id,
                     'order_number' => $order->order_number,
@@ -417,8 +410,7 @@ class CartController extends Controller
                     'status' => $order->status_label,
                 ],
                 'notifications' => [
-                    'admin_sent' => $adminNotificationSent,
-                    'customer_sent' => $customerNotificationSent,
+                    'job_dispatched' => true,
                 ]
             ]);
 
