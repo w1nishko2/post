@@ -346,18 +346,25 @@
         }
 
         // Показать уведомление с проверкой совместимости
-        function showAlert(message) {
+        function showAlert(message, type = 'info') {
             try {
+                // Проверяем версию Telegram WebApp
+                const telegramVersion = window.Telegram?.WebApp?.version;
+                console.log('Telegram WebApp version:', telegramVersion);
+                
+                // showAlert доступен только в версии 6.1+
                 if (window.Telegram?.WebApp?.showAlert && 
-                    typeof window.Telegram.WebApp.showAlert === 'function') {
+                    typeof window.Telegram.WebApp.showAlert === 'function' &&
+                    telegramVersion && parseFloat(telegramVersion) >= 6.1) {
                     window.Telegram.WebApp.showAlert(message);
                 } else {
                     // Fallback для старых версий или браузера
-                    showToast(message);
+                    console.log('Используем showToast, версия Telegram:', telegramVersion);
+                    showToast(message, type);
                 }
             } catch (error) {
                 console.log('Используем fallback для уведомления:', error);
-                showToast(message);
+                showToast(message, type);
             }
         }
 
@@ -920,8 +927,8 @@
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn " data-bs-dismiss="modal">Отмена</button>
-                                <button type="button" class="btn " onclick="submitOrder()">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                <button type="button" class="btn btn-success" onclick="submitOrder()">
                                     <i class="fas fa-check me-2"></i>Оформить заказ
                                 </button>
                             </div>
@@ -1078,7 +1085,14 @@
             });
         }
 
+        let isSubmittingOrder = false; // Защита от повторных отправок
+        
         function submitOrder() {
+            if (isSubmittingOrder) {
+                console.log('Заказ уже обрабатывается...');
+                return;
+            }
+            
             if (!userData) {
                 showAlert('Ошибка получения данных пользователя', 'error');
                 return;
@@ -1092,6 +1106,9 @@
                 user_data: userData,
                 notes: formData.get('notes')
             };
+
+            // Устанавливаем флаг обработки
+            isSubmittingOrder = true;
 
             // Показываем индикатор загрузки
             const submitBtn = document.querySelector('#checkoutModal .btn-success');
@@ -1109,21 +1126,25 @@
             })
             .then(response => response.json())
             .then(data => {
+                // Сбрасываем флаг обработки
+                isSubmittingOrder = false;
+                
                 if (data.success) {
+                    console.log('Заказ успешно создан:', data.order);
+                    
                     // Закрываем модальное окно
                     bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
                     
                     // Показываем успешное сообщение
-                    showAlert(`✅ ${data.message}\\n\\n📋 Номер заказа: ${data.order.order_number}`, 'success');
+                    showAlert(`✅ ${data.message}\n\n📋 Номер заказа: ${data.order.order_number}`, 'success');
                     
                     // Обновляем счетчик корзины
                     updateCartCounter();
                     
                     // Уведомляем Telegram Web App о успешном заказе
-                    if (window.Telegram?.WebApp?.HapticFeedback) {
-                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-                    }
+                    triggerHapticFeedback('medium');
                 } else {
+                    console.error('Ошибка оформления заказа:', data.message);
                     showAlert(data.message || 'Ошибка при оформлении заказа', 'error');
                     
                     // Восстанавливаем кнопку
@@ -1132,6 +1153,9 @@
                 }
             })
             .catch(error => {
+                // Сбрасываем флаг обработки
+                isSubmittingOrder = false;
+                
                 console.error('Ошибка:', error);
                 showAlert('Произошла ошибка при оформлении заказа', 'error');
                 

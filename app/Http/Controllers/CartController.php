@@ -251,6 +251,13 @@ class CartController extends Controller
      */
     public function checkout(Request $request)
     {
+        Log::info('Checkout started', [
+            'session_id' => Session::getId(),
+            'user_id' => Auth::id(),
+            'telegram_user_id' => $request->input('user_data.id'),
+            'bot_short_name' => $request->input('bot_short_name')
+        ]);
+
         $request->validate([
             'bot_short_name' => 'required|string|exists:telegram_bots,mini_app_short_name',
             'user_data' => 'required|array',
@@ -290,6 +297,24 @@ class CartController extends Controller
                     'message' => "Товар \"{$cartItem->product->name}\" недоступен в нужном количестве"
                 ], 400);
             }
+        }
+
+        // Проверяем на дублирование заказов (не более одного заказа от пользователя за последние 10 секунд)
+        $recentOrder = \App\Models\Order::where('telegram_chat_id', $request->user_data['id'])
+                                       ->where('created_at', '>=', now()->subSeconds(10))
+                                       ->first();
+
+        if ($recentOrder) {
+            Log::warning('Duplicate order attempt detected', [
+                'telegram_user_id' => $request->user_data['id'],
+                'recent_order_id' => $recentOrder->id,
+                'session_id' => Session::getId()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Заказ уже оформляется. Подождите немного.'
+            ], 429);
         }
 
         try {
@@ -333,11 +358,24 @@ class CartController extends Controller
             // Отправить уведомления через Telegram
             $telegramService = app(\App\Services\TelegramBotService::class);
             
+            Log::info('Sending Telegram notifications', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'admin_telegram_id' => $bot->admin_telegram_id,
+                'customer_telegram_id' => $order->telegram_chat_id
+            ]);
+            
             // Уведомление администратору
             $adminNotificationSent = $telegramService->sendOrderNotificationToAdmin($bot, $order);
             
             // Уведомление клиенту
             $customerNotificationSent = $telegramService->sendOrderConfirmationToCustomer($bot, $order);
+
+            Log::info('Telegram notifications sent', [
+                'order_id' => $order->id,
+                'admin_sent' => $adminNotificationSent,
+                'customer_sent' => $customerNotificationSent
+            ]);
 
             // Очистить корзину после успешного заказа
             $this->clearCartItems();

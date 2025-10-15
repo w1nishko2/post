@@ -10921,7 +10921,7 @@
     }
 } /* Product Card Styles for Mini App */ .mini-app .product-card {
     transition: transform 0.2s ease-in-out;
-    border: 1px solid var(--tg-theme-hint-color, #e9ecef);
+    border: 0;
 } .mini-app .product-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -10945,7 +10945,7 @@
     background-color: #28a745;
     border-color: #28a745;
 } .products-grid {
-    padding: 16px 0;
+    padding: 0;
 } /* Slide Panel Styles */ .slide-panel {
     position: fixed;
     top: 0;
@@ -11116,7 +11116,7 @@
     }
 
     .mini-app .btn {
-        font-size: 10px;
+        font-size: 25px;
         padding: 4px 8px;
     }
 
