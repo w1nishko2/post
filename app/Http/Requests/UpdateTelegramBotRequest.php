@@ -30,13 +30,11 @@ class UpdateTelegramBotRequest extends FormRequest
     {
         return [
             'bot_name' => 'required|string|max:255',
+            'admin_telegram_id' => 'nullable|string|max:20|regex:/^\d+$/',
             'api_id' => 'nullable|string|max:255',
             'api_hash' => 'nullable|string|max:255',
             'mini_app_url' => 'nullable|string|max:255',
             'mini_app_short_name' => 'nullable|string|max:64|regex:/^[a-zA-Z0-9_]+$/',
-            'forum_auto_login' => 'nullable|string|max:255',
-            'forum_auto_pass' => 'nullable|string|max:255',
-            'forum_auto_enabled' => 'boolean',
             'is_active' => 'boolean',
         ];
     }
@@ -49,6 +47,9 @@ class UpdateTelegramBotRequest extends FormRequest
         return [
             'bot_name.required' => 'Название бота обязательно для заполнения.',
             'bot_name.max' => 'Название бота не должно превышать 255 символов.',
+            
+            'admin_telegram_id.max' => 'ID администратора не должен превышать 20 символов.',
+            'admin_telegram_id.regex' => 'ID администратора должен содержать только цифры.',
             
             'api_id.max' => 'API ID не должен превышать 255 символов.',
             'api_hash.max' => 'API Hash не должен превышать 255 символов.',

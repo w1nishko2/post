@@ -15,6 +15,7 @@ class TelegramBot extends Model
         'bot_name',
         'bot_username',
         'bot_token',
+        'admin_telegram_id',
         'api_id',
         'api_hash',
         'webhook_url',
@@ -24,10 +25,6 @@ class TelegramBot extends Model
         'commands',
         'is_active',
         'last_updated_at',
-        'forum_auto_login',
-        'forum_auto_pass',
-        'forum_auto_enabled',
-        'forum_auto_last_check',
     ];
 
     protected $casts = [
@@ -35,14 +32,11 @@ class TelegramBot extends Model
         'commands' => 'array',
         'is_active' => 'boolean',
         'last_updated_at' => 'datetime',
-        'forum_auto_enabled' => 'boolean',
-        'forum_auto_last_check' => 'datetime',
     ];
 
     protected $hidden = [
         'bot_token',
         'api_hash',
-        'forum_auto_pass',
     ];
 
     /**
@@ -127,46 +121,11 @@ class TelegramBot extends Model
     }
 
     /**
-     * Проверить настроен ли Forum-Auto API
+     * Проверить, настроены ли уведомления администратора
      */
-    public function hasForumAutoApi(): bool
+    public function hasAdminNotifications(): bool
     {
-        return $this->forum_auto_enabled && 
-               !empty($this->forum_auto_login) && 
-               !empty($this->forum_auto_pass);
-    }
-
-    /**
-     * Получить замаскированный логин Forum-Auto для отображения
-     */
-    public function getMaskedForumAutoLoginAttribute(): string
-    {
-        if (empty($this->forum_auto_login)) {
-            return 'Не настроен';
-        }
-
-        $login = $this->forum_auto_login;
-        if (strlen($login) <= 6) {
-            return substr($login, 0, 2) . str_repeat('*', strlen($login) - 2);
-        }
-
-        return substr($login, 0, 3) . str_repeat('*', strlen($login) - 6) . substr($login, -3);
-    }
-
-    /**
-     * Получить сервис Forum-Auto для этого бота
-     */
-    public function getForumAutoService(): ?\App\Services\ForumAutoService
-    {
-        if (!$this->hasForumAutoApi()) {
-            return null;
-        }
-
-        try {
-            return new \App\Services\ForumAutoService($this);
-        } catch (\Exception $e) {
-            return null;
-        }
+        return !empty($this->admin_telegram_id);
     }
 
     /**
@@ -177,15 +136,7 @@ class TelegramBot extends Model
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope для ботов с настроенным Forum-Auto API
-     */
-    public function scopeWithForumAuto($query)
-    {
-        return $query->where('forum_auto_enabled', true)
-                    ->whereNotNull('forum_auto_login')
-                    ->whereNotNull('forum_auto_pass');
-    }
+
 
     /**
      * Scope для ботов конкретного пользователя
@@ -193,5 +144,53 @@ class TelegramBot extends Model
     public function scopeForUser($query, $userId)
     {
         return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Связь с заказами через этого бота
+     */
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Order::class);
+    }
+
+    /**
+     * Получить недавние заказы через этого бота
+     */
+    public function recentOrders()
+    {
+        return $this->hasMany(\App\Models\Order::class)->latest()->limit(20);
+    }
+
+    /**
+     * Связь с товарами этого бота
+     */
+    public function products()
+    {
+        return $this->hasMany(\App\Models\Product::class);
+    }
+
+    /**
+     * Получить активные товары этого бота
+     */
+    public function activeProducts()
+    {
+        return $this->hasMany(\App\Models\Product::class)->where('is_active', true);
+    }
+
+    /**
+     * Связь с категориями этого бота
+     */
+    public function categories()
+    {
+        return $this->hasMany(\App\Models\Category::class);
+    }
+
+    /**
+     * Получить активные категории этого бота
+     */
+    public function activeCategories()
+    {
+        return $this->hasMany(\App\Models\Category::class)->where('is_active', true);
     }
 }

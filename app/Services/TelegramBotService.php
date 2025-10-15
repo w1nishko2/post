@@ -500,4 +500,255 @@ class TelegramBotService
 
         return null;
     }
+
+    /**
+     * Отправить уведомление администратору о покупке
+     */
+    public function sendPurchaseNotification(TelegramBot $bot, array $purchaseData): bool
+    {
+        if (!$bot->hasAdminNotifications()) {
+            return false;
+        }
+
+        try {
+            $message = $this->formatPurchaseMessage($purchaseData);
+            
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", [
+                'chat_id' => $bot->admin_telegram_id,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true
+            ]);
+
+            if ($response->successful() && $response->json('ok')) {
+                Log::info('Уведомление о покупке отправлено администратору', [
+                    'bot_id' => $bot->id,
+                    'admin_id' => $bot->admin_telegram_id,
+                    'purchase_data' => $purchaseData
+                ]);
+                return true;
+            }
+
+            Log::error('Ошибка при отправке уведомления о покупке', [
+                'bot_id' => $bot->id,
+                'admin_id' => $bot->admin_telegram_id,
+                'response' => $response->json()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Исключение при отправке уведомления о покупке', [
+                'bot_id' => $bot->id,
+                'admin_id' => $bot->admin_telegram_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Форматировать сообщение о покупке для администратора
+     */
+    private function formatPurchaseMessage(array $purchaseData): string
+    {
+        $message = "🛍 <b>Новая покупка!</b>\n\n";
+        
+        if (isset($purchaseData['user_name'])) {
+            $message .= "👤 <b>Покупатель:</b> {$purchaseData['user_name']}\n";
+        }
+        
+        if (isset($purchaseData['user_username'])) {
+            $message .= "📱 <b>Username:</b> @{$purchaseData['user_username']}\n";
+        }
+        
+        if (isset($purchaseData['products']) && is_array($purchaseData['products'])) {
+            $message .= "\n📦 <b>Товары:</b>\n";
+            $totalAmount = 0;
+            
+            foreach ($purchaseData['products'] as $product) {
+                $name = $product['name'] ?? 'Неизвестный товар';
+                $quantity = $product['quantity'] ?? 1;
+                $price = $product['price'] ?? 0;
+                $total = $price * $quantity;
+                $totalAmount += $total;
+                
+                $message .= "• {$name} x{$quantity} = " . number_format($total, 0, ',', ' ') . " ₽\n";
+            }
+            
+            $message .= "\n💰 <b>Общая сумма:</b> " . number_format($totalAmount, 0, ',', ' ') . " ₽";
+        }
+        
+        if (isset($purchaseData['order_id'])) {
+            $message .= "\n\n📋 <b>ID заказа:</b> {$purchaseData['order_id']}";
+        }
+        
+        $message .= "\n\n⏰ <b>Время:</b> " . date('d.m.Y H:i:s');
+        
+        return $message;
+    }
+
+    /**
+     * Отправить уведомление о заказе администратору
+     */
+    public function sendOrderNotificationToAdmin(\App\Models\TelegramBot $bot, \App\Models\Order $order): bool
+    {
+        if (!$bot->admin_telegram_id) {
+            Log::warning('Bot has no admin_telegram_id configured', ['bot_id' => $bot->id]);
+            return false;
+        }
+
+        $message = $this->buildAdminOrderMessage($order);
+
+        try {
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", [
+                'chat_id' => $bot->admin_telegram_id,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true,
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                if (isset($result['ok']) && $result['ok']) {
+                    Log::info('Admin order notification sent successfully', [
+                        'bot_id' => $bot->id,
+                        'order_id' => $order->id,
+                        'admin_telegram_id' => $bot->admin_telegram_id
+                    ]);
+                    return true;
+                }
+            }
+
+            Log::error('Failed to send admin order notification', [
+                'bot_id' => $bot->id,
+                'order_id' => $order->id,
+                'response' => $response->json()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Exception sending admin order notification', [
+                'bot_id' => $bot->id,
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Отправить подтверждение заказа клиенту
+     */
+    public function sendOrderConfirmationToCustomer(\App\Models\TelegramBot $bot, \App\Models\Order $order): bool
+    {
+        if (!$order->telegram_chat_id) {
+            Log::warning('Order has no telegram_chat_id', ['order_id' => $order->id]);
+            return false;
+        }
+
+        $message = $this->buildCustomerOrderMessage($order);
+
+        try {
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", [
+                'chat_id' => $order->telegram_chat_id,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true,
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                if (isset($result['ok']) && $result['ok']) {
+                    Log::info('Customer order confirmation sent successfully', [
+                        'bot_id' => $bot->id,
+                        'order_id' => $order->id,
+                        'customer_telegram_id' => $order->telegram_chat_id
+                    ]);
+                    return true;
+                }
+            }
+
+            Log::error('Failed to send customer order confirmation', [
+                'bot_id' => $bot->id,
+                'order_id' => $order->id,
+                'response' => $response->json()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Exception sending customer order confirmation', [
+                'bot_id' => $bot->id,
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Создать сообщение для администратора о новом заказе
+     */
+    private function buildAdminOrderMessage(\App\Models\Order $order): string
+    {
+        $message = "🔔 <b>НОВЫЙ ЗАКАЗ!</b>\n\n";
+        $message .= "📋 <b>Номер заказа:</b> {$order->order_number}\n";
+        $message .= "💰 <b>Сумма:</b> {$order->formatted_total}\n\n";
+
+        // Информация о клиенте
+        $message .= "👤 <b>КЛИЕНТ:</b>\n";
+        if ($order->customer_name) {
+            $message .= "• <b>Имя:</b> {$order->customer_name}\n";
+        }
+        if ($order->customer_phone) {
+            $message .= "• <b>Телефон:</b> {$order->customer_phone}\n";
+        }
+        if ($order->customer_email) {
+            $message .= "• <b>Email:</b> {$order->customer_email}\n";
+        }
+        if ($order->customer_address) {
+            $message .= "• <b>Адрес:</b> {$order->customer_address}\n";
+        }
+        $message .= "• <b>Telegram ID:</b> {$order->telegram_chat_id}\n\n";
+
+        // Товары в заказе
+        $message .= "🛍️ <b>ТОВАРЫ:</b>\n";
+        foreach ($order->items as $item) {
+            $message .= "• {$item->product_name}";
+            if ($item->product_article) {
+                $message .= " (арт. {$item->product_article})";
+            }
+            $message .= "\n  Количество: {$item->quantity} шт.\n";
+            $message .= "  Цена: {$item->formatted_price}\n";
+            $message .= "  Сумма: {$item->formatted_total_price}\n\n";
+        }
+
+        if ($order->notes) {
+            $message .= "💬 <b>Комментарий:</b>\n{$order->notes}\n\n";
+        }
+
+        $message .= "⏰ <b>Время заказа:</b> " . $order->created_at->format('d.m.Y H:i:s');
+
+        return $message;
+    }
+
+    /**
+     * Создать сообщение подтверждения для клиента
+     */
+    private function buildCustomerOrderMessage(\App\Models\Order $order): string
+    {
+        $message = "✅ <b>Ваш заказ принят!</b>\n\n";
+        $message .= "📋 <b>Номер заказа:</b> {$order->order_number}\n";
+        $message .= "💰 <b>Сумма:</b> {$order->formatted_total}\n\n";
+
+        // Товары в заказе
+        $message .= "🛍️ <b>Ваши товары:</b>\n";
+        foreach ($order->items as $item) {
+            $message .= "• {$item->product_name} - {$item->quantity} шт.\n";
+        }
+
+        $message .= "\n📞 <b>С вами свяжутся в ближайшее время для подтверждения заказа и уточнения деталей доставки.</b>\n\n";
+        $message .= "Спасибо за ваш заказ! 🙏";
+
+        return $message;
+    }
 }

@@ -58,4 +58,52 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\TelegramBot::class)->where('is_active', true);
     }
+
+    /**
+     * Связь с категориями пользователя
+     */
+    public function categories()
+    {
+        return $this->hasMany(\App\Models\Category::class);
+    }
+
+    /**
+     * Получить активные категории пользователя
+     */
+    public function activeCategories()
+    {
+        return $this->hasMany(\App\Models\Category::class)->where('is_active', true);
+    }
+
+    /**
+     * Связь с товарами пользователя
+     */
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Получить активные товары пользователя
+     */
+    public function activeProducts()
+    {
+        return $this->hasMany(Product::class)->where('is_active', true);
+    }
+
+    /**
+     * Связь с заказами пользователя
+     */
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Order::class);
+    }
+
+    /**
+     * Получить недавние заказы пользователя
+     */
+    public function recentOrders()
+    {
+        return $this->hasMany(\App\Models\Order::class)->latest()->limit(10);
+    }
 }

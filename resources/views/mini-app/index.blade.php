@@ -9,340 +9,234 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    <!-- App Styles -->
+    @vite(['resources/css/app.css'])
+    
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <style>
-        body {
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            font-family: var(--tg-theme-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 100%;
-            padding: 16px;
-        }
-
-        .welcome-card {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-            text-align: center;
-            border: 1px solid var(--tg-theme-hint-color, #e9ecef);
-        }
-
-        .bot-info {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .btn-primary {
-            background-color: var(--tg-theme-button-color, #007bff);
-            border-color: var(--tg-theme-button-color, #007bff);
-            color: var(--tg-theme-button-text-color, #ffffff);
-        }
-
-        .user-info {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 8px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            margin: 24px 0;
-        }
-
-        .feature-card {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid var(--tg-theme-hint-color, #e9ecef);
-        }
-
-        .feature-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .feature-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
-        }
-
-        #loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .shop-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .goods-item {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid #007bff;
-        }
-
-        .goods-item h6 {
-            color: #007bff;
-            margin-bottom: 5px;
-        }
-
-        .brand-badge {
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            cursor: pointer;
-        }
-
-        .brand-badge:hover {
-            background: #1976d2;
-            color: white;
-        }
-
-        .cart-sidebar {
-            position: fixed;
-            top: 0;
-            right: -100%;
-            width: 90%;
-            max-width: 400px;
-            height: 100vh;
-            background: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.3);
-            transition: right 0.3s ease;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .cart-sidebar.open {
-            right: 0;
-        }
-
-        .cart-header {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: between;
-            align-items: center;
-        }
-
-        .cart-body {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .cart-footer {
-            padding: 20px;
-            border-top: 1px solid #eee;
-        }
-
-        .btn-close-cart {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            margin-left: auto;
-        }
-
-        .cart-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-            display: none;
-        }
-
-        .cart-overlay.show {
-            display: block;
-        }
-
-        .cart-item {
-            background: #f8f9fa;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-        }
-
-        .price-highlight {
-            color: #28a745;
-            font-weight: bold;
-        }
-    </style>
 </head>
-<body>
-    <div id="loading" class="text-center">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
+<body class="mini-app-body">
+    <!-- Экран загрузки -->
+    <div id="loading">
+        <div class="text-center">
+            <div class="loading-spinner mb-3"></div>
+            <div>Загрузка Mini App...</div>
         </div>
-        <p class="mt-2">Инициализация Mini App...</p>
     </div>
 
-    <div id="app" class="container" style="display: none;">
-        <div class="welcome-card">
-            <h1 class="h3 mb-3">🚀 {{ $bot->bot_name }}</h1>
-            <p class="text-muted mb-0">Добро пожаловать в наше Mini App!</p>
-        </div>
-
-        @if($bot->hasForumAutoApi())
-        <!-- Магазин Forum-Auto -->
-        <div class="shop-section">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5>🛒 Магазин автозапчастей</h5>
-                <button class="btn btn-sm btn-outline-primary" onclick="toggleCart()">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span id="cart-count" class="badge bg-danger">0</span>
-                </button>
-            </div>
-
-            <!-- Поиск товаров -->
-            <div class="search-section mb-3">
+    <!-- Основное содержимое -->
+    <div id="app" class="mini-app mini-app-container" style="display: none;">
+        <!-- Блок поиска -->
+        <div class="search-container mb-3">
+            <div class="search-box">
                 <div class="input-group">
-                    <input type="text" id="search-input" class="form-control" placeholder="Поиск по артикулу или названию товара..." onkeypress="if(event.key==='Enter') searchGoods()">
-                    <button class="btn btn-primary" onclick="searchGoods()">
+                    <input type="text" class="form-control search-input" id="searchInput" 
+                           placeholder="Поиск товаров..." autocomplete="off">
+                    <button class="btn btn-primary search-btn" type="button" onclick="performSearch()">
                         <i class="fas fa-search"></i>
                     </button>
                 </div>
-                <div class="d-flex justify-content-center mt-2 gap-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="loadRandomGoods()">
-                        <i class="fas fa-random"></i> Случайные товары
-                    </button>
-                    <button class="btn btn-outline-info btn-sm" onclick="loadInitialGoods()">
-                        <i class="fas fa-star"></i> Популярные товары
-                    </button>
+            </div>
+        </div>
+
+        <!-- Слайдер категорий -->
+        <div class="categories-slider-container" id="categoriesContainer" style="display: none;">
+            <div class="categories-slider">
+                <div class="categories-track" id="categoriesTrack">
+                    <!-- Категории будут загружены через JavaScript -->
                 </div>
             </div>
+        </div>
 
-            <!-- Бренды -->
-            <div class="brands-section mb-3" style="display: none;">
-                <h6>Популярные бренды:</h6>
-                <div id="brands-list" class="d-flex flex-wrap gap-2"></div>
-            </div>
-
-            <!-- Результаты поиска -->
-            <div id="goods-results" class="goods-section">
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-search fa-2x mb-2"></i>
-                    <p>Введите артикул для поиска товаров</p>
+        @if($products->count() > 0)
+        <div class="products-grid mt-1" id="productsContainer">
+            <h5 id="productsTitle">🛍️ Товары магазина</h5>
+            <div class="row">
+                @foreach($products as $product)
+                <div class="col-6 col-md-4  ">
+                    <div class="card product-card h-100" onclick="showProductDetails({{ $product->id }})" style="cursor: pointer;">
+                        @if($product->photo_url)
+                            <img src="{{ $product->photo_url }}" 
+                                 class="card-img-top" 
+                                 alt="{{ $product->name }}"
+                                 style="height: 150px; object-fit: cover;"
+                                 onerror="console.log('Ошибка загрузки изображения:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="card-img-top d-none justify-content-center align-items-center bg-light" 
+                                 style="height: 150px; color: #6c757d;">
+                                <div class="text-center">
+                                    <i class="fas fa-image fa-2x mb-2"></i><br>
+                                    <small>Ошибка загрузки</small>
+                                </div>
+                            </div>
+                        @else
+                            <div class="card-img-top d-flex justify-content-center align-items-center bg-light" 
+                                 style="height: 150px; color: #6c757d;">
+                                <div class="text-center">
+                                    <i class="fas fa-image fa-2x mb-2"></i><br>
+                                    <small>Нет фото</small>
+                                </div>
+                            </div>
+                        @endif
+                        <div class="card-body d-flex flex-column">
+                            <h6 class="card-title">{{ Str::limit($product->name, 40) }}</h6>
+                            @if($product->description)
+                            <p class="card-text small">{{ Str::limit($product->description, 50) }}</p>
+                            @endif
+                            
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <!-- Кнопка корзины слева -->
+                                    <div class="me-2">
+                                        @if($product->isAvailable())
+                                        <button class="btn btn-primary btn-sm rounded-circle p-1" 
+                                                style="width: 32px; height: 32px; font-size: 12px;"
+                                                onclick="event.stopPropagation(); addToCart({{ $product->id }})"
+                                                title="Добавить в корзину">
+                                            🛒
+                                        </button>
+                                        @else
+                                        <button class="btn btn-outline-secondary btn-sm rounded-circle p-1" 
+                                                style="width: 32px; height: 32px; font-size: 10px;" disabled
+                                                title="Нет в наличии">
+                                            ❌
+                                        </button>
+                                        @endif
+                                    </div>
+                                    
+                                    <!-- Цена по центру -->
+                                    <div class="flex-grow-1 text-center">
+                                        <span class="fw-bold text-success">{{ $product->formatted_price }}</span>
+                                    </div>
+                                    
+                                    <!-- Количество справа -->
+                                    <div class="ms-2">
+                                        <span class="badge bg-{{ $product->quantity > 5 ? 'success' : ($product->quantity > 0 ? 'warning' : 'danger') }}"
+                                              style="font-size: 10px;">
+                                            {{ $product->quantity }} шт.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                @endforeach
             </div>
-
-            <!-- Корзина -->
-            <div id="cart-sidebar" class="cart-sidebar">
-                <div class="cart-header">
-                    <h6>Корзина</h6>
-                    <button class="btn-close-cart" onclick="toggleCart()">×</button>
-                </div>
-                <div id="cart-items" class="cart-body"></div>
-                <div class="cart-footer">
-                    <button class="btn btn-success w-100" onclick="submitOrder()">
-                        Оформить заказ
-                    </button>
-                </div>
+            
+            <!-- Пагинация -->
+            @if($products->hasPages())
+            <div class="d-flex justify-content-center mt-3">
+                {{ $products->links() }}
             </div>
-
-            <!-- Оверлей корзины -->
-            <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
+            @endif
         </div>
         @else
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i>
-            <strong>Магазин недоступен</strong><br>
-            Владелец бота не настроил интеграцию с Forum-Auto API.
+        <div class="text-center py-4">
+            <div class="text-muted">
+                <h5>🏪 Магазин временно пуст</h5>
+                <p class="small">Товары скоро появятся!</p>
+            </div>
         </div>
         @endif
 
-       
-
+        <!-- Корзина (плавающая кнопка) -->
+        <div class="cart-float" id="cart-float" style="
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+        ">
+            <button class="btn btn-success rounded-circle p-3 shadow" onclick="showCart()">
+                🛒
+                <span class="cart-counter badge bg-danger rounded-pill position-absolute" 
+                      style="top: -5px; right: -5px; min-width: 20px; display: none;">0</span>
+            </button>
+        </div>
     </div>
+
+    <!-- Бэкдроп для панельных окон -->
+    <div class="slide-panel-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
+
+    <!-- Панель товара -->
+    <div class="slide-panel" id="productPanel">
+        <div class="slide-panel-header">
+            <h5 class="slide-panel-title" id="productPanelTitle">Товар</h5>
+            <button class="slide-panel-close" onclick="closePanel()" type="button">×</button>
+        </div>
+        
+        <div class="slide-panel-body" id="productPanelBody">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status" style="margin: 50px 0;">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="slide-panel-footer" id="productPanelFooter" style="display: none;">
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-primary" id="addToCartFromPanel">Добавить в корзину</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытые данные товаров для JavaScript -->
+    <script type="application/json" id="products-data">
+        {!! json_encode($products->keyBy('id')->map(function($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'article' => $product->article,
+                'photo_url' => $product->photo_url,
+                'specifications' => $product->specifications,
+                'quantity' => $product->quantity,
+                'price' => $product->price,
+                'formatted_price' => $product->formatted_price,
+                'availability_status' => $product->availability_status,
+                'isAvailable' => $product->isAvailable()
+            ];
+        })) !!}
+    </script>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        let tg = window.Telegram.WebApp;
+        console.log('Mini App загружается...');
+        
+        // Переменные для отладки и разработки
+        const isDevelopmentMode = !window.Telegram?.WebApp;
         let userData = null;
 
-        // Инициализация Mini App
+        // Основная функция инициализации
         function initApp() {
             try {
-                console.log('Начинаем инициализацию Mini App...');
-                console.log('window.Telegram:', window.Telegram);
-                console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
-                
-                // Проверяем доступность Telegram WebApp
-                const isTelegramWebApp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData;
-                const isDevelopmentMode = !isTelegramWebApp && (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('ospanel'));
-                
-                console.log('isTelegramWebApp:', isTelegramWebApp);
-                console.log('isDevelopmentMode:', isDevelopmentMode);
-                
-                if (isTelegramWebApp) {
-                    console.log('Инициализируем Telegram WebApp...');
+                console.log('Инициализируем Mini App...');
+
+                if (window.Telegram?.WebApp) {
+                    // Telegram WebApp доступен
+                    const tg = window.Telegram.WebApp;
                     
-                    // Настраиваем Telegram WebApp
-                    tg.ready();
+                    // Разворачиваем приложение
                     tg.expand();
-
-                    // Применяем тему Telegram
-                    if (tg.themeParams) {
-                        document.body.style.backgroundColor = tg.themeParams.bg_color || '#ffffff';
-                        document.body.style.color = tg.themeParams.text_color || '#000000';
-                        console.log('Тема применена:', tg.themeParams);
-                    }
-
-                    // Показываем кнопку "Назад" если нужно
-                    if (tg.BackButton) {
-                        tg.BackButton.show();
-                        tg.BackButton.onClick(() => {
-                            console.log('Нажата кнопка назад');
-                            tg.close();
-                        });
-                    }
-
-                    // Получаем данные пользователя
-                    console.log('initDataUnsafe:', tg.initDataUnsafe);
-                    console.log('initData:', tg.initData);
                     
-                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    // Применяем тему Telegram
+                    document.body.style.backgroundColor = tg.backgroundColor || '#ffffff';
+                    document.body.style.color = tg.textColor || '#000000';
+                    
+                    // Получаем данные пользователя
+                    if (tg.initDataUnsafe?.user) {
                         userData = tg.initDataUnsafe.user;
-                        console.log('Данные пользователя из initDataUnsafe:', userData);
                         displayUserInfo(userData);
                     } else if (tg.initData) {
-                        // Попробуем извлечь данные пользователя из initData
-                        console.log('Попытка извлечь данные пользователя из initData...');
+                        // Парсим initData если доступно
                         userData = parseUserFromInitData(tg.initData);
                         if (userData) {
-                            console.log('Данные пользователя извлечены из initData:', userData);
                             displayUserInfo(userData);
                         }
                     }
@@ -387,8 +281,8 @@
                 if (loadingEl) loadingEl.style.display = 'none';
                 if (appEl) appEl.style.display = 'block';
 
-                // Загружаем начальные товары
-                loadInitialGoods();
+                // Mini App готов к работе
+                console.log('Mini App готов к работе');
 
             } catch (error) {
                 console.error('Ошибка инициализации:', error);
@@ -396,680 +290,132 @@
             }
         }
 
-        // Функция для безопасного отображения ошибок
+        // Показать сообщение об ошибке
         function showErrorMessage(message) {
             const loadingEl = document.getElementById('loading');
             if (loadingEl) {
                 loadingEl.innerHTML = `
-                    <div class="alert alert-danger">
-                        <h5>Ошибка инициализации</h5>
-                        <p>${message}</p>
-                        <small>Проверьте настройки бота в Telegram</small>
-                        <div class="mt-3">
-                            <button class="btn btn-outline-primary" onclick="location.reload()">
-                                <i class="fas fa-redo"></i> Попробовать снова
-                            </button>
-                            <button class="btn btn-outline-secondary" onclick="showDebugInfo()">
-                                <i class="fas fa-bug"></i> Отладка
-                            </button>
+                    <div class="text-center">
+                        <div class="alert alert-danger">
+                            <strong>Ошибка загрузки</strong><br>
+                            ${message}
                         </div>
-                    </div>
-                `;
-            } else {
-                console.error('Элемент loading не найден, ошибка:', message);
-            }
-        }
-
-        // Функция отображения отладочной информации
-        function showDebugInfo() {
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) {
-                const debugInfo = `
-                    <div class="alert alert-info mt-3">
-                        <h6>Отладочная информация:</h6>
-                        <small>
-                            <strong>URL:</strong> ${window.location.href}<br>
-                            <strong>User Agent:</strong> ${navigator.userAgent}<br>
-                            <strong>Telegram:</strong> ${window.Telegram ? 'Доступен' : 'Недоступен'}<br>
-                            <strong>WebApp:</strong> ${window.Telegram?.WebApp ? 'Доступен' : 'Недоступен'}<br>
-                            <strong>initData:</strong> ${window.Telegram?.WebApp?.initData || 'Отсутствует'}<br>
-                            <strong>Platform:</strong> ${window.Telegram?.WebApp?.platform || 'Неизвестно'}
-                        </small>
-                    </div>
-                `;
-                loadingEl.innerHTML += debugInfo;
-            }
-        }
-
-        // Отображение информации о пользователе (заглушка - элементы удалены из HTML)
-        function displayUserInfo(user) {
-            if (user) {
-                console.log('Данные пользователя получены:', {
-                    id: user.id,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    username: user.username,
-                    language_code: user.language_code
-                });
-            } else {
-                console.warn('Данные пользователя не переданы');
-            }
-        }
-
-        // Парсинг данных пользователя из initData
-        function parseUserFromInitData(initData) {
-            try {
-                const urlParams = new URLSearchParams(initData);
-                const userParam = urlParams.get('user');
-                if (userParam) {
-                    const user = JSON.parse(decodeURIComponent(userParam));
-                    console.log('Пользователь успешно извлечен из initData:', user);
-                    return user;
-                }
-            } catch (error) {
-                console.error('Ошибка парсинга данных пользователя:', error);
-            }
-            return null;
-        }
-
-        // Показать уведомление
-        function showAlert(message) {
-            if (tg.showAlert) {
-                tg.showAlert(`Вы выбрали: ${message}`);
-            } else {
-                alert(`Вы выбрали: ${message}`);
-            }
-        }
-
-        // Отправить данные боту
-        function sendData() {
-            const data = {
-                action: 'save_data',
-                user_data: userData,
-                timestamp: Date.now(),
-                bot_short_name: '{{ $shortName }}'
-            };
-
-            if (tg.sendData) {
-                tg.sendData(JSON.stringify(data));
-                showAlert('Данные отправлены боту!');
-            } else {
-                console.log('Данные для отправки:', data);
-                showAlert('Данные подготовлены к отправке');
-            }
-        }
-
-        // Закрыть приложение
-        function closeApp() {
-            if (tg.close) {
-                tg.close();
-            } else {
-                showAlert('Приложение будет закрыто');
-            }
-        }
-
-        // Haptic Feedback для кнопок (инициализируется после загрузки DOM)
-        function setupHapticFeedback() {
-            const elements = document.querySelectorAll('.feature-card, .btn');
-            console.log('Настраиваем Haptic Feedback для', elements.length, 'элементов');
-            
-            elements.forEach(el => {
-                el.addEventListener('click', () => {
-                    if (tg && tg.HapticFeedback) {
-                        try {
-                            tg.HapticFeedback.impactOccurred('light');
-                        } catch (error) {
-                            console.warn('Ошибка Haptic Feedback:', error);
-                        }
-                    }
-                });
-            });
-        }
-
-        // ===== FORUM-AUTO МАГАЗИН =====
-        
-        let cart = [];
-        const apiBase = '/api/forum-auto/{{ $shortName }}';
-
-        // Загрузить товары при старте (случайные или популярные)
-        async function loadInitialGoods() {
-            const resultsContainer = document.getElementById('goods-results');
-            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Загружаем товары...</div>';
-
-            try {
-                // Сначала проверим статус API
-                let response = await fetch(`${apiBase}/test-credentials`);
-                let testResult = await response.json();
-                
-                console.log('API credentials test:', testResult);
-                
-                if (!testResult.success) {
-                    resultsContainer.innerHTML = `
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>Добро пожаловать в демо-версию каталога!</strong><br>
-                            ${testResult.error || 'API Forum-Auto не настроен - показываем демонстрационные товары'}
-                            <div class="mt-2">
-                                <small class="text-muted">Для доступа к реальному каталогу обратитесь к администратору</small>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-
-                            <button class="btn btn-outline-secondary" onclick="searchSampleGoods()">
-                                <i class="fas fa-search"></i> Попробовать поиск
-                            </button>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Сначала пробуем случайные товары
-                response = await fetch(`${apiBase}/goods/random?limit=12`);
-                let data = await response.json();
-
-                console.log('Random goods response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    displayGoods(data.data);
-                    return;
-                }
-
-                // Если случайные не загрузились, пробуем популярные
-                response = await fetch(`${apiBase}/goods/popular`);
-                data = await response.json();
-
-                console.log('Popular goods response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    displayGoods(data.data);
-                } else {
-                    // Показываем сообщение, что нет данных
-                    resultsContainer.innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>Нет данных для отображения</strong><br>
-                            Попробуйте выполнить поиск по артикулу или названию товара.
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Initial goods loading error:', error);
-                resultsContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>Ошибка загрузки товаров</strong><br>
-                        Не удалось подключиться к каталогу товаров.
-                        <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-primary" onclick="loadInitialGoods()">
-                                <i class="fas fa-redo"></i> Повторить попытку
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Загрузить случайные товары
-        async function loadRandomGoods() {
-            const resultsContainer = document.getElementById('goods-results');
-            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Загружаем случайные товары...</div>';
-
-            try {
-                const response = await fetch(`${apiBase}/goods/random?limit=15`);
-                const data = await response.json();
-
-                console.log('Random goods response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    displayGoods(data.data);
-                } else {
-                    // Если API не вернул данные, показываем сообщение
-                    resultsContainer.innerHTML = `
-                        <div class="alert alert-info text-center">
-                            <i class="fas fa-info-circle"></i>
-                            <strong>Нет случайных товаров</strong><br>
-                            Попробуйте выполнить поиск.
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Random goods loading error:', error);
-                await loadInitialGoods();
-            }
-        }
-
-        // Поиск по примерам популярных артикулов
-        async function searchSampleGoods() {
-            const sampleArticles = ['OC47', 'W712', 'LF787', 'OX123D', 'HU7008z'];
-            const randomArticle = sampleArticles[Math.floor(Math.random() * sampleArticles.length)];
-            
-            const searchInput = document.getElementById('search-input');
-            searchInput.value = randomArticle;
-            
-            await searchGoods();
-        }
-
-
-
-        // Расширенный поиск товаров по всем критериям
-        async function searchGoods() {
-            const searchInput = document.getElementById('search-input');
-            const searchTerm = searchInput.value.trim();
-            
-            if (!searchTerm || searchTerm.length < 2) {
-                showAlert('Введите минимум 2 символа для поиска (артикул или название товара)');
-                return;
-            }
-
-            const resultsContainer = document.getElementById('goods-results');
-            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Расширенный поиск товаров...</div>';
-
-            try {
-                // Используем новый расширенный поиск с фильтрацией по 70% совпадению
-                const response = await fetch(`${apiBase}/goods/advanced-search?search=${encodeURIComponent(searchTerm)}&min_match=70&limit=20`);
-                const data = await response.json();
-
-                console.log('Advanced search response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    displayGoods(data.data);
-                    
-                    // Показываем информацию о найденных результатах
-                    const totalFound = data.filter ? data.filter.total_found : data.data.length;
-                    if (totalFound > 0) {
-                        const infoElement = document.createElement('div');
-                        infoElement.className = 'alert alert-info mt-2';
-                        infoElement.innerHTML = `
-                            <i class="fas fa-info-circle"></i>
-                            Найдено ${totalFound} товаров с совпадением 70% и выше для запроса "${searchTerm}"
-                        `;
-                        resultsContainer.insertBefore(infoElement, resultsContainer.firstChild);
-                    }
-                } else {
-                    // Если по расширенному поиску ничего не найдено, попробуем базовый поиск
-                    await fallbackSearch(searchTerm, resultsContainer);
-                }
-            } catch (error) {
-                console.error('Advanced search error:', error);
-                // При ошибке пробуем базовый поиск
-                await fallbackSearch(searchTerm, resultsContainer);
-            }
-        }
-
-        // Резервный поиск, если расширенный не дал результатов
-        async function fallbackSearch(searchTerm, resultsContainer) {
-            try {
-                resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Поиск по артикулу...</div>';
-                
-                const response = await fetch(`${apiBase}/goods/search?search=${encodeURIComponent(searchTerm)}`);
-                const data = await response.json();
-
-                console.log('Fallback search response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    displayGoods(data.data);
-                } else {
-                    // Если и базовый поиск не дал результатов, покажем доступные бренды
-                    await searchBrands(searchTerm, resultsContainer);
-                }
-            } catch (error) {
-                console.error('Fallback search error:', error);
-                resultsContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Ошибка поиска. Попробуйте позже или загрузите случайные товары.
-                    </div>
-                    <div class="text-center mt-3">
-                        <button class="btn btn-primary" onclick="loadRandomGoods()">
-                            <i class="fas fa-random"></i> Показать случайные товары
+                        <button class="btn btn-primary" onclick="location.reload()">
+                            Перезагрузить
                         </button>
                     </div>
                 `;
             }
         }
 
-        // Поиск брендов по артикулу
-        async function searchBrands(searchTerm, resultsContainer) {
-            try {
-                const response = await fetch(`${apiBase}/brands?art=${encodeURIComponent(searchTerm)}`);
-                const data = await response.json();
-
-                console.log('Brands response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    let html = `
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i>
-                            Найдены бренды для артикула "${searchTerm}". Выберите бренд для поиска:
-                        </div>
-                        <div class="row">
-                    `;
-                    
-                    data.data.forEach(brand => {
-                        html += `
-                            <div class="col-6 col-md-4 mb-2">
-                                <button class="btn btn-outline-primary btn-sm w-100" onclick="searchByBrand('${searchTerm}', '${brand.brand}')">
-                                    ${brand.brand}
-                                </button>
-                            </div>
-                        `;
-                    });
-                    
-                    html += `
-                        </div>
-                        <div class="text-center mt-3">
-                            <button class="btn btn-secondary btn-sm me-2" onclick="loadRandomGoods()">
-                                <i class="fas fa-random"></i> Случайные товары
-                            </button>
-                            <button class="btn btn-info btn-sm" onclick="loadInitialGoods()">
-                                <i class="fas fa-star"></i> Популярные товары
-                            </button>
-                        </div>
-                    `;
-                    
-                    resultsContainer.innerHTML = html;
-                } else {
-                    resultsContainer.innerHTML = `
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-search fa-2x mb-2"></i>
-                            <p>По запросу "${searchTerm}" ничего не найдено</p>
-                            <small>Попробуйте изменить поисковый запрос или посмотрите товары ниже</small>
-                            <div class="mt-3">
-                                <button class="btn btn-primary btn-sm me-2" onclick="loadRandomGoods()">
-                                    <i class="fas fa-random"></i> Случайные товары
-                                </button>
-                                <button class="btn btn-info btn-sm" onclick="loadInitialGoods()">
-                                    <i class="fas fa-star"></i> Популярные товары
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Brands search error:', error);
-                resultsContainer.innerHTML = `
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-search fa-2x mb-2"></i>
-                        <p>Произошла ошибка при поиске "${searchTerm}"</p>
-                        <small>Попробуйте еще раз или посмотрите другие товары</small>
-                        <div class="mt-3">
-                            <button class="btn btn-primary btn-sm me-2" onclick="loadRandomGoods()">
-                                <i class="fas fa-random"></i> Случайные товары
-                            </button>
-                            <button class="btn btn-info btn-sm" onclick="loadInitialGoods()">
-                                <i class="fas fa-star"></i> Популярные товары
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Поиск товаров по артикулу и бренду
-        async function searchByBrand(article, brand) {
-            const resultsContainer = document.getElementById('goods-results');
-            resultsContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Поиск товаров бренда...</div>';
-
-            try {
-                const response = await fetch(`${apiBase}/goods?art=${encodeURIComponent(article)}&br=${encodeURIComponent(brand)}`);
-                const data = await response.json();
-
-                console.log('Brand goods response:', data);
-
-                if (data.success && data.data && data.data.length > 0) {
-                    displayGoods(data.data);
-                } else {
-                    resultsContainer.innerHTML = `
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-search fa-2x mb-2"></i>
-                            <p>Товары бренда "${brand}" для артикула "${article}" не найдены</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Brand search error:', error);
-                resultsContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Ошибка поиска по бренду. Попробуйте позже.
-                    </div>
-                `;
-            }
-        }
-
-        // Отображение товаров
-        function displayGoods(goods) {
-            const resultsContainer = document.getElementById('goods-results');
+        // Отобразить информацию о пользователе
+        function displayUserInfo(user) {
+            if (!user) return;
             
-            if (!goods || goods.length === 0) {
-                resultsContainer.innerHTML = `
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-search fa-2x mb-2"></i>
-                        <p>Товары не найдены</p>
-                        <small>Попробуйте изменить поисковый запрос</small>
-                        <div class="mt-3">
-                            <button class="btn btn-primary btn-sm" onclick="loadRandomGoods()">
-                                <i class="fas fa-random"></i> Показать случайные товары
-                            </button>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            goods.forEach(item => {
-                // Определяем цвет badge в зависимости от процента совпадения
-                let matchBadge = '';
-                if (typeof item.match_percent !== 'undefined') {
-                    let badgeClass = 'bg-secondary';
-                    if (item.match_percent >= 95) badgeClass = 'bg-success';
-                    else if (item.match_percent >= 85) badgeClass = 'bg-info';
-                    else if (item.match_percent >= 75) badgeClass = 'bg-warning';
-                    
-                    matchBadge = `<span class="badge ${badgeClass} ms-2">Совпадение: ${item.match_percent}%</span>`;
-                }
-
-                // Информация о поле, в котором найдено совпадение
-                let matchingFieldInfo = '';
-                if (item.matching_field) {
-                    const fieldNames = {
-                        'art': 'артикул',
-                        'name': 'название', 
-                        'brand': 'бренд',
-                        'gid': 'код'
-                    };
-                    const fieldName = fieldNames[item.matching_field] || item.matching_field;
-                    matchingFieldInfo = `<small class="text-info ms-1">(найдено в: ${fieldName})</small>`;
-                }
-
-                html += `
-                    <div class="goods-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1">${item.name || 'Название не указано'}</h6>
-                                <div class="mb-2">
-                                    <span class="brand-badge">${item.brand || 'Неизвестный бренд'}</span>
-                                    <small class="text-muted ms-2">Арт: ${item.art || 'N/A'}</small>
-                                    ${matchBadge}
-                                    ${matchingFieldInfo}
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <span class="price-highlight">${item.price ? parseFloat(item.price).toFixed(2) : '0.00'} ₽</span>
-                                        ${(item.num && item.num > 0) ? 
-                                            `<small class="text-success ms-2">В наличии: ${item.num} шт.</small>` : 
-                                            '<small class="text-danger ms-2">Нет в наличии</small>'
-                                        }
-                                        ${item.kr && item.kr > 1 ? `<small class="text-muted ms-2">Кратность: ${item.kr}</small>` : ''}
-                                    </div>
-                                    ${(item.num && item.num > 0) ? `
-                                        <button class="btn btn-sm btn-primary" onclick="addToCart('${item.gid}', '${(item.name || '').replace(/'/g, '\\\'') }', ${item.price || 0}, '${(item.brand || '').replace(/'/g, '\\\'')}', '${(item.art || '').replace(/'/g, '\\\'')}')">
-                                            <i class="fas fa-cart-plus"></i>
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            resultsContainer.innerHTML = html;
-        }
-
-        // Добавить товар в корзину
-        function addToCart(goodsCode, name, price, brand, art) {
-            // Проверяем, есть ли товар уже в корзине
-            const existingItem = cart.find(item => item.goodsCode === goodsCode);
-            
-            if (existingItem) {
-                existingItem.quantity++;
-            } else {
-                cart.push({
-                    goodsCode,
-                    name,
-                    price: parseFloat(price),
-                    brand,
-                    art,
-                    quantity: 1
-                });
-            }
-            
-            updateCartUI();
-            showAlert(`${name} добавлен в корзину`);
-            
-            // Haptic feedback
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
-        }
-
-        // Обновить UI корзины
-        function updateCartUI() {
-            const cartCount = document.getElementById('cart-count');
-            const cartItems = document.getElementById('cart-items');
-            
-            // Обновляем счетчик
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCount.textContent = totalItems;
-            cartCount.style.display = totalItems > 0 ? 'inline' : 'none';
-            
-            // Обновляем содержимое корзины
-            if (cart.length === 0) {
-                cartItems.innerHTML = '<div class="text-center text-muted py-4">Корзина пуста</div>';
-                return;
-            }
-            
-            let html = '';
-            let total = 0;
-            
-            cart.forEach((item, index) => {
-                const itemTotal = item.price * item.quantity;
-                total += itemTotal;
-                
-                html += `
-                    <div class="cart-item">
-                        <h6 class="mb-1">${item.name}</h6>
-                        <div class="mb-2">
-                            <small class="text-muted">${item.brand} • ${item.art}</small>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-secondary" onclick="changeQuantity(${index}, -1)">−</button>
-                                <button class="btn btn-outline-secondary">${item.quantity}</button>
-                                <button class="btn btn-outline-secondary" onclick="changeQuantity(${index}, 1)">+</button>
-                            </div>
-                            <div>
-                                <span class="price-highlight">${itemTotal.toFixed(2)} ₽</span>
-                                <button class="btn btn-sm btn-outline-danger ms-2" onclick="removeFromCart(${index})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += `
-                <div class="mt-3 pt-3 border-top">
-                    <h5>Итого: <span class="price-highlight">${total.toFixed(2)} ₽</span></h5>
-                </div>
+            const userInfo = document.createElement('div');
+            userInfo.className = 'bot-info';
+            userInfo.innerHTML = `
+                <h5>👤 Информация о пользователе</h5>
+                <p><strong>Имя:</strong> ${user.first_name || 'Не указано'} ${user.last_name || ''}</p>
+                ${user.username ? `<p><strong>Username:</strong> @${user.username}</p>` : ''}
+                <p><small class="text-muted">ID: ${user.id}</small></p>
             `;
             
-            cartItems.innerHTML = html;
-        }
-
-        // Изменить количество товара в корзине
-        function changeQuantity(index, delta) {
-            if (cart[index]) {
-                cart[index].quantity += delta;
-                if (cart[index].quantity <= 0) {
-                    cart.splice(index, 1);
-                }
-                updateCartUI();
+            const container = document.querySelector('#app .container');
+            if (container) {
+                container.appendChild(userInfo);
             }
         }
 
-        // Удалить товар из корзины
-        function removeFromCart(index) {
-            cart.splice(index, 1);
-            updateCartUI();
-        }
-
-        // Переключить отображение корзины
-        function toggleCart() {
-            const sidebar = document.getElementById('cart-sidebar');
-            const overlay = document.getElementById('cart-overlay');
-            
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('show');
-        }
-
-        // Оформить заказ
-        async function submitOrder() {
-            if (cart.length === 0) {
-                showAlert('Корзина пуста');
-                return;
-            }
-
+        // Парсинг пользователя из initData
+        function parseUserFromInitData(initData) {
             try {
-                for (const item of cart) {
-                    const response = await fetch(`${apiBase}/cart/add`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            goods_code: item.goodsCode,
-                            quantity: item.quantity,
-                            comment: `Заказ из Mini App`
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (!data.success) {
-                        throw new Error(data.error || 'Ошибка добавления товара');
-                    }
+                const params = new URLSearchParams(initData);
+                const userStr = params.get('user');
+                if (userStr) {
+                    return JSON.parse(userStr);
                 }
-
-                cart = [];
-                updateCartUI();
-                toggleCart();
-                showAlert('Заказ успешно оформлен!');
-
             } catch (error) {
-                console.error('Order error:', error);
-                showAlert('Ошибка при оформлении заказа: ' + error.message);
+                console.error('Ошибка парсинга пользователя:', error);
+            }
+            return null;
+        }
+
+        // Показать уведомление с проверкой совместимости
+        function showAlert(message) {
+            try {
+                if (window.Telegram?.WebApp?.showAlert && 
+                    typeof window.Telegram.WebApp.showAlert === 'function') {
+                    window.Telegram.WebApp.showAlert(message);
+                } else {
+                    // Fallback для старых версий или браузера
+                    showToast(message);
+                }
+            } catch (error) {
+                console.log('Используем fallback для уведомления:', error);
+                showToast(message);
             }
         }
 
-        // Поиск по Enter
-        document.getElementById('search-input')?.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchGoods();
+        // Toast уведомления как fallback
+        function showToast(message, type = 'info') {
+            // Удаляем предыдущий toast если есть
+            const existingToast = document.querySelector('.custom-toast');
+            if (existingToast) {
+                existingToast.remove();
             }
-        });
+
+            const toast = document.createElement('div');
+            toast.className = `custom-toast alert alert-${type === 'error' ? 'danger' : 'success'} position-fixed`;
+            toast.style.cssText = `
+                top: 20px; 
+                left: 50%; 
+                transform: translateX(-50%); 
+                z-index: 9999; 
+                max-width: 90%; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                border-radius: 8px;
+            `;
+            toast.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} me-2"></i>
+                    <div>${message}</div>
+                </div>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Автоматически убираем через 3 секунды
+            setTimeout(() => {
+                if (toast && toast.parentNode) {
+                    toast.remove();
+                }
+            }, 3000);
+        }
+
+        // Безопасный haptic feedback
+        function triggerHapticFeedback(type = 'light') {
+            try {
+                if (window.Telegram?.WebApp?.HapticFeedback?.impactOccurred && 
+                    typeof window.Telegram.WebApp.HapticFeedback.impactOccurred === 'function') {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
+                }
+                // Не делаем ничего если не поддерживается - это нормально
+            } catch (error) {
+                // Молча игнорируем ошибки haptic feedback
+                console.debug('HapticFeedback не поддерживается:', error.message);
+            }
+        }
+
+        // Настройка Haptic Feedback
+        function setupHapticFeedback() {
+            const buttons = document.querySelectorAll('button, .btn');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    triggerHapticFeedback('light');
+                });
+            });
+        }
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
@@ -1100,10 +446,1163 @@
             console.error('Глобальная ошибка:', event.error, event.filename, event.lineno);
         });
 
+        // Корзина
+        let cart = [];
+        
+        function addToCart(productId) {
+            // Используем новую функцию с количеством по умолчанию = 1
+            addToCartWithQuantity(productId, 1);
+        }
+        
+        function updateCartCounter() {
+            fetch('/cart/count')
+                .then(response => response.json())
+                .then(data => {
+                    const counter = document.querySelector('.cart-counter');
+                    const cartFloat = document.getElementById('cart-float');
+                    
+                    if (data.count > 0) {
+                        counter.textContent = data.count;
+                        counter.style.display = 'inline';
+                        cartFloat.style.display = 'block';
+                    } else {
+                        counter.style.display = 'none';
+                        cartFloat.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка получения счетчика корзины:', error);
+                });
+        }
+        
+        // Показать детали товара в панели
+        function showProductDetails(productId) {
+            try {
+                // Кэшируем данные товаров
+                if (!window.cachedProductsData) {
+                    window.cachedProductsData = JSON.parse(document.getElementById('products-data').textContent);
+                }
+                
+                const product = window.cachedProductsData[productId];
+                if (!product) {
+                    showAlert('Товар не найден', 'error');
+                    return;
+                }
+                
+                // Получаем элементы панели
+                const panel = document.getElementById('productPanel');
+                const title = document.getElementById('productPanelTitle');
+                const body = document.getElementById('productPanelBody');
+                const footer = document.getElementById('productPanelFooter');
+                const backdrop = document.getElementById('panelBackdrop');
+                
+                // Устанавливаем заголовок
+                title.textContent = product.name.length > 30 ? product.name.substring(0, 30) + '...' : product.name;
+                
+                // Формируем контент панели
+                const panelContent = `
+                    <!-- Изображение товара -->
+                    <div class="position-relative mb-3">
+                        ${product.photo_url ? `
+                            <img src="${product.photo_url}" 
+                                 class="w-100 rounded" 
+                                 style="height: 250px; object-fit: cover;"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <div class="d-none justify-content-center align-items-center bg-light rounded" 
+                                 style="height: 250px; color: #6c757d;">
+                                <div class="text-center">
+                                    <i class="fas fa-image fa-3x mb-2"></i><br>
+                                    <span>Изображение недоступно</span>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="d-flex justify-content-center align-items-center bg-light rounded" 
+                                 style="height: 250px; color: #6c757d;">
+                                <div class="text-center">
+                                    <i class="fas fa-image fa-3x mb-2"></i><br>
+                                    <span>Нет фото</span>
+                                </div>
+                            </div>
+                        `}
+                        
+                        <!-- Статус товара -->
+                        <div class="position-absolute top-0 end-0 m-2">
+                            ${getStatusBadge(product)}
+                        </div>
+                    </div>
+                    
+                    <!-- Информация о товаре -->
+                    <div class="mb-3">
+                        <!-- Артикул -->
+                        <div class="d-flex align-items-center mb-2">
+                            <small class="text-muted me-1">Артикул:</small>
+                            <code>${product.article}</code>
+                        </div>
+                        
+                        <!-- Цена -->
+                        <div class="mb-3">
+                            <span class="h3 text-success fw-bold">${product.formatted_price}</span>
+                        </div>
+                        
+                        <!-- Описание -->
+                        ${product.description ? `
+                            <div class="mb-3">
+                                <h6 class="fw-bold mb-2">📝 Описание</h6>
+                                <p class="text-muted">${product.description.length > 200 ? product.description.substring(0, 200) + '...' : product.description}</p>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Характеристики -->
+                        ${product.specifications && product.specifications.length > 0 ? `
+                            <div class="mb-3">
+                                <h6 class="fw-bold mb-2">📋 Характеристики</h6>
+                                <div class="bg-light rounded p-3">
+                                    ${product.specifications.map(spec => 
+                                        `<div class="d-flex align-items-center mb-2">
+                                            <i class="fas fa-check-circle text-success me-2"></i>
+                                            <span>${spec}</span>
+                                         </div>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Информация о количестве -->
+                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded mb-3">
+                            <span class="fw-bold">В наличии:</span>
+                            <span class="badge bg-${product.quantity > 5 ? 'success' : (product.quantity > 0 ? 'warning' : 'danger')} fs-6">
+                                ${product.quantity} шт.
+                            </span>
+                        </div>
+                        
+                        <!-- Выбор количества -->
+                        ${product.isAvailable ? `
+                            <div class="mb-3">
+                                <h6 class="fw-bold mb-3">🔢 Количество</h6>
+                                <div class="d-flex align-items-center justify-content-center p-3 bg-light rounded">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm" 
+                                            id="decreaseBtn-${product.id}"
+                                            onclick="changeQuantity(${product.id}, -1)"
+                                            style="width: 40px; height: 40px; border-radius: 50%;">
+                                        −
+                                    </button>
+                                    
+                                    <div class="mx-4 text-center">
+                                        <input type="number" 
+                                               class="form-control text-center fw-bold" 
+                                               id="quantity-${product.id}"
+                                               value="1" 
+                                               min="1" 
+                                               max="${product.quantity}"
+                                               onchange="validateQuantity(${product.id})"
+                                               style="width: 80px; font-size: 18px;">
+                                        <small class="text-muted">шт.</small>
+                                    </div>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm" 
+                                            id="increaseBtn-${product.id}"
+                                            onclick="changeQuantity(${product.id}, 1)"
+                                            style="width: 40px; height: 40px; border-radius: 50%;">
+                                        +
+                                    </button>
+                                </div>
+                                
+                                <!-- Общая стоимость -->
+                                <div class="mt-3 p-3 bg-success bg-opacity-10 rounded">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold">Итого:</span>
+                                        <span class="h5 text-success fw-bold mb-0" id="totalPrice-${product.id}">
+                                            ${product.formatted_price}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Обновляем контент
+                body.innerHTML = panelContent;
+                
+                // Настраиваем кнопку в футере
+                const addButton = document.getElementById('addToCartFromPanel');
+                
+                // Отладка: выводим информацию о товаре
+                console.log('Отладка товара:', {
+                    id: product.id,
+                    name: product.name,
+                    quantity: product.quantity,
+                    isAvailable: product.isAvailable,
+                    availability_status: product.availability_status
+                });
+                
+                if (product.isAvailable) {
+                    addButton.disabled = false;
+                    addButton.className = 'btn btn-primary btn-lg';
+                    addButton.innerHTML = `🛒 Добавить в корзину`;
+                    addButton.onclick = () => {
+                        const quantity = parseInt(document.getElementById(`quantity-${product.id}`).value) || 1;
+                        addToCartWithQuantity(product.id, quantity);
+                        closePanel();
+                    };
+                } else {
+                    addButton.disabled = true;
+                    addButton.className = 'btn btn-secondary btn-lg';
+                    addButton.innerHTML = '❌ Нет в наличии';
+                }
+                
+                // Показываем панель
+                showPanel();
+                
+                // Инициализируем кнопки количества если товар доступен
+                if (product.isAvailable) {
+                    setTimeout(() => {
+                        updateQuantityButtons(product.id, 1);
+                        updateTotalPrice(product.id, 1);
+                    }, 100);
+                }
+                
+                // Haptic feedback
+                triggerHapticFeedback('light');
+                
+            } catch (error) {
+                console.error('Ошибка при показе деталей товара:', error);
+                showAlert('Ошибка при загрузке деталей товара');
+            }
+        }
+
+        // Функции управления панелями
+        function showPanel() {
+            const panel = document.getElementById('productPanel');
+            const backdrop = document.getElementById('panelBackdrop');
+            const footer = document.getElementById('productPanelFooter');
+            
+            backdrop.classList.add('show');
+            panel.classList.add('show');
+            footer.style.display = 'block';
+            
+            // Блокируем прокрутку основного содержимого
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePanel() {
+            const panel = document.getElementById('productPanel');
+            const backdrop = document.getElementById('panelBackdrop');
+            const footer = document.getElementById('productPanelFooter');
+            
+            backdrop.classList.remove('show');
+            panel.classList.remove('show');
+            footer.style.display = 'none';
+            
+            // Разблокируем прокрутку основного содержимого
+            document.body.style.overflow = 'auto';
+        }
+
+        // Закрытие панели по ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePanel();
+            }
+        });
+
+        // Функция для получения badge статуса товара
+        function getStatusBadge(product) {
+            let statusClass = 'secondary';
+            if (product.availability_status === 'В наличии') statusClass = 'success';
+            else if (product.availability_status === 'Заканчивается') statusClass = 'warning';  
+            else if (product.availability_status === 'Нет в наличии') statusClass = 'danger';
+            
+            return `<span class="badge bg-${statusClass} shadow-sm">${product.availability_status}</span>`;
+        }
+
+        // Функции для работы с количеством товара
+        function changeQuantity(productId, delta) {
+            const quantityInput = document.getElementById(`quantity-${productId}`);
+            const currentQuantity = parseInt(quantityInput.value) || 1;
+            const newQuantity = Math.max(1, Math.min(parseInt(quantityInput.max), currentQuantity + delta));
+            
+            quantityInput.value = newQuantity;
+            updateTotalPrice(productId, newQuantity);
+            updateQuantityButtons(productId, newQuantity);
+            
+            // Haptic feedback
+            triggerHapticFeedback('light');
+        }
+
+        function validateQuantity(productId) {
+            const quantityInput = document.getElementById(`quantity-${productId}`);
+            const quantity = parseInt(quantityInput.value);
+            const maxQuantity = parseInt(quantityInput.max);
+            
+            if (isNaN(quantity) || quantity < 1) {
+                quantityInput.value = 1;
+            } else if (quantity > maxQuantity) {
+                quantityInput.value = maxQuantity;
+                showAlert(`Максимальное количество: ${maxQuantity} шт.`, 'warning');
+            }
+            
+            const finalQuantity = parseInt(quantityInput.value);
+            updateTotalPrice(productId, finalQuantity);
+            updateQuantityButtons(productId, finalQuantity);
+        }
+
+        function updateTotalPrice(productId, quantity) {
+            const product = window.cachedProductsData[productId];
+            if (product) {
+                const totalPrice = product.price * quantity;
+                const formattedTotal = new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: 'RUB'
+                }).format(totalPrice);
+                
+                const totalPriceElement = document.getElementById(`totalPrice-${productId}`);
+                if (totalPriceElement) {
+                    totalPriceElement.textContent = formattedTotal;
+                }
+            }
+        }
+
+        function updateQuantityButtons(productId, quantity) {
+            const decreaseBtn = document.getElementById(`decreaseBtn-${productId}`);
+            const increaseBtn = document.getElementById(`increaseBtn-${productId}`);
+            const quantityInput = document.getElementById(`quantity-${productId}`);
+            
+            if (decreaseBtn) {
+                decreaseBtn.disabled = quantity <= 1;
+            }
+            
+            if (increaseBtn && quantityInput) {
+                const maxQuantity = parseInt(quantityInput.max);
+                increaseBtn.disabled = quantity >= maxQuantity;
+            }
+        }
+
+        // Функция добавления товара в корзину с количеством
+        function addToCartWithQuantity(productId, quantity) {
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            formData.append('quantity', quantity);
+            
+            fetch(`/cart/add/${productId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(`Товар добавлен в корзину (${quantity} шт.)! 🛒`);
+                    updateCartCounter();
+                    triggerHapticFeedback('success');
+                } else {
+                    showAlert(data.message || 'Ошибка при добавлении товара', 'error');
+                    triggerHapticFeedback('error');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при добавлении товара в корзину:', error);
+                showAlert('Ошибка при добавлении товара в корзину', 'error');
+                triggerHapticFeedback('error');
+            });
+        }
+        
+        function showCart() {
+            // Получаем данные корзины
+            fetch('/cart')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.items && data.items.length > 0) {
+                        showCheckoutModal(data.items, data.total);
+                    } else {
+                        showAlert('Ваша корзина пуста', 'warning');
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при получении корзины:', error);
+                    showAlert('Ошибка при загрузке корзины', 'error');
+                });
+        }
+
+        // Показать модальное окно оформления заказа
+        function showCheckoutModal(cartItems, total) {
+            const modalHtml = `
+                <div class="modal fade" id="checkoutModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">🛒 Оформление заказа</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Товары в корзине -->
+                                <div class="mb-4">
+                                    <h6>Ваши товары:</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            ${cartItems.map(item => `
+                                                <tr id="cart-item-${item.id}">
+                                                    <td style="width: 60px;">
+                                                        ${item.photo_url ? 
+                                                            `<img src="${item.photo_url}" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">` :
+                                                            '<div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;"><i class="fas fa-image text-muted"></i></div>'
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <div><strong>${item.name}</strong></div>
+                                                        <div class="text-muted small mb-2">${item.formatted_price} за шт.</div>
+                                                        
+                                                        <!-- Контролы количества -->
+                                                        <div class="d-flex align-items-center">
+                                                            <button type="button" 
+                                                                    class="btn btn-outline-secondary" 
+                                                                    onclick="changeCartQuantity(${item.id}, -1)"
+                                                                    style="width: 24px; height: 24px; padding: 0; border-radius: 50%; font-size: 12px; line-height: 1;">
+                                                                −
+                                                            </button>
+                                                            
+                                                            <input type="number" 
+                                                                   class="form-control mx-1 text-center" 
+                                                                   id="cart-quantity-${item.id}"
+                                                                   value="${item.quantity}" 
+                                                                   min="1" 
+                                                                   max="${item.available_quantity || 999}"
+                                                                   onchange="updateCartQuantity(${item.id})"
+                                                                   style="width: 45px; height: 24px; font-size: 12px; padding: 2px;">
+                                                            
+                                                            <button type="button" 
+                                                                    class="btn btn-outline-secondary" 
+                                                                    onclick="changeCartQuantity(${item.id}, 1)"
+                                                                    style="width: 24px; height: 24px; padding: 0; border-radius: 50%; font-size: 12px; line-height: 1;">
+                                                                +
+                                                            </button>
+                                                            
+                                                            <button type="button" 
+                                                                    class="btn btn-outline-danger ms-1" 
+                                                                    onclick="removeFromCart(${item.id})"
+                                                                    title="Удалить товар"
+                                                                    style="width: 24px; height: 24px; padding: 0; border-radius: 50%; font-size: 10px; line-height: 1;">
+                                                                🗑️
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-end" style="width: 100px;">
+                                                        <div class="fw-bold" id="cart-total-${item.id}">${item.formatted_total}</div>
+                                                        <small class="text-muted">${item.quantity} шт.</small>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                            <tr class="table-active">
+                                                <td colspan="2"><strong>Итого:</strong></td>
+                                                <td class="text-end"><strong id="checkout-total">${total}</strong></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Дополнительная информация -->
+                                <div>
+                                    <form id="checkoutForm">
+                                        <div class="mb-3">
+                                            <label class="form-label">Комментарий к заказу (необязательно)</label>
+                                            <textarea class="form-control" name="notes" rows="3" placeholder="Укажите дополнительные пожелания, адрес доставки или другие комментарии..."></textarea>
+                                        </div>
+                                    </form>
+                                    
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <small>Для связи с вами будет использован ваш Telegram аккаунт</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn " data-bs-dismiss="modal">Отмена</button>
+                                <button type="button" class="btn " onclick="submitOrder()">
+                                    <i class="fas fa-check me-2"></i>Оформить заказ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Удаляем предыдущее модальное окно если есть
+            const existingModal = document.getElementById('checkoutModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Добавляем новое модальное окно
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Показываем модальное окно
+            const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+            modal.show();
+            
+            // Очистка после закрытия
+            document.getElementById('checkoutModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+
+
+        // Функции для управления количеством в корзине
+        function changeCartQuantity(cartId, delta) {
+            const quantityInput = document.getElementById(`cart-quantity-${cartId}`);
+            const currentQuantity = parseInt(quantityInput.value) || 1;
+            const maxQuantity = parseInt(quantityInput.max);
+            const newQuantity = Math.max(1, Math.min(maxQuantity, currentQuantity + delta));
+            
+            quantityInput.value = newQuantity;
+            updateCartQuantity(cartId);
+        }
+
+        function updateCartQuantity(cartId) {
+            const quantityInput = document.getElementById(`cart-quantity-${cartId}`);
+            const quantity = parseInt(quantityInput.value);
+            const maxQuantity = parseInt(quantityInput.max);
+            
+            if (isNaN(quantity) || quantity < 1) {
+                quantityInput.value = 1;
+                return;
+            } else if (quantity > maxQuantity) {
+                quantityInput.value = maxQuantity;
+                showAlert(`Максимальное количество: ${maxQuantity} шт.`, 'warning');
+            }
+
+            const finalQuantity = parseInt(quantityInput.value);
+            
+            // Отправляем запрос на обновление количества
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            formData.append('quantity', finalQuantity);
+            formData.append('_method', 'PATCH');
+
+            fetch(`/cart/update/${cartId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем отображение
+                    updateCartItemDisplay(cartId, finalQuantity, data.item_total, data.formatted_item_total);
+                    updateCheckoutTotal();
+                    triggerHapticFeedback('light');
+                } else {
+                    showAlert(data.message || 'Ошибка при обновлении количества', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении количества:', error);
+                showAlert('Ошибка при обновлении количества', 'error');
+            });
+        }
+
+        function updateCartItemDisplay(cartId, quantity, itemTotal, formattedItemTotal) {
+            const totalElement = document.getElementById(`cart-total-${cartId}`);
+            const quantityDisplay = totalElement.nextElementSibling;
+            
+            if (totalElement) {
+                totalElement.textContent = formattedItemTotal;
+            }
+            
+            if (quantityDisplay) {
+                quantityDisplay.textContent = `${quantity} шт.`;
+            }
+        }
+
+        function updateCheckoutTotal() {
+            // Пересчитываем общую сумму
+            fetch('/cart')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.total) {
+                        const totalElement = document.getElementById('checkout-total');
+                        if (totalElement) {
+                            totalElement.textContent = data.formatted_total || data.total;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при обновлении общей суммы:', error);
+                });
+        }
+
+        function removeFromCart(cartId) {
+            if (!confirm('Удалить товар из корзины?')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            formData.append('_method', 'DELETE');
+
+            fetch(`/cart/remove/${cartId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Удаляем строку из таблицы
+                    const row = document.getElementById(`cart-item-${cartId}`);
+                    if (row) {
+                        row.remove();
+                    }
+                    
+                    // Обновляем счетчик корзины и общую сумму
+                    updateCartCounter();
+                    updateCheckoutTotal();
+                    
+                    showAlert('Товар удален из корзины');
+                    triggerHapticFeedback('success');
+                    
+                    // Если корзина пуста, закрываем модальное окно
+                    const remainingItems = document.querySelectorAll('[id^="cart-item-"]');
+                    if (remainingItems.length === 0) {
+                        bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+                        showAlert('Корзина пуста', 'info');
+                    }
+                } else {
+                    showAlert(data.message || 'Ошибка при удалении товара', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при удалении товара:', error);
+                showAlert('Ошибка при удалении товара', 'error');
+            });
+        }
+
+        function submitOrder() {
+            if (!userData) {
+                showAlert('Ошибка получения данных пользователя', 'error');
+                return;
+            }
+
+            const form = document.getElementById('checkoutForm');
+            const formData = new FormData(form);
+            
+            const orderData = {
+                bot_short_name: '{{ $shortName }}',
+                user_data: userData,
+                notes: formData.get('notes')
+            };
+
+            // Показываем индикатор загрузки
+            const submitBtn = document.querySelector('#checkoutModal .btn-success');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Оформляем...';
+            submitBtn.disabled = true;
+
+            fetch('/cart/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Закрываем модальное окно
+                    bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+                    
+                    // Показываем успешное сообщение
+                    showAlert(`✅ ${data.message}\\n\\n📋 Номер заказа: ${data.order.order_number}`, 'success');
+                    
+                    // Обновляем счетчик корзины
+                    updateCartCounter();
+                    
+                    // Уведомляем Telegram Web App о успешном заказе
+                    if (window.Telegram?.WebApp?.HapticFeedback) {
+                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                    }
+                } else {
+                    showAlert(data.message || 'Ошибка при оформлении заказа', 'error');
+                    
+                    // Восстанавливаем кнопку
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                showAlert('Произошла ошибка при оформлении заказа', 'error');
+                
+                // Восстанавливаем кнопку
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        // Функция поделиться товаром
+        function shareProduct(productId) {
+            const product = window.cachedProductsData[productId];
+            if (!product) return;
+            
+            const shareText = `🛍️ ${product.name}\n💰 ${product.formatted_price}\n\n${product.description || 'Отличный товар!'}`;
+            
+            if (window.Telegram?.WebApp?.openTelegramLink) {
+                // Используем Telegram WebApp API для шаринга
+                const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
+                window.Telegram.WebApp.openTelegramLink(shareUrl);
+            } else if (navigator.share) {
+                // Используем Web Share API
+                navigator.share({
+                    title: product.name,
+                    text: shareText,
+                    url: window.location.href
+                }).catch(err => console.log('Ошибка при шаринге:', err));
+            } else {
+                // Fallback: копируем в буфер обмена
+                navigator.clipboard.writeText(`${shareText}\n\n${window.location.href}`)
+                    .then(() => showToast('Скопировано в буфер обмена! 📋'))
+                    .catch(() => showToast('Не удалось скопировать', 'error'));
+            }
+        }
+
         // Логирование для отладки
         console.log('Mini App script загружен');
         console.log('Telegram доступен:', !!window.Telegram);
         console.log('Telegram WebApp доступен:', !!window.Telegram?.WebApp);
+        
+        // Инициализируем счетчик корзины при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(updateCartCounter, 1000);
+            loadCategories();
+            initSearch();
+        });
+    </script>
+
+    <!-- Стили для поиска и категорий -->
+    <style>
+        /* Стили для поиска */
+        .search-container {
+            padding: 0 15px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            border-radius: 9px;
+            padding-left: 20px;
+            padding-right: 50px;
+            border: 2px solid #e9ecef;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            border-color: var(--tg-theme-button-color, #007bff);
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .search-btn {
+            border-radius: 9px;
+            background: var(--tg-theme-button-color, #007bff);
+            border: none;
+            padding: 0.5rem 1rem;
+        }
+
+        .search-btn:hover {
+            background: var(--tg-theme-button-color, #0056b3);
+        }
+
+        /* Стили для слайдера категорий */
+        .categories-slider-container {
+            padding: 0px;
+            overflow: hidden;
+        }
+
+        .categories-slider {
+            position: relative;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .categories-slider::-webkit-scrollbar {
+            display: none;
+        }
+
+        .categories-track {
+            display: flex;
+            gap: 10px;
+            padding: 5px 0;
+            scroll-snap-type: x mandatory;
+        }
+
+        .category-card {
+            min-width: 250px;
+            max-width: 280px;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .category-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .category-image {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .category-placeholder {
+            width: 80px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .category-info {
+            flex: 1;
+        }
+
+        .category-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+            color: var(--tg-theme-text-color, #333);
+        }
+
+        .category-description {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color, #666);
+            line-height: 1.3;
+        }
+
+        .category-products-count {
+            font-size: 12px;
+            color: var(--tg-theme-button-color, #007bff);
+            font-weight: 500;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 576px) {
+            .category-card {
+                min-width: 220px;
+                max-width: 250px;
+            }
+            
+            .category-image,
+            .category-placeholder {
+                width: 100px;
+                height: 100px;
+            }
+        }
+
+        /* Индикатор загрузки для категорий */
+        .categories-loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #666);
+        }
+
+        /* Скрытие товаров при поиске */
+        .search-results {
+            margin-top: 15px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color, #666);
+        }
+
+        .no-results i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        /* FontAwesome иконки для мини-приложения */
+        .fas, .far, .fab {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro" !important;
+            font-weight: 900 !important;
+            -webkit-font-smoothing: antialiased;
+            display: inline-block;
+            font-style: normal;
+            font-variant: normal;
+            text-rendering: auto;
+            line-height: 1;
+        }
+
+        .far {
+            font-weight: 400 !important;
+        }
+
+        .fab {
+            font-family: "Font Awesome 6 Brands" !important;
+            font-weight: 400 !important;
+        }
+
+        /* Убедимся, что иконки отображаются корректно */
+        i.fas, i.far, i.fab {
+            min-width: 1em;
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        // Переменные для поиска и категорий
+        let allProducts = [];
+        let allCategories = [];
+        let isSearchActive = false;
+
+        // Инициализация поиска
+        function initSearch() {
+            const searchInput = document.getElementById('searchInput');
+            let searchTimeout;
+
+            searchInput.addEventListener('input', function(e) {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    performSearch(e.target.value);
+                }, 300); // Задержка для предотвращения частых запросов
+            });
+
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch(e.target.value);
+                }
+            });
+
+            // Загружаем все товары для поиска
+            loadAllProducts();
+        }
+
+        // Загрузка всех товаров для поиска
+        async function loadAllProducts() {
+            try {
+                const shortName = '{{ $shortName }}';
+                const response = await fetch(`/${shortName}/api/products`);
+                
+                if (response.ok) {
+                    allProducts = await response.json();
+                    console.log('Загружено товаров для поиска:', allProducts.length);
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке товаров:', error);
+            }
+        }
+
+        // Загрузка категорий
+        async function loadCategories() {
+            try {
+                const shortName = '{{ $shortName }}';
+                const response = await fetch(`/${shortName}/api/categories`);
+                
+                if (response.ok) {
+                    allCategories = await response.json();
+                    renderCategories(allCategories);
+                    
+                    if (allCategories.length > 0) {
+                        document.getElementById('categoriesContainer').style.display = 'block';
+                    }
+                } else {
+                    console.log('Категории не найдены или ошибка загрузки');
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке категорий:', error);
+            }
+        }
+
+        // Отрисовка категорий
+        function renderCategories(categories) {
+            const track = document.getElementById('categoriesTrack');
+            
+            if (categories.length === 0) {
+                document.getElementById('categoriesContainer').style.display = 'none';
+                return;
+            }
+
+            track.innerHTML = categories.map(category => `
+                <div class="category-card" onclick="filterByCategory(${category.id}, '${category.name}')">
+                    <div class="card h-200">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center">
+                                <div class="category-info">
+                                    <div class="category-name">${category.name}</div>
+                                    ${category.description ? `<div class="category-description">${category.description}</div>` : ''}
+                                    <div class="category-products-count">${category.products_count || 0} товаров</div>
+                                </div>
+                                ${category.photo_url 
+                                    ? `<img src="${category.photo_url}" class="category-image " alt="${category.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                       <div class="category-placeholder" style="display: none;">
+                                           <i class="fas fa-folder"></i>
+                                       </div>`
+                                    : `<div class="category-placeholder ">
+                                           <i class="fas fa-folder"></i>
+                                       </div>`
+                                }
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Поиск товаров
+        function performSearch(query = null) {
+            const searchInput = document.getElementById('searchInput');
+            const searchQuery = query !== null ? query : searchInput.value.trim();
+
+            if (searchQuery === '') {
+                // Если поиск пустой, показываем все товары
+                showAllProducts();
+                isSearchActive = false;
+                return;
+            }
+
+            isSearchActive = true;
+
+            // Фильтруем товары по названию, описанию и артикулу
+            const filteredProducts = allProducts.filter(product => {
+                const name = product.name.toLowerCase();
+                const description = (product.description || '').toLowerCase();
+                const article = (product.article || '').toLowerCase();
+                const search = searchQuery.toLowerCase();
+
+                return name.includes(search) || 
+                       description.includes(search) || 
+                       article.includes(search);
+            });
+
+            renderSearchResults(filteredProducts, searchQuery);
+        }
+
+        // Отрисовка результатов поиска
+        function renderSearchResults(products, query) {
+            const container = document.getElementById('productsContainer');
+            const title = document.getElementById('productsTitle');
+            
+            title.textContent = `🔍 Результаты поиска: "${query}"`;
+
+            if (products.length === 0) {
+                container.innerHTML = `
+                    <h5 id="productsTitle">🔍 Результаты поиска: "${query}"</h5>
+                    <div class="no-results">
+                        <i class="fas fa-search"></i>
+                        <h6>Ничего не найдено</h6>
+                        <p>Попробуйте изменить запрос или просмотреть все товары</p>
+                        <button class="btn btn-primary btn-sm" onclick="showAllProducts()">
+                            Показать все товары
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const productsHTML = products.map(product => `
+                <div class="col-6 col-md-4">
+                    <div class="card product-card h-100" onclick="showProductDetails(${product.id})" style="cursor: pointer;">
+                        ${product.photo_url 
+                            ? `<img src="${product.photo_url}" class="card-img-top" alt="${product.name}" 
+                                 style="height: 150px; object-fit: cover;"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                               <div class="card-img-top d-none justify-content-center align-items-center bg-light" 
+                                    style="height: 150px; color: #6c757d;">
+                                   <div class="text-center">
+                                       <i class="fas fa-image fa-2x mb-2"></i><br>
+                                       <small>Ошибка загрузки</small>
+                                   </div>
+                               </div>`
+                            : `<div class="card-img-top d-flex justify-content-center align-items-center bg-light" 
+                                    style="height: 150px; color: #6c757d;">
+                                   <div class="text-center">
+                                       <i class="fas fa-cube fa-2x mb-2"></i><br>
+                                       <small>Без фото</small>
+                                   </div>
+                               </div>`
+                        }
+                        <div class="card-body p-3">
+                            <h6 class="card-title mb-2" style="font-size: 14px; line-height: 1.3;">${product.name}</h6>
+                            <div class="d-flex justify-content-between align-items-end">
+                                <div>
+                                    <div class="text-success fw-bold">${formatPrice(product.price)} ₽</div>
+                                    ${product.quantity > 0 
+                                        ? `<small class="text-muted">В наличии: ${product.quantity}</small>`
+                                        : `<small class="text-danger">Нет в наличии</small>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <h5 id="productsTitle">🔍 Результаты поиска: "${query}"</h5>
+                <div class="row">
+                    ${productsHTML}
+                </div>
+            `;
+        }
+
+        // Фильтрация по категории
+        function filterByCategory(categoryId, categoryName) {
+            isSearchActive = true;
+            
+            const categoryProducts = allProducts.filter(product => 
+                product.category_id === categoryId
+            );
+
+            const container = document.getElementById('productsContainer');
+            const title = document.getElementById('productsTitle');
+            
+            title.textContent = `📁 Категория: ${categoryName}`;
+
+            if (categoryProducts.length === 0) {
+                container.innerHTML = `
+                    <h5 id="productsTitle">📁 Категория: ${categoryName}</h5>
+                    <div class="no-results">
+                        <i class="fas fa-folder-open"></i>
+                        <h6>В этой категории пока нет товаров</h6>
+                        <button class="btn btn-primary btn-sm" onclick="showAllProducts()">
+                            Показать все товары
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            renderSearchResults(categoryProducts, `Категория: ${categoryName}`);
+
+            // Очищаем поле поиска
+            document.getElementById('searchInput').value = '';
+        }
+
+        // Показать все товары
+        function showAllProducts() {
+            isSearchActive = false;
+            document.getElementById('searchInput').value = '';
+            
+            // Перезагружаем страницу чтобы вернуть изначальное состояние
+            window.location.reload();
+        }
+
+        // Форматирование цены
+        function formatPrice(price) {
+            return Number(price).toLocaleString('ru-RU', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            });
+        }
     </script>
 </body>
 </html>

@@ -38,13 +38,11 @@ class StoreTelegramBotRequest extends FormRequest
                 'regex:/^\d+:[a-zA-Z0-9_-]+$/',
                 Rule::unique('telegram_bots')
             ],
+            'admin_telegram_id' => 'nullable|string|max:20|regex:/^\d+$/',
             'api_id' => 'nullable|string|max:255',
             'api_hash' => 'nullable|string|max:255',
             'mini_app_url' => 'nullable|string|max:255',
             'mini_app_short_name' => 'nullable|string|max:64|regex:/^[a-zA-Z0-9_]+$/',
-            'forum_auto_login' => 'nullable|string|max:255',
-            'forum_auto_pass' => 'nullable|string|max:255',
-            'forum_auto_enabled' => 'boolean',
         ];
     }
 
@@ -65,14 +63,14 @@ class StoreTelegramBotRequest extends FormRequest
             'bot_token.unique' => 'Этот токен уже используется.',
             'bot_token.regex' => 'Неверный формат токена. Токен должен быть в формате: 123456789:ABCdefGHijklMNOpqrsTUvwxyz',
             
+            'admin_telegram_id.max' => 'ID администратора не должен превышать 20 символов.',
+            'admin_telegram_id.regex' => 'ID администратора должен содержать только цифры.',
+            
             'mini_app_url.url' => 'URL Mini App должен быть корректным URL адресом.',
             'mini_app_url.max' => 'URL Mini App не должен превышать 255 символов.',
             
             'mini_app_short_name.max' => 'Короткое имя Mini App не должно превышать 64 символа.',
             'mini_app_short_name.regex' => 'Короткое имя может содержать только буквы, цифры и подчеркивания.',
-            
-            'forum_auto_login.max' => 'Логин Forum-Auto не должен превышать 255 символов.',
-            'forum_auto_pass.max' => 'Пароль Forum-Auto не должен превышать 255 символов.',
         ];
     }
 

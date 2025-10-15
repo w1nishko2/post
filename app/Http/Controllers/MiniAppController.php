@@ -27,7 +27,22 @@ class MiniAppController extends Controller
             abort(404, 'Mini App не настроен для данного бота');
         }
 
-        return view('mini-app.index', compact('bot', 'shortName'));
+        // Получаем активные товары конкретного бота
+        $products = $bot->activeProducts()
+                       ->with('category')
+                       ->orderBy('created_at', 'desc')
+                       ->paginate(12);
+
+        // Получаем активные категории с количеством товаров
+        $categories = $bot->activeCategories()
+                         ->withCount(['products as products_count' => function ($query) {
+                             $query->where('is_active', true);
+                         }])
+                         ->having('products_count', '>', 0)
+                         ->orderBy('name')
+                         ->get();
+
+        return view('mini-app.index', compact('bot', 'shortName', 'products', 'categories'));
     }
 
     /**
@@ -119,5 +134,118 @@ class MiniAppController extends Controller
             'app_url' => $bot->getMiniAppUrl(),
             'menu_button' => $bot->menu_button,
         ]);
+    }
+
+    /**
+     * API для получения всех товаров (для поиска)
+     */
+    public function getProducts(string $shortName)
+    {
+        $bot = TelegramBot::where('mini_app_short_name', $shortName)
+                         ->where('is_active', true)
+                         ->first();
+
+        if (!$bot) {
+            return response()->json(['error' => 'Bot not found'], 404);
+        }
+
+        $products = $bot->activeProducts()
+                       ->with('category')
+                       ->get()
+                       ->map(function ($product) {
+                           return [
+                               'id' => $product->id,
+                               'name' => $product->name,
+                               'description' => $product->description,
+                               'article' => $product->article,
+                               'photo_url' => $product->photo_url,
+                               'price' => $product->price,
+                               'quantity' => $product->quantity,
+                               'category_id' => $product->category_id,
+                               'category_name' => $product->category ? $product->category->name : null,
+                           ];
+                       });
+
+        return response()->json($products);
+    }
+
+    /**
+     * API для получения категорий с количеством товаров
+     */
+    public function getCategories(string $shortName)
+    {
+        $bot = TelegramBot::where('mini_app_short_name', $shortName)
+                         ->where('is_active', true)
+                         ->first();
+
+        if (!$bot) {
+            return response()->json(['error' => 'Bot not found'], 404);
+        }
+
+        $categories = $bot->activeCategories()
+                         ->withCount(['products as products_count' => function ($query) {
+                             $query->where('is_active', true);
+                         }])
+                         ->having('products_count', '>', 0) // Показываем только категории с товарами
+                         ->orderBy('name')
+                         ->get()
+                         ->map(function ($category) {
+                             return [
+                                 'id' => $category->id,
+                                 'name' => $category->name,
+                                 'description' => $category->description,
+                                 'photo_url' => $category->photo_url,
+                                 'products_count' => $category->products_count,
+                             ];
+                         });
+
+        return response()->json($categories);
+    }
+
+    /**
+     * API для поиска товаров
+     */
+    public function searchProducts(Request $request, string $shortName)
+    {
+        $bot = TelegramBot::where('mini_app_short_name', $shortName)
+                         ->where('is_active', true)
+                         ->first();
+
+        if (!$bot) {
+            return response()->json(['error' => 'Bot not found'], 404);
+        }
+
+        $query = $request->get('q', '');
+        $categoryId = $request->get('category_id');
+
+        $productsQuery = $bot->activeProducts()->with('category');
+
+        if (!empty($query)) {
+            $productsQuery->where(function ($q) use ($query) {
+                $q->where('name', 'LIKE', "%{$query}%")
+                  ->orWhere('description', 'LIKE', "%{$query}%")
+                  ->orWhere('article', 'LIKE', "%{$query}%");
+            });
+        }
+
+        if ($categoryId) {
+            $productsQuery->where('category_id', $categoryId);
+        }
+
+        $products = $productsQuery->get()->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'article' => $product->article,
+                'photo_url' => $product->photo_url,
+                'price' => $product->price,
+                'quantity' => $product->quantity,
+                'category_id' => $product->category_id,
+                'category_name' => $product->category ? $product->category->name : null,
+            ];
+        });
+
+        return response()->json($products);
     }
 }
