@@ -363,9 +363,27 @@ class TelegramBotService
                 'parse_mode' => 'HTML'
             ], $options);
 
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", $data);
+            // Попробуем сначала HTTP с увеличенным таймаутом
+            try {
+                $response = Http::timeout(30)->retry(2, 1000)->post(
+                    "https://api.telegram.org/bot{$bot->bot_token}/sendMessage", 
+                    $data
+                );
 
-            return $response->successful() && $response->json('ok');
+                if ($response->successful() && $response->json('ok')) {
+                    return true;
+                }
+            } catch (\Exception $httpException) {
+                Log::warning('HTTP request failed, trying cURL', [
+                    'bot_id' => $bot->id,
+                    'chat_id' => $chatId,
+                    'http_error' => $httpException->getMessage()
+                ]);
+            }
+
+            // Если HTTP не сработал, используем cURL напрямую
+            return $this->sendMessageWithCurl($bot->bot_token, $chatId, $text, $options);
+
         } catch (\Exception $e) {
             Log::error('Ошибка при отправке сообщения', [
                 'bot_id' => $bot->id,
@@ -374,6 +392,65 @@ class TelegramBotService
             ]);
             return false;
         }
+    }
+
+    /**
+     * Отправить сообщение через cURL (альтернативный метод)
+     */
+    private function sendMessageWithCurl(string $botToken, int $chatId, string $text, array $options = []): bool
+    {
+        $data = array_merge([
+            'chat_id' => $chatId,
+            'text' => $text,
+            'parse_mode' => 'HTML'
+        ], $options);
+
+        $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen(json_encode($data))
+            ],
+            CURLOPT_USERAGENT => 'Laravel Telegram Bot Service',
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false || !empty($error)) {
+            Log::error('cURL error in sendMessageWithCurl', [
+                'error' => $error,
+                'chat_id' => $chatId,
+                'url' => $url
+            ]);
+            return false;
+        }
+
+        if ($httpCode !== 200) {
+            Log::error('HTTP error in sendMessageWithCurl', [
+                'http_code' => $httpCode,
+                'response' => $response,
+                'chat_id' => $chatId
+            ]);
+            return false;
+        }
+
+        $result = json_decode($response, true);
+        return isset($result['ok']) && $result['ok'];
     }
 
     /**
@@ -599,41 +676,25 @@ class TelegramBotService
 
         $message = $this->buildAdminOrderMessage($order);
 
-        try {
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", [
-                'chat_id' => $bot->admin_telegram_id,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-                'disable_web_page_preview' => true,
+        $success = $this->sendMessage($bot, $bot->admin_telegram_id, $message, [
+            'disable_web_page_preview' => true,
+        ]);
+
+        if ($success) {
+            Log::info('Admin order notification sent successfully', [
+                'bot_id' => $bot->id,
+                'order_id' => $order->id,
+                'admin_telegram_id' => $bot->admin_telegram_id
             ]);
-
-            if ($response->successful()) {
-                $result = $response->json();
-                if (isset($result['ok']) && $result['ok']) {
-                    Log::info('Admin order notification sent successfully', [
-                        'bot_id' => $bot->id,
-                        'order_id' => $order->id,
-                        'admin_telegram_id' => $bot->admin_telegram_id
-                    ]);
-                    return true;
-                }
-            }
-
+        } else {
             Log::error('Failed to send admin order notification', [
                 'bot_id' => $bot->id,
                 'order_id' => $order->id,
-                'response' => $response->json()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Exception sending admin order notification', [
-                'bot_id' => $bot->id,
-                'order_id' => $order->id,
-                'error' => $e->getMessage()
+                'admin_telegram_id' => $bot->admin_telegram_id
             ]);
         }
 
-        return false;
+        return $success;
     }
 
     /**
@@ -648,41 +709,25 @@ class TelegramBotService
 
         $message = $this->buildCustomerOrderMessage($order);
 
-        try {
-            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/sendMessage", [
-                'chat_id' => $order->telegram_chat_id,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-                'disable_web_page_preview' => true,
+        $success = $this->sendMessage($bot, $order->telegram_chat_id, $message, [
+            'disable_web_page_preview' => true,
+        ]);
+
+        if ($success) {
+            Log::info('Customer order confirmation sent successfully', [
+                'bot_id' => $bot->id,
+                'order_id' => $order->id,
+                'customer_telegram_id' => $order->telegram_chat_id
             ]);
-
-            if ($response->successful()) {
-                $result = $response->json();
-                if (isset($result['ok']) && $result['ok']) {
-                    Log::info('Customer order confirmation sent successfully', [
-                        'bot_id' => $bot->id,
-                        'order_id' => $order->id,
-                        'customer_telegram_id' => $order->telegram_chat_id
-                    ]);
-                    return true;
-                }
-            }
-
+        } else {
             Log::error('Failed to send customer order confirmation', [
                 'bot_id' => $bot->id,
                 'order_id' => $order->id,
-                'response' => $response->json()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Exception sending customer order confirmation', [
-                'bot_id' => $bot->id,
-                'order_id' => $order->id,
-                'error' => $e->getMessage()
+                'customer_telegram_id' => $order->telegram_chat_id
             ]);
         }
 
-        return false;
+        return $success;
     }
 
     /**

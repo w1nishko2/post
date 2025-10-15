@@ -30,13 +30,21 @@ class CartController extends Controller
 
         $sessionId = Session::getId();
         $userId = Auth::id();
+        $telegramUserId = $this->getTelegramUserId();
         $quantity = $request->quantity;
 
         // Найти существующую позицию в корзине
         $cartItem = Cart::where('product_id', $product->id)
-            ->where(function ($query) use ($sessionId, $userId) {
-                $query->where('session_id', $sessionId)
-                      ->orWhere('user_id', $userId);
+            ->where(function ($query) use ($sessionId, $userId, $telegramUserId) {
+                $query->where('session_id', $sessionId);
+                
+                if ($userId) {
+                    $query->orWhere('user_id', $userId);
+                }
+                
+                if ($telegramUserId) {
+                    $query->orWhere('telegram_user_id', $telegramUserId);
+                }
             })
             ->first();
 
@@ -60,6 +68,7 @@ class CartController extends Controller
             Cart::create([
                 'session_id' => $sessionId,
                 'user_id' => $userId,
+                'telegram_user_id' => $telegramUserId,
                 'product_id' => $product->id,
                 'quantity' => $quantity,
                 'price' => $product->price,
@@ -189,10 +198,18 @@ class CartController extends Controller
     {
         $sessionId = Session::getId();
         $userId = Auth::id();
+        $telegramUserId = $this->getTelegramUserId();
 
-        Cart::where(function ($query) use ($sessionId, $userId) {
-            $query->where('session_id', $sessionId)
-                  ->orWhere('user_id', $userId);
+        Cart::where(function ($query) use ($sessionId, $userId, $telegramUserId) {
+            $query->where('session_id', $sessionId);
+            
+            if ($userId) {
+                $query->orWhere('user_id', $userId);
+            }
+            
+            if ($telegramUserId) {
+                $query->orWhere('telegram_user_id', $telegramUserId);
+            }
         })->delete();
 
         return response()->json([
@@ -229,11 +246,19 @@ class CartController extends Controller
     {
         $sessionId = Session::getId();
         $userId = Auth::id();
+        $telegramUserId = $this->getTelegramUserId();
 
         return Cart::with('product')
-            ->where(function ($query) use ($sessionId, $userId) {
-                $query->where('session_id', $sessionId)
-                      ->orWhere('user_id', $userId);
+            ->where(function ($query) use ($sessionId, $userId, $telegramUserId) {
+                $query->where('session_id', $sessionId);
+                
+                if ($userId) {
+                    $query->orWhere('user_id', $userId);
+                }
+                
+                if ($telegramUserId) {
+                    $query->orWhere('telegram_user_id', $telegramUserId);
+                }
             })
             ->get();
     }
@@ -421,16 +446,19 @@ class CartController extends Controller
     {
         $sessionId = Session::getId();
         $userId = Auth::id();
+        $telegramUserId = $this->getTelegramUserId();
 
-        $query = Cart::query();
-
-        if ($userId) {
-            $query->where('user_id', $userId);
-        } else {
+        Cart::where(function ($query) use ($sessionId, $userId, $telegramUserId) {
             $query->where('session_id', $sessionId);
-        }
-
-        $query->delete();
+            
+            if ($userId) {
+                $query->orWhere('user_id', $userId);
+            }
+            
+            if ($telegramUserId) {
+                $query->orWhere('telegram_user_id', $telegramUserId);
+            }
+        })->delete();
     }
 
     /**
@@ -440,8 +468,31 @@ class CartController extends Controller
     {
         $sessionId = Session::getId();
         $userId = Auth::id();
+        $telegramUserId = $this->getTelegramUserId();
 
         return $cart->session_id === $sessionId || 
-               ($userId && $cart->user_id === $userId);
+               ($userId && $cart->user_id === $userId) ||
+               ($telegramUserId && $cart->telegram_user_id === $telegramUserId);
+    }
+
+    /**
+     * Получить Telegram User ID из заголовков запроса
+     */
+    private function getTelegramUserId()
+    {
+        $initData = request()->header('X-Telegram-Web-App-Init-Data') ?? request()->input('_auth');
+        
+        if (!$initData) {
+            return null;
+        }
+
+        parse_str($initData, $data);
+        
+        if (isset($data['user'])) {
+            $userData = json_decode($data['user'], true);
+            return $userData['id'] ?? null;
+        }
+
+        return null;
     }
 }

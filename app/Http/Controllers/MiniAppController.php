@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TelegramBot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Log;
 
 class MiniAppController extends Controller
 {
@@ -105,11 +106,42 @@ class MiniAppController extends Controller
         // Парсим данные
         parse_str($initData, $data);
 
-        // Здесь должна быть валидация подписи от Telegram
-        // Для простоты пока пропускаем эту проверку
-        
+        // Базовая валидация структуры данных
+        if (!isset($data['user']) || !isset($data['auth_date'])) {
+            Log::warning('Invalid Telegram WebApp data structure', [
+                'init_data_keys' => array_keys($data),
+                'user_agent' => $request->userAgent(),
+                'ip' => $request->ip()
+            ]);
+            return null;
+        }
+
+        // Проверяем время авторизации (не более 24 часов назад)
+        $authDate = intval($data['auth_date']);
+        $currentTime = time();
+        $maxAge = 24 * 60 * 60; // 24 часа
+
+        if (($currentTime - $authDate) > $maxAge) {
+            Log::warning('Telegram WebApp data is too old', [
+                'auth_date' => $authDate,
+                'current_time' => $currentTime,
+                'age_hours' => round(($currentTime - $authDate) / 3600, 2)
+            ]);
+            return null;
+        }
+
+        // Парсим данные пользователя
         if (isset($data['user'])) {
-            $data['user'] = json_decode($data['user'], true);
+            $userData = json_decode($data['user'], true);
+            
+            if (!$userData || !isset($userData['id']) || !is_numeric($userData['id'])) {
+                Log::warning('Invalid user data in Telegram WebApp', [
+                    'user_data' => $data['user']
+                ]);
+                return null;
+            }
+            
+            $data['user'] = $userData;
         }
 
         return $data;
