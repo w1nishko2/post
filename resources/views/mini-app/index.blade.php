@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-navbutton-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="light-content">
     <title>{{ $bot->bot_name }} - Mini App</title>
     
     <!-- Bootstrap CSS -->
@@ -31,7 +34,7 @@
     <!-- Основное содержимое -->
     <div id="app" class="mini-app mini-app-container" style="display: none;">
         <!-- Блок поиска -->
-        <div class="search-container mb-3">
+        <div class="search-container ">
             <div class="search-box">
                 <div class="input-group">
                     <input type="text" class="form-control search-input" id="searchInput" 
@@ -225,9 +228,10 @@
                     // Разворачиваем приложение
                     tg.expand();
                     
-                    // Применяем тему Telegram
-                    document.body.style.backgroundColor = tg.backgroundColor || '#ffffff';
-                    document.body.style.color = tg.textColor || '#000000';
+                    // Принудительно применяем белую тему (игнорируем тему Telegram)
+                    document.body.style.backgroundColor = '#ffffff';
+                    document.body.style.color = '#000000';
+                    document.documentElement.style.backgroundColor = '#ffffff';
                     
                     // Получаем данные пользователя
                     if (tg.initDataUnsafe?.user) {
@@ -1178,9 +1182,57 @@
 
     <!-- Стили для поиска и категорий -->
     <style>
+        /* Принудительная установка белого фона для всех тем Telegram */
+        body, html {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        
+        .mini-app-body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        
+        .mini-app-container {
+            background-color: #ffffff !important;
+        }
+
+        /* Переопределяем CSS переменные Telegram */
+        :root {
+            --tg-theme-bg-color: #ffffff !important;
+            --tg-theme-text-color: #000000 !important;
+            --tg-theme-hint-color: #666666 !important;
+            --tg-theme-link-color: #007bff !important;
+            --tg-theme-button-color: #007bff !important;
+            --tg-theme-button-text-color: #ffffff !important;
+            --tg-theme-secondary-bg-color: #f8f9fa !important;
+        }
+
+        /* Принудительно белый фон для всех Bootstrap компонентов */
+        .card, .modal-content, .modal-body, .modal-header, .modal-footer {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .container, .container-fluid {
+            background-color: #ffffff !important;
+        }
+
+        .alert {
+            background-color: #d4edda !important;
+            color: #155724 !important;
+            border-color: #c3e6cb !important;
+        }
+
+        .alert.alert-danger {
+            background-color: #f8d7da !important;
+            color: #721c24 !important;
+            border-color: #f5c6cb !important;
+        }
+
         /* Стили для поиска */
         .search-container {
-            padding: 0 15px;
+            padding: 0px;
         }
 
         .search-box {
