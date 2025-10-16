@@ -14,6 +14,24 @@ let isSearchActive = false;
 function initApp() {
     console.log('Инициализация Mini App...');
     
+    // Максимальное время загрузки - 3 секунды
+    const maxLoadTime = setTimeout(() => {
+        console.log('Принудительно показываем приложение после тайм-аута');
+        try {
+            const loadingEl = document.getElementById('loading');
+            const appEl = document.getElementById('app');
+            
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
+            }
+            if (appEl) {
+                appEl.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Ошибка при принудительном показе приложения:', error);
+        }
+    }, 3000);
+    
     // Инициализация Telegram WebApp
     if (window.Telegram && window.Telegram.WebApp) {
         const tg = window.Telegram.WebApp;
@@ -46,6 +64,8 @@ function initApp() {
             // Скрытие кнопки "Назад"
             tg.BackButton.hide();
             
+            console.log('Telegram WebApp полностью настроен');
+            
         } catch (error) {
             console.error('Ошибка инициализации Telegram WebApp:', error);
             showErrorMessage('Ошибка загрузки Telegram WebApp');
@@ -61,15 +81,36 @@ function initApp() {
         displayUserInfo(userData);
     }
     
-    // Инициализация поиска и категорий
-    initSearch();
-    loadCategories();
+    // Инициализация поиска и категорий асинхронно
+    try {
+        initSearch();
+        loadCategories().catch(error => {
+            console.error('Ошибка загрузки категорий:', error);
+        });
+    } catch (error) {
+        console.error('Ошибка инициализации поиска/категорий:', error);
+    }
     
-    // Скрыть загрузочный экран
+    // Скрыть загрузочный экран независимо от загрузки данных
     setTimeout(() => {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-    }, 1000);
+        try {
+            clearTimeout(maxLoadTime); // Очищаем таймер принудительной загрузки
+            
+            const loadingEl = document.getElementById('loading');
+            const appEl = document.getElementById('app');
+            
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
+            }
+            if (appEl) {
+                appEl.style.display = 'block';
+            }
+            
+            console.log('Mini App загружен успешно');
+        } catch (error) {
+            console.error('Ошибка при скрытии загрузочного экрана:', error);
+        }
+    }, 800);
 }
 
 // Показать сообщение об ошибке
@@ -247,30 +288,41 @@ async function loadCategories() {
     try {
         const shortName = document.querySelector('meta[name="short-name"]')?.content || 
                          window.location.pathname.split('/')[1];
-        const response = await fetch(`/${shortName}/api/categories`);
+        
+        // Добавляем тайм-аут для запроса
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд тайм-аут
+        
+        const response = await fetch(`/${shortName}/api/categories`, {
+            signal: controller.signal,
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
             allCategories = await response.json();
             console.log('Загружено категорий:', allCategories.length);
-            if (allCategories.length > 0) {
-                const categoriesContainer = document.getElementById('categoriesContainer');
-                if (categoriesContainer) {
-                    categoriesContainer.style.display = 'block';
-                }
-            }
-            renderCategories(allCategories);
             
             if (allCategories.length > 0) {
                 const categoriesContainer = document.getElementById('categoriesContainer');
                 if (categoriesContainer) {
                     categoriesContainer.style.display = 'block';
                 }
+                renderCategories(allCategories);
             }
         } else {
-            console.log('Категории не найдены или ошибка загрузки');
+            console.log('Категории не найдены или ошибка загрузки:', response.status);
         }
     } catch (error) {
-        console.error('Ошибка при загрузке категорий:', error);
+        if (error.name === 'AbortError') {
+            console.log('Загрузка категорий прервана по тайм-ауту');
+        } else {
+            console.error('Ошибка при загрузке категорий:', error);
+        }
     }
 }
 
@@ -1410,11 +1462,37 @@ window.proceedToCheckout = proceedToCheckout;
 
 // Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM загружен, начинаем инициализацию Mini App');
+    
     detectCSSGrid();
+    
+    // Проверяем наличие всех необходимых элементов
+    const loadingEl = document.getElementById('loading');
+    const appEl = document.getElementById('app');
+    
+    console.log('Элементы найдены:', {
+        loading: !!loadingEl,
+        app: !!appEl,
+        telegramWebApp: !!(window.Telegram?.WebApp)
+    });
+    
+    // Инициализируем приложение
+    try {
+        initApp();
+    } catch (error) {
+        console.error('Критическая ошибка инициализации:', error);
+        // Принудительно показываем приложение даже при ошибке
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (appEl) appEl.style.display = 'block';
+    }
     
     // Инициализируем счетчик корзины при загрузке
     setTimeout(() => {
-        updateCartCounter();
+        try {
+            updateCartCounter();
+        } catch (error) {
+            console.error('Ошибка обновления счетчика корзины:', error);
+        }
     }, 1000);
     
     // Закрытие панели по ESC
