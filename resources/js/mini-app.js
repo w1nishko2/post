@@ -417,7 +417,6 @@ function renderSearchResults(products, query) {
         <div class="product-flex-item">
             <div class="card product-card h-100 ${product.quantity <= 0 ? 'out-of-stock' : ''} ${!product.isAvailable ? 'inactive' : ''}" onclick="showProductDetails(${product.id})" style="cursor: pointer; position: relative;">
                 ${product.similarity ? `<div class="badge bg-success position-absolute top-0 start-0 m-2" style="z-index: 10; font-size: 0.7em;">${Math.round(product.similarity)}%</div>` : ''}
-                ${getProductStatusBadge(product)}
                 <div class="product-image-container">
                     ${product.photo_url 
                         ? `<img src="${product.photo_url}" class="product-image" alt="${product.name}" 
@@ -542,9 +541,6 @@ function renderCategoryResults(products, categoryName) {
     const productsHTML = products.map(product => `
         <div class="product-flex-item">
             <div class="card product-card h-100 ${product.quantity <= 0 ? 'out-of-stock' : ''} ${!product.isAvailable ? 'inactive' : ''}" onclick="showProductDetails(${product.id})" style="cursor: pointer; position: relative;">
-                <div class="product-status">
-                    ${getProductStatusBadge(product)}
-                </div>
                 <div class="product-image-container">
                     ${product.photo_url 
                         ? `<img src="${product.photo_url}" class="product-image" alt="${product.name}" 
