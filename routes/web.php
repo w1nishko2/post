@@ -89,6 +89,8 @@ Route::prefix('{shortName}/api')->where(['shortName' => '[a-zA-Z0-9_]+'])->group
     Route::get('/categories', [App\Http\Controllers\MiniAppController::class, 'getCategories'])->name('mini-app.api.categories');
     Route::get('/search', [App\Http\Controllers\MiniAppController::class, 'searchProducts'])->name('mini-app.api.search');
     Route::get('/config', [App\Http\Controllers\MiniAppController::class, 'getConfig'])->name('mini-app.api.config');
+    Route::get('/products/{productId}', [App\Http\Controllers\MiniAppController::class, 'getProduct'])->name('mini-app.api.product');
+    Route::post('/validate-cart', [App\Http\Controllers\MiniAppController::class, 'validateCart'])->name('mini-app.api.validate-cart');
 });
 
 // Роут для Mini App (должен быть в самом конце, чтобы не конфликтовать с другими роутами)

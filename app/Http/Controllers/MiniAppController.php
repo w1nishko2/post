@@ -192,9 +192,14 @@ class MiniAppController extends Controller
                                'article' => $product->article,
                                'photo_url' => $product->photo_url,
                                'price' => $product->price,
+                               'formatted_price' => $product->formatted_price,
                                'quantity' => $product->quantity,
                                'category_id' => $product->category_id,
                                'category_name' => $product->category ? $product->category->name : null,
+                               'is_active' => $product->is_active,
+                               'isAvailable' => $product->isAvailable(),
+                               'availability_status' => $product->availability_status,
+                               'specifications' => $product->specifications,
                            ];
                        });
 
@@ -272,12 +277,148 @@ class MiniAppController extends Controller
                 'article' => $product->article,
                 'photo_url' => $product->photo_url,
                 'price' => $product->price,
+                'formatted_price' => $product->formatted_price,
                 'quantity' => $product->quantity,
                 'category_id' => $product->category_id,
                 'category_name' => $product->category ? $product->category->name : null,
+                'is_active' => $product->is_active,
+                'isAvailable' => $product->isAvailable(),
+                'availability_status' => $product->availability_status,
+                'specifications' => $product->specifications,
             ];
         });
 
         return response()->json($products);
+    }
+
+    /**
+     * API для получения актуальной информации о товаре
+     */
+    public function getProduct(string $shortName, int $productId)
+    {
+        $bot = TelegramBot::where('mini_app_short_name', $shortName)
+                         ->where('is_active', true)
+                         ->first();
+
+        if (!$bot) {
+            return response()->json(['error' => 'Bot not found'], 404);
+        }
+
+        $product = $bot->products()
+                      ->where('id', $productId)
+                      ->with('category')
+                      ->first();
+
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        return response()->json([
+            'id' => $product->id,
+            'name' => $product->name,
+            'description' => $product->description,
+            'article' => $product->article,
+            'photo_url' => $product->photo_url,
+            'specifications' => $product->specifications,
+            'price' => $product->price,
+            'quantity' => $product->quantity,
+            'formatted_price' => $product->formatted_price,
+            'availability_status' => $product->availability_status,
+            'isAvailable' => $product->isAvailable(),
+            'is_active' => $product->is_active,
+            'category_id' => $product->category_id,
+            'category_name' => $product->category ? $product->category->name : null,
+            'updated_at' => $product->updated_at->toISOString(),
+        ]);
+    }
+
+    /**
+     * API для проверки актуальности корзины
+     */
+    public function validateCart(Request $request, string $shortName)
+    {
+        $bot = TelegramBot::where('mini_app_short_name', $shortName)
+                         ->where('is_active', true)
+                         ->first();
+
+        if (!$bot) {
+            return response()->json(['error' => 'Bot not found'], 404);
+        }
+
+        $cartItems = $request->input('cart', []);
+        $validatedCart = [];
+        $issues = [];
+
+        foreach ($cartItems as $item) {
+            $product = $bot->products()
+                          ->where('id', $item['id'])
+                          ->first();
+
+            if (!$product) {
+                $issues[] = [
+                    'type' => 'product_not_found',
+                    'product_id' => $item['id'],
+                    'message' => 'Товар не найден'
+                ];
+                continue;
+            }
+
+            if (!$product->is_active) {
+                $issues[] = [
+                    'type' => 'product_inactive',
+                    'product_id' => $item['id'],
+                    'product_name' => $product->name,
+                    'message' => 'Товар недоступен'
+                ];
+                continue;
+            }
+
+            $requestedQuantity = $item['quantity'] ?? 1;
+            $availableQuantity = $product->quantity;
+
+            if ($availableQuantity <= 0) {
+                $issues[] = [
+                    'type' => 'out_of_stock',
+                    'product_id' => $item['id'],
+                    'product_name' => $product->name,
+                    'message' => 'Товар закончился'
+                ];
+                continue;
+            }
+
+            if ($requestedQuantity > $availableQuantity) {
+                $issues[] = [
+                    'type' => 'insufficient_quantity',
+                    'product_id' => $item['id'],
+                    'product_name' => $product->name,
+                    'requested' => $requestedQuantity,
+                    'available' => $availableQuantity,
+                    'message' => "Доступно только {$availableQuantity} шт."
+                ];
+                
+                // Корректируем количество до доступного
+                $requestedQuantity = $availableQuantity;
+            }
+
+            $validatedCart[] = [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->price,
+                'formatted_price' => $product->formatted_price,
+                'photo_url' => $product->photo_url,
+                'quantity' => $requestedQuantity,
+                'available_quantity' => $availableQuantity,
+                'isAvailable' => $product->isAvailable(),
+                'availability_status' => $product->availability_status,
+                'total_price' => $product->price * $requestedQuantity
+            ];
+        }
+
+        return response()->json([
+            'cart' => $validatedCart,
+            'issues' => $issues,
+            'has_issues' => count($issues) > 0,
+            'total_amount' => array_sum(array_column($validatedCart, 'total_price'))
+        ]);
     }
 }

@@ -15,14 +15,16 @@
             @endif
 
             <!-- Навигационная панель -->
-            <div class="card mb-4">
+            <div class="card mb-4 shadow-sm" style="border-radius: 16px; overflow: hidden;">
                 <div class="card-body p-0">
-                    <nav class="nav nav-pills nav-fill">
-                        <a class="nav-link" href="{{ route('home') }}">
-                            Мои боты
+                    <nav class="nav nav-pills nav-fill" style="padding: 0.5rem;">
+                        <a class="nav-link" href="{{ route('home') }}"
+                           style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
+                            <i class="fas fa-robot me-2"></i>Мои боты
                         </a>
-                        <a class="nav-link active" href="{{ route('products.select-bot') }}">
-                            Мои товары
+                        <a class="nav-link active" href="{{ route('products.select-bot') }}"
+                           style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
+                            <i class="fas fa-boxes me-2"></i>Мои товары
                         </a>
                     </nav>
                 </div>

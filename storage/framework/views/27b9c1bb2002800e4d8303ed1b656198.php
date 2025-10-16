@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="short-name" content="{{ $shortName }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+    <meta name="short-name" content="<?php echo e($shortName); ?>">
     <meta name="theme-color" content="#ffffff">
     <meta name="msapplication-navbutton-color" content="#ffffff">
     <meta name="apple-mobile-web-app-status-bar-style" content="light-content">
-    <title>{{ $bot->bot_name }} - Mini App</title>
+    <title><?php echo e($bot->bot_name); ?> - Mini App</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -18,13 +18,13 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     
     <!-- App Styles -->
-    @vite(['resources/css/app.css', 'resources/css/mini-app.css'])
+    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/css/mini-app.css']); ?>
     
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <!-- Mini App JS -->
-    @vite(['resources/js/mini-app.js'])
+    <?php echo app('Illuminate\Foundation\Vite')(['resources/js/mini-app.js']); ?>
 </head>
 <body class="mini-app-body">
     <!-- Экран загрузки -->
@@ -59,66 +59,66 @@
             </div>
         </div>
 
-        @if($products->count() > 0)
+        <?php if($products->count() > 0): ?>
         <div class="products-grid" id="productsContainer">
             <div class="products-header">
                 <h5 id="productsTitle"><i class="fas fa-store me-2"></i>Товары магазина</h5>
             </div>
             
             <div class="products-flex-container">
-                @foreach($products as $product)
+                <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <div class="product-flex-item">
-                    <div class="product-card" onclick="showProductDetails({{ $product->id }})">
+                    <div class="product-card" onclick="showProductDetails(<?php echo e($product->id); ?>)">
                         <div class="product-image-container">
-                            @if($product->photo_url)
-                                <img src="{{ $product->photo_url }}" 
+                            <?php if($product->photo_url): ?>
+                                <img src="<?php echo e($product->photo_url); ?>" 
                                      class="product-image" 
-                                     alt="{{ $product->name }}"
+                                     alt="<?php echo e($product->name); ?>"
                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                 <div class="product-image-placeholder" style="display: none;">
                                     <i class="fas fa-image"></i>
                                     <span>Ошибка загрузки</span>
                                 </div>
-                            @else
+                            <?php else: ?>
                                 <div class="product-image-placeholder">
                                     <i class="fas fa-image"></i>
                                     <span>Нет фото</span>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                         
                         <div class="product-content">
                             <div class="product-info">
-                                <h6 class="product-title">{{ Str::limit($product->name, 40) }}</h6>
-                                @if($product->description)
-                                <p class="product-description">{{ Str::limit($product->description, 50) }}</p>
-                                @endif
+                                <h6 class="product-title"><?php echo e(Str::limit($product->name, 40)); ?></h6>
+                                <?php if($product->description): ?>
+                                <p class="product-description"><?php echo e(Str::limit($product->description, 50)); ?></p>
+                                <?php endif; ?>
                             </div>
                             
                             <div class="product-actions">
                                 <div class="product-action-row">
                                     <div class="cart-button-wrapper">
-                                        @if($product->isAvailable())
+                                        <?php if($product->isAvailable()): ?>
                                         <button class="cart-btn cart-btn-primary" 
-                                                onclick="event.stopPropagation(); addToCart({{ $product->id }})"
+                                                onclick="event.stopPropagation(); addToCart(<?php echo e($product->id); ?>)"
                                                 title="Добавить в корзину">
                                             <i class="fas fa-shopping-cart"></i>
                                         </button>
-                                        @else
+                                        <?php else: ?>
                                         <button class="cart-btn cart-btn-disabled" disabled
                                                 title="Нет в наличии">
                                             <i class="fas fa-times"></i>
                                         </button>
-                                        @endif
+                                        <?php endif; ?>
                                     </div>
                                     
                                     <div class="product-price-wrapper">
-                                        <span class="product-price">{{ $product->formatted_price }}</span>
+                                        <span class="product-price"><?php echo e($product->formatted_price); ?></span>
                                     </div>
                                     
                                     <div class="product-quantity-wrapper">
-                                        <span class="quantity-badge quantity-{{ $product->quantity > 5 ? 'success' : ($product->quantity > 0 ? 'warning' : 'danger') }}">
-                                            {{ $product->quantity }} шт.
+                                        <span class="quantity-badge quantity-<?php echo e($product->quantity > 5 ? 'success' : ($product->quantity > 0 ? 'warning' : 'danger')); ?>">
+                                            <?php echo e($product->quantity); ?> шт.
                                         </span>
                                     </div>
                                 </div>
@@ -126,24 +126,25 @@
                         </div>
                     </div>
                 </div>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
             
             <!-- Пагинация -->
-            @if($products->hasPages())
+            <?php if($products->hasPages()): ?>
             <div class="products-pagination">
-                {{ $products->links() }}
+                <?php echo e($products->links()); ?>
+
             </div>
-            @endif
+            <?php endif; ?>
         </div>
-        @else
+        <?php else: ?>
         <div class="text-center py-4">
             <div class="text-muted">
                 <h5><i class="fas fa-store-slash me-2"></i>Магазин временно пуст</h5>
                 <p class="small">Товары скоро появятся!</p>
             </div>
         </div>
-        @endif
+        <?php endif; ?>
 
         <!-- Корзина (плавающая кнопка) -->
         <div class="cart-float" id="cart-float" style="
@@ -234,7 +235,7 @@
 
     <!-- Скрытые данные товаров для JavaScript -->
     <script type="application/json" id="products-data">
-        {!! json_encode($products->keyBy('id')->map(function($product) {
+        <?php echo json_encode($products->keyBy('id')->map(function($product) {
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -249,7 +250,8 @@
                 'isAvailable' => $product->isAvailable(),
                 'category_id' => $product->category_id
             ];
-        })) !!}
+        })); ?>
+
     </script>
 
     <!-- Bootstrap JS -->
@@ -269,4 +271,4 @@
         });
     </script>
 </body>
-</html>
+</html><?php /**PATH C:\OSPanel\domains\post\resources\views/mini-app/index.blade.php ENDPATH**/ ?>

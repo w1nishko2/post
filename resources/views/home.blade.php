@@ -41,16 +41,18 @@
             @endif
 
             <!-- Навигационная панель -->
-            <div class="card mb-4">
+            <div class="card mb-4 shadow-sm" style="border-radius: 16px; overflow: hidden;">
                 <div class="card-body p-0">
-                    <nav class="nav nav-pills nav-fill">
+                    <nav class="nav nav-pills nav-fill" style="padding: 0.5rem;">
                         <a class="nav-link {{ request()->is('home') || request()->routeIs('home') ? 'active' : '' }}" 
-                           href="{{ route('home') }}">
-                            Мои боты
+                           href="{{ route('home') }}" 
+                           style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
+                            <i class="fas fa-robot me-2"></i>Мои боты
                         </a>
                         <a class="nav-link {{ request()->is('products*') || request()->routeIs('products.*') ? 'active' : '' }}" 
-                           href="{{ route('products.select-bot') }}">
-                            Мои товары
+                           href="{{ route('products.select-bot') }}"
+                           style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
+                            <i class="fas fa-boxes me-2"></i>Мои товары
                         </a>
                     </nav>
                 </div>
@@ -58,11 +60,13 @@
 
             <!-- Контент для ботов (показывается только на главной странице) -->
             @if(request()->is('home') || request()->routeIs('home'))
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Управление Telegram ботами</h5>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBotModal">
-                        <i class="fas fa-plus"></i> Добавить бота
+            <div class="card shadow-lg">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-bottom: 2px solid #e2e8f0;">
+                    <h5 class="mb-0" style="color: #1e293b; font-weight: 700;">
+                        <i class="fas fa-robot text-primary me-2"></i>Управление Telegram ботами
+                    </h5>
+                    <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addBotModal" style="border-radius: 10px; padding: 0.6rem 1.5rem; font-weight: 600;">
+                        <i class="fas fa-plus me-2"></i> Добавить бота
                     </button>
                 </div>
 
