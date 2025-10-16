@@ -29,7 +29,7 @@
 <body class="mini-app-body">
     <!-- Экран загрузки -->
     <div id="loading">
-        <div class="text-center">
+        <div class="text-center loading-flex">
             <div class="loading-spinner mb-3"></div>
             <div>Загрузка Mini App...</div>
         </div>
@@ -40,7 +40,7 @@
         <!-- Блок поиска -->
         <div class="search-container ">
             <div class="search-box">
-                <div class="input-group">
+                <div class="input-group search-box-h">
                     <input type="text" class="form-control search-input" id="searchInput" 
                            placeholder="Поиск товаров..." autocomplete="off">
                     <button class="btn btn-primary search-btn" type="button" onclick="performSearch()">
@@ -85,6 +85,11 @@
                                     <span>Нет фото</span>
                                 </div>
                             @endif
+                            
+                            <!-- Quantity badge on image -->
+                            <span class="quantity-badge {{ $product->quantity > 10 ? 'quantity-success' : ($product->quantity > 0 ? 'quantity-warning' : 'quantity-danger') }}">
+                                {{ $product->quantity }} шт.
+                            </span>
                         </div>
                         
                         <div class="product-content">
@@ -117,7 +122,7 @@
                                     </div>
                                     
                                     <div class="product-quantity-wrapper">
-                                        <span class="quantity-badge quantity-{{ $product->quantity > 5 ? 'success' : ($product->quantity > 0 ? 'warning' : 'danger') }}">
+                                        <span class="quantity-badge quantity-success">
                                             {{ $product->quantity }} шт.
                                         </span>
                                     </div>

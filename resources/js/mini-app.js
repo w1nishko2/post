@@ -431,6 +431,10 @@ function renderSearchResults(products, query) {
                                <span>Без фото</span>
                            </div>`
                     }
+                    <!-- Quantity badge on image -->
+                    <span class="quantity-badge ${product.quantity > 10 ? 'quantity-success' : (product.quantity > 0 ? 'quantity-warning' : 'quantity-danger')}">
+                        ${product.quantity} шт.
+                    </span>
                 </div>
                 <div class="product-content">
                     <div class="product-info">
@@ -440,10 +444,28 @@ function renderSearchResults(products, query) {
                     </div>
                     <div class="product-actions">
                         <div class="product-action-row">
+                            <div class="cart-button-wrapper">
+                                ${product.isAvailable ? `
+                                <button class="cart-btn cart-btn-primary" 
+                                        onclick="event.stopPropagation(); addToCart(${product.id})"
+                                        title="Добавить в корзину">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </button>
+                                ` : `
+                                <button class="cart-btn cart-btn-disabled" disabled
+                                        title="Нет в наличии">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                `}
+                            </div>
                             <div class="product-price-wrapper">
                                 <div class="product-price">${formatPrice(product.price)} ₽</div>
                             </div>
-                            ${getStatusBadge(product)}
+                            <div class="product-quantity-wrapper">
+                                <span class="quantity-badge quantity-success">
+                                    ${product.quantity} шт.
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -536,6 +558,10 @@ function renderCategoryResults(products, categoryName) {
                                <span>Без фото</span>
                            </div>`
                     }
+                    <!-- Quantity badge on image -->
+                    <span class="quantity-badge ${product.quantity > 10 ? 'quantity-success' : (product.quantity > 0 ? 'quantity-warning' : 'quantity-danger')}">
+                        ${product.quantity} шт.
+                    </span>
                 </div>
                 <div class="product-content">
                     <div class="product-info">
@@ -544,10 +570,28 @@ function renderCategoryResults(products, categoryName) {
                     </div>
                     <div class="product-actions">
                         <div class="product-action-row">
+                            <div class="cart-button-wrapper">
+                                ${product.isAvailable ? `
+                                <button class="cart-btn cart-btn-primary" 
+                                        onclick="event.stopPropagation(); addToCart(${product.id})"
+                                        title="Добавить в корзину">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </button>
+                                ` : `
+                                <button class="cart-btn cart-btn-disabled" disabled
+                                        title="Нет в наличии">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                `}
+                            </div>
                             <div class="product-price-wrapper">
                                 <div class="product-price">${formatPrice(product.price)} ₽</div>
                             </div>
-                            ${getStatusBadge(product)}
+                            <div class="product-quantity-wrapper">
+                                <span class="quantity-badge quantity-success">
+                                    ${product.quantity} шт.
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1050,8 +1094,6 @@ function getProductStatusBadge(product) {
 }
 
 function getQuantityBadgeClass(quantity) {
-    if (quantity <= 0) return 'bg-danger';
-    if (quantity <= 5) return 'bg-warning';
     return 'bg-success';
 }
 
