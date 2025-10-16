@@ -1029,20 +1029,7 @@ function addToCartWithQuantity(productId, quantity) {
 }
 
 function showCart() {
-    // Получаем данные корзины
-    fetch('/cart')
-        .then(response => response.json())
-        .then(data => {
-            if (data.items && data.items.length > 0) {
-                showCheckoutModal(data.items, data.total);
-            } else {
-                showAlert('Ваша корзина пуста', 'warning');
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка при получении корзины:', error);
-            showAlert('Ошибка при загрузке корзины', 'error');
-        });
+    showCartModal();
 }
 
 // Безопасный haptic feedback
@@ -1174,27 +1161,230 @@ function showCartModal() {
         body.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Обновление корзины...</span>
+                    <span class="visually-hidden">Загрузка корзины...</span>
                 </div>
             </div>
         `;
         footer.classList.add('d-none');
 
-        // Показываем заглушку пока не реализована полная функциональность корзины
-        setTimeout(() => {
+        // Загружаем данные корзины
+        fetch('/cart', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.items && data.items.length > 0) {
+                displayCartItems(data.items, data.total_amount);
+            } else {
+                body.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <h5>Корзина пуста</h5>
+                        <p class="text-muted">Добавьте товары для оформления заказа</p>
+                    </div>
+                `;
+                footer.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при загрузке корзины:', error);
             body.innerHTML = `
                 <div class="text-center py-5">
-                    <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                    <h5>Корзина пока не реализована</h5>
-                    <p class="text-muted">Функционал корзины будет добавлен позже</p>
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h5>Ошибка при загрузке корзины</h5>
+                    <p class="text-muted">Попробуйте обновить страницу</p>
                 </div>
             `;
-        }, 1000);
+            footer.classList.add('d-none');
+        });
         
     } catch (error) {
         console.error('Ошибка при загрузке корзины:', error);
         showAlert('Ошибка при загрузке корзины', 'error');
     }
+}
+
+// Функция отображения товаров в корзине
+function displayCartItems(items, totalAmount) {
+    const body = document.getElementById('cartModalBody');
+    const footer = document.getElementById('cartModalFooter');
+    
+    if (!body || !footer) return;
+    
+    let html = '<div class="cart-items">';
+    
+    items.forEach(item => {
+        html += `
+            <div class="cart-item mb-3 p-3 border rounded" data-cart-id="${item.id}">
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        ${item.photo_url ? 
+                            `<img src="${item.photo_url}" class="img-fluid rounded" style="max-height: 60px; object-fit: cover;" alt="${item.name}">` :
+                            `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 60px;">
+                                <i class="fas fa-image text-muted"></i>
+                            </div>`
+                        }
+                    </div>
+                    <div class="col-6">
+                        <h6 class="mb-1">${item.name}</h6>
+                        ${item.article ? `<small class="text-muted">Артикул: ${item.article}</small><br>` : ''}
+                        <small class="text-muted">${item.formatted_price} за шт.</small>
+                    </div>
+                    <div class="col-3 text-end">
+                        <div class="quantity-controls mb-2">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" onclick="updateCartQuantity(${item.id}, ${item.quantity - 1})" ${item.quantity <= 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <span class="btn btn-outline-secondary disabled">${item.quantity}</span>
+                                <button type="button" class="btn btn-outline-secondary" onclick="updateCartQuantity(${item.id}, ${item.quantity + 1})" ${item.quantity >= item.available_quantity ? 'disabled' : ''}>
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="fw-bold">${item.formatted_total}</div>
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="removeFromCart(${item.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    body.innerHTML = html;
+    
+    // Показываем футер с итоговой суммой и кнопкой заказа
+    footer.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <div>
+                <strong>Итого: ${formatPrice(totalAmount)} ₽</strong>
+            </div>
+            <div>
+                <button type="button" class="btn btn-secondary me-2" onclick="clearCart()">
+                    <i class="fas fa-trash"></i> Очистить
+                </button>
+                <button type="button" class="btn btn-primary" onclick="proceedToCheckout()">
+                    <i class="fas fa-check"></i> Оформить заказ
+                </button>
+            </div>
+        </div>
+    `;
+    footer.classList.remove('d-none');
+}
+
+// Функция обновления количества товара в корзине
+function updateCartQuantity(cartId, newQuantity) {
+    if (newQuantity <= 0) {
+        removeFromCart(cartId);
+        return;
+    }
+    
+    fetch(`/cart/update/${cartId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            quantity: newQuantity
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Количество обновлено');
+            updateCartCounter();
+            // Перезагружаем корзину
+            showCartModal();
+        } else {
+            showAlert(data.message || 'Ошибка при обновлении количества', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при обновлении количества:', error);
+        showAlert('Ошибка при обновлении количества', 'error');
+    });
+}
+
+// Функция удаления товара из корзины
+function removeFromCart(cartId) {
+    if (!confirm('Удалить товар из корзины?')) {
+        return;
+    }
+    
+    fetch(`/cart/remove/${cartId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Товар удален из корзины');
+            updateCartCounter();
+            // Перезагружаем корзину
+            showCartModal();
+        } else {
+            showAlert(data.message || 'Ошибка при удалении товара', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при удалении товара:', error);
+        showAlert('Ошибка при удалении товара', 'error');
+    });
+}
+
+// Функция очистки корзины
+function clearCart() {
+    if (!confirm('Очистить всю корзину?')) {
+        return;
+    }
+    
+    fetch('/cart/clear', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Корзина очищена');
+            updateCartCounter();
+            // Закрываем модальное окно
+            const modal = document.getElementById('cartModal');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            }
+        } else {
+            showAlert(data.message || 'Ошибка при очистке корзины', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при очистке корзины:', error);
+        showAlert('Ошибка при очистке корзины', 'error');
+    });
+}
+
+// Функция перехода к оформлению заказа
+function proceedToCheckout() {
+    showAlert('Функция оформления заказа будет реализована в следующих версиях', 'info');
 }
 
 // Глобальные функции для использования в HTML
@@ -1213,6 +1403,10 @@ window.changeQuantityModal = changeQuantityModal;
 window.addToCartFromModal = addToCartFromModal;
 window.changeQuantity = changeQuantity;
 window.validateQuantity = validateQuantity;
+window.updateCartQuantity = updateCartQuantity;
+window.removeFromCart = removeFromCart;
+window.clearCart = clearCart;
+window.proceedToCheckout = proceedToCheckout;
 
 // Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', function() {
