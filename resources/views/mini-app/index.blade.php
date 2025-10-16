@@ -218,7 +218,7 @@
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">
+                    <h5 class="modal-title" id="cartModalTitle">
                         <i class="fas fa-shopping-cart me-2"></i>Корзина
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
@@ -226,7 +226,7 @@
                 <div class="modal-body" id="cartModalBody">
                     <div class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Обновление корзины...</span>
+                            <span class="visually-hidden">Загрузка корзины...</span>
                         </div>
                     </div>
                 </div>

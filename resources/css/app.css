@@ -5578,10 +5578,11 @@ textarea.form-control-lg {
     transform: scale(1.02)
 } 
 .modal-dialog-scrollable {
-    height: 100%;
+    height: 100vh;
 } 
 .modal-dialog-scrollable .modal-content {
     max-height: 100%;
+    height: 100vh;
     overflow: hidden
 } 
 .modal-dialog-scrollable .modal-body {

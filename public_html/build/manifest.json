@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-D8rBwvJA.css",
+    "file": "assets/app-BZCoKrh0.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -10,7 +10,7 @@
     "isEntry": true
   },
   "resources/css/mini-app.css": {
-    "file": "assets/mini-app-Ku_QjRWO.css",
+    "file": "assets/mini-app-B7y4DL2P.css",
     "src": "resources/css/mini-app.css",
     "isEntry": true
   },
@@ -21,7 +21,7 @@
     "isEntry": true
   },
   "resources/js/mini-app.js": {
-    "file": "assets/mini-app-BqigYYYD.js",
+    "file": "assets/mini-app-dxKE6fuy.js",
     "name": "mini-app",
     "src": "resources/js/mini-app.js",
     "isEntry": true

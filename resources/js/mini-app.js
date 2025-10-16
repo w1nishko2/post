@@ -1267,43 +1267,64 @@ function displayCartItems(items, totalAmount) {
     
     if (!body || !footer) return;
     
+    if (!items || items.length === 0) {
+        body.innerHTML = `
+            <div class="empty-cart text-center py-5">
+                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                <h5>Корзина пуста</h5>
+                <p class="text-muted">Добавьте товары для оформления заказа</p>
+            </div>
+        `;
+        footer.classList.add('d-none');
+        return;
+    }
+    
     let html = '<div class="cart-items">';
     
     items.forEach(item => {
         html += `
-            <div class="cart-item mb-3 p-3 border rounded" data-cart-id="${item.id}">
-                <div class="row align-items-center">
-                    <div class="col-3">
+            <div class="cart-item mb-3 p-3 border rounded"style="flex-direction: column;" data-cart-id="${item.id}">
+                <div class="d-flex align-items-start">
+                    <div class="cart-item-image me-3 flex-shrink-0">
                         ${item.photo_url ? 
-                            `<img src="${item.photo_url}" class="img-fluid rounded" style="max-height: 60px; object-fit: cover;" alt="${item.name}">` :
-                            `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 60px;">
-                                <i class="fas fa-image text-muted"></i>
+                            `<img src="${item.photo_url}" class="img-fluid rounded" style="width: 80px; height: 80px; object-fit: cover;" alt="${item.name}">` :
+                            `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="width: 80px; height: 80px;">
+                                <i class="fas fa-image text-muted fa-2x"></i>
                             </div>`
                         }
                     </div>
-                    <div class="col-6">
-                        <h6 class="mb-1">${item.name}</h6>
-                        ${item.article ? `<small class="text-muted">Артикул: ${item.article}</small><br>` : ''}
-                        <small class="text-muted">${item.formatted_price} за шт.</small>
-                    </div>
-                    <div class="col-3 text-end">
-                        <div class="quantity-controls mb-2">
-                            <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-outline-secondary" onclick="updateCartQuantity(${item.id}, ${item.quantity - 1})" ${item.quantity <= 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                                <span class="btn btn-outline-secondary disabled">${item.quantity}</span>
-                                <button type="button" class="btn btn-outline-secondary" onclick="updateCartQuantity(${item.id}, ${item.quantity + 1})" ${item.quantity >= item.available_quantity ? 'disabled' : ''}>
-                                    <i class="fas fa-plus"></i>
-                                </button>
+                    
+                    <div class="cart-item-info flex-grow-1" >
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="mb-1 fw-bold">${item.name}</h6>
+                                ${item.article ? `<small class="text-muted d-block">Артикул: ${item.article}</small>` : ''}
+                                <div class="text-primary fw-semibold">${item.formatted_price} за шт.</div>
                             </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeFromCart(${item.id})" title="Удалить товар">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
-                        <div class="fw-bold">${item.formatted_total}</div>
-                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="removeFromCart(${item.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        
+                       
                     </div>
                 </div>
+                 <div class="d-flex justify-content-between align-items-center" style="width: 100%;">
+                            <div class="quantity-controls">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="updateCartQuantity(${item.id}, ${item.quantity - 1})" ${item.quantity <= 1 ? 'disabled' : ''}>
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <span class="btn btn-outline-secondary disabled px-3">${item.quantity} шт</span>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="updateCartQuantity(${item.id}, ${item.quantity + 1})" ${item.quantity >= item.available_quantity ? 'disabled' : ''}>
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="cart-item-total">
+                                <strong class="text-success fs-5">${item.formatted_total}</strong>
+                            </div>
+                        </div>
             </div>
         `;
     });
@@ -1312,18 +1333,22 @@ function displayCartItems(items, totalAmount) {
     
     body.innerHTML = html;
     
-    // Показываем футер с итоговой суммой и кнопкой заказа
+    // Показываем футер с итоговой суммой и кнопками
     footer.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center w-100">
-            <div>
-                <strong>Итого: ${formatPrice(totalAmount)} ₽</strong>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 w-100">
+            <div class="cart-total" style="width:100%;">
+                <h5 class="mb-0 text-success">
+                    <i class="fas fa-calculator me-2"></i>
+                    Итого: ${formatPrice(totalAmount)} ₽
+                </h5>
+                <small class="text-muted">Товаров в корзине: ${items.length}</small>
             </div>
-            <div>
-                <button type="button" class="btn btn-secondary me-2" onclick="clearCart()">
-                    <i class="fas fa-trash"></i> Очистить
+            <div class="cart-actions d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" onclick="clearCart()">
+                    <i class="fas fa-trash me-1"></i> Очистить
                 </button>
-                <button type="button" class="btn btn-primary" onclick="proceedToCheckout()">
-                    <i class="fas fa-check"></i> Оформить заказ
+                <button type="button" class="btn btn-primary px-4" onclick="proceedToCheckout()">
+                    <i class="fas fa-check me-1"></i> Оформить заказ
                 </button>
             </div>
         </div>
@@ -1336,6 +1361,16 @@ function updateCartQuantity(cartId, newQuantity) {
     if (newQuantity <= 0) {
         removeFromCart(cartId);
         return;
+    }
+    
+    // Показываем индикатор загрузки для конкретного элемента
+    const cartItem = document.querySelector(`[data-cart-id="${cartId}"]`);
+    if (cartItem) {
+        const quantityControls = cartItem.querySelector('.quantity-controls');
+        if (quantityControls) {
+            quantityControls.style.opacity = '0.5';
+            quantityControls.style.pointerEvents = 'none';
+        }
     }
     
     fetch(`/cart/update/${cartId}`, {
@@ -1352,24 +1387,90 @@ function updateCartQuantity(cartId, newQuantity) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Количество обновлено');
+            // Показываем toast уведомление
+            showToast('Количество обновлено', 'success');
             updateCartCounter();
-            // Перезагружаем корзину
-            showCartModal();
+            // Обновляем только содержимое корзины без полной перезагрузки модального окна
+            refreshCartContent();
+            triggerHapticFeedback('light');
         } else {
-            showAlert(data.message || 'Ошибка при обновлении количества', 'error');
+            showToast(data.message || 'Ошибка при обновлении количества', 'error');
         }
     })
     .catch(error => {
         console.error('Ошибка при обновлении количества:', error);
-        showAlert('Ошибка при обновлении количества', 'error');
+        showToast('Ошибка при обновлении количества', 'error');
+    })
+    .finally(() => {
+        // Возвращаем интерактивность
+        if (cartItem) {
+            const quantityControls = cartItem.querySelector('.quantity-controls');
+            if (quantityControls) {
+                quantityControls.style.opacity = '1';
+                quantityControls.style.pointerEvents = 'auto';
+            }
+        }
+    });
+}
+
+// Функция обновления содержимого корзины без перезагрузки модального окна
+function refreshCartContent() {
+    const body = document.getElementById('cartModalBody');
+    const footer = document.getElementById('cartModalFooter');
+    
+    if (!body || !footer) return;
+    
+    fetch('/cart', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.items && data.items.length > 0) {
+            displayCartItems(data.items, data.total_amount);
+        } else {
+            body.innerHTML = `
+                <div class="empty-cart text-center py-5">
+                    <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                    <h5>Корзина пуста</h5>
+                    <p class="text-muted">Добавьте товары для оформления заказа</p>
+                </div>
+            `;
+            footer.classList.add('d-none');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при обновлении корзины:', error);
     });
 }
 
 // Функция удаления товара из корзины
 function removeFromCart(cartId) {
-    if (!confirm('Удалить товар из корзины?')) {
-        return;
+    // Показываем красивое модальное подтверждение вместо стандартного confirm
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showConfirm) {
+        window.Telegram.WebApp.showConfirm('Удалить товар из корзины?', (confirmed) => {
+            if (confirmed) {
+                performRemoveFromCart(cartId);
+            }
+        });
+    } else {
+        if (!confirm('Удалить товар из корзины?')) {
+            return;
+        }
+        performRemoveFromCart(cartId);
+    }
+}
+
+function performRemoveFromCart(cartId) {
+    // Показываем анимацию удаления
+    const cartItem = document.querySelector(`[data-cart-id="${cartId}"]`);
+    if (cartItem) {
+        cartItem.style.opacity = '0.5';
+        cartItem.style.transform = 'scale(0.95)';
+        cartItem.style.pointerEvents = 'none';
     }
     
     fetch(`/cart/remove/${cartId}`, {
@@ -1383,24 +1484,77 @@ function removeFromCart(cartId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Товар удален из корзины');
+            showToast('Товар удален из корзины', 'success');
             updateCartCounter();
-            // Перезагружаем корзину
-            showCartModal();
+            triggerHapticFeedback('medium');
+            
+            // Плавно удаляем элемент
+            if (cartItem) {
+                cartItem.style.transition = 'all 0.3s ease';
+                cartItem.style.opacity = '0';
+                cartItem.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    refreshCartContent();
+                }, 300);
+            } else {
+                refreshCartContent();
+            }
         } else {
-            showAlert(data.message || 'Ошибка при удалении товара', 'error');
+            showToast(data.message || 'Ошибка при удалении товара', 'error');
+            // Восстанавливаем элемент при ошибке
+            if (cartItem) {
+                cartItem.style.opacity = '1';
+                cartItem.style.transform = 'scale(1)';
+                cartItem.style.pointerEvents = 'auto';
+            }
         }
     })
     .catch(error => {
         console.error('Ошибка при удалении товара:', error);
-        showAlert('Ошибка при удалении товара', 'error');
+        showToast('Ошибка при удалении товара', 'error');
+        // Восстанавливаем элемент при ошибке
+        if (cartItem) {
+            cartItem.style.opacity = '1';
+            cartItem.style.transform = 'scale(1)';
+            cartItem.style.pointerEvents = 'auto';
+        }
     });
 }
 
 // Функция очистки корзины
 function clearCart() {
-    if (!confirm('Очистить всю корзину?')) {
-        return;
+    // Используем Telegram WebApp подтверждение если доступно
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showConfirm) {
+        window.Telegram.WebApp.showConfirm('Очистить всю корзину?', (confirmed) => {
+            if (confirmed) {
+                performClearCart();
+            }
+        });
+    } else {
+        if (!confirm('Очистить всю корзину?')) {
+            return;
+        }
+        performClearCart();
+    }
+}
+
+function performClearCart() {
+    // Показываем индикатор загрузки
+    const body = document.getElementById('cartModalBody');
+    const footer = document.getElementById('cartModalFooter');
+    
+    if (body) {
+        body.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Очистка корзины...</span>
+                </div>
+                <div class="mt-3">Очищаем корзину...</div>
+            </div>
+        `;
+    }
+    if (footer) {
+        footer.classList.add('d-none');
     }
     
     fetch('/cart/clear', {
@@ -1414,23 +1568,41 @@ function clearCart() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('Корзина очищена');
+            showToast('Корзина очищена', 'success');
             updateCartCounter();
-            // Закрываем модальное окно
-            const modal = document.getElementById('cartModal');
-            if (modal) {
-                const bsModal = bootstrap.Modal.getInstance(modal);
-                if (bsModal) {
-                    bsModal.hide();
-                }
+            triggerHapticFeedback('medium');
+            
+            // Показываем сообщение о пустой корзине
+            if (body) {
+                body.innerHTML = `
+                    <div class="empty-cart text-center py-5">
+                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <h5>Корзина очищена</h5>
+                        <p class="text-muted">Добавьте товары для оформления заказа</p>
+                    </div>
+                `;
             }
+            
+            // Автоматически закрываем модальное окно через 2 секунды
+            setTimeout(() => {
+                const modal = document.getElementById('cartModal');
+                if (modal) {
+                    const bsModal = bootstrap.Modal.getInstance(modal);
+                    if (bsModal) {
+                        bsModal.hide();
+                    }
+                }
+            }, 1500);
+            
         } else {
-            showAlert(data.message || 'Ошибка при очистке корзины', 'error');
+            showToast(data.message || 'Ошибка при очистке корзины', 'error');
+            refreshCartContent();
         }
     })
     .catch(error => {
         console.error('Ошибка при очистке корзины:', error);
-        showAlert('Ошибка при очистке корзины', 'error');
+        showToast('Ошибка при очистке корзины', 'error');
+        refreshCartContent();
     });
 }
 
@@ -1459,6 +1631,7 @@ window.updateCartQuantity = updateCartQuantity;
 window.removeFromCart = removeFromCart;
 window.clearCart = clearCart;
 window.proceedToCheckout = proceedToCheckout;
+window.refreshCartContent = refreshCartContent;
 
 // Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', function() {

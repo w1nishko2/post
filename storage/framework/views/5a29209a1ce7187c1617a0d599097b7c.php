@@ -276,4 +276,4 @@
         });
     </script>
 </body>
-</html><?php /**PATH C:\OSPanel\domains\post\resources\views/mini-app/index.blade.php ENDPATH**/ ?>
+</html><?php /**PATH C:\OSPanel\domains\post\resources\views\mini-app\index.blade.php ENDPATH**/ ?>
