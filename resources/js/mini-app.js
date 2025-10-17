@@ -1789,7 +1789,61 @@ function performClearCart() {
 
 // Функция перехода к оформлению заказа
 function proceedToCheckout() {
-    showAlert('Функция оформления заказа будет реализована в следующих версиях', 'info');
+    if (!userData) {
+        showAlert('Ошибка: данные пользователя недоступны', 'error');
+        return;
+    }
+
+    const cartItems = JSON.parse(localStorage.getItem('cart') || '[]');
+    if (cartItems.length === 0) {
+        showAlert('Корзина пуста', 'warning');
+        return;
+    }
+
+    // Показываем загрузку
+    showAlert('Оформляем заказ...', 'info');
+
+    // Подготавливаем данные для отправки
+    const orderData = {
+        bot_short_name: document.querySelector('meta[name="short-name"]').getAttribute('content'),
+        user_data: userData,
+        notes: '' // Можно добавить поле для комментариев
+    };
+
+    // Отправляем запрос на оформление заказа
+    secureFetch('/cart/checkout', {
+        method: 'POST',
+        body: JSON.stringify(orderData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Очищаем корзину
+            localStorage.removeItem('cart');
+            updateCartCounter();
+            
+            // Закрываем модальное окно корзины
+            closeCartModal();
+            
+            // Показываем успешное сообщение
+            showAlert(`Заказ успешно оформлен! Номер заказа: ${data.order.order_number}`, 'success');
+            
+            // Обновляем содержимое корзины
+            setTimeout(() => {
+                displayCartItems([]);
+            }, 1000);
+            
+            triggerHapticFeedback('success');
+        } else {
+            showAlert(data.message || 'Ошибка при оформлении заказа', 'error');
+            triggerHapticFeedback('error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при оформлении заказа:', error);
+        showAlert('Произошла ошибка при оформлении заказа', 'error');
+        triggerHapticFeedback('error');
+    });
 }
 
 // Функция закрытия модального окна товара
