@@ -2,12 +2,16 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <meta name="short-name" content="<?php echo e($shortName); ?>">
     <meta name="theme-color" content="#ffffff">
     <meta name="msapplication-navbutton-color" content="#ffffff">
     <meta name="apple-mobile-web-app-status-bar-style" content="light-content">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-touch-fullscreen" content="yes">
     <title><?php echo e($bot->bot_name); ?> - Mini App</title>
     
     <!-- Bootstrap CSS -->
@@ -37,6 +41,9 @@
 
     <!-- Основное содержимое -->
     <div id="app" class="mini-app mini-app-container" style="display: none;">
+        <!-- Область для свайпа с левого края -->
+        <div class="swipe-edge-area"></div>
+        
         <!-- Блок поиска -->
         <div class="search-container ">
             <div class="search-box">
@@ -152,17 +159,10 @@
         <?php endif; ?>
 
         <!-- Корзина (плавающая кнопка) -->
-        <div class="cart-float" id="cart-float" style="
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: none;
-        ">
-            <button class="btn btn-success rounded-circle p-3 shadow" onclick="showCartModal()">
+        <div class="cart-float hidden" id="cart-float">
+            <button class="cart-float-btn" onclick="showCartModal()" type="button" aria-label="Открыть корзину">
                 <i class="fas fa-shopping-cart"></i>
-                <span class="cart-counter badge bg-danger rounded-pill position-absolute" 
-                      style="top: -5px; right: -5px; min-width: 20px; display: none;">0</span>
+                <span class="cart-counter hidden" id="cart-counter">0</span>
             </button>
         </div>
     </div>
@@ -194,11 +194,18 @@
 
     <!-- Модальное окно товара -->
     <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="productModalTitle">Загрузка...</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                    <div class="modal-header-left">
+                        <button type="button" class="modal-back-btn" onclick="closeProductModal()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h5 class="modal-title" id="productModalTitle">Загрузка...</h5>
+                    </div>
+                    <div class="modal-header-right">
+                        <!-- Дополнительные кнопки если нужны -->
+                    </div>
                 </div>
                 <div class="modal-body" id="productModalBody">
                     <div class="text-center py-5">
@@ -216,13 +223,20 @@
 
     <!-- Корзина (модальное окно) -->
     <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="cartModalTitle">
-                        <i class="fas fa-shopping-cart me-2"></i>Корзина
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                    <div class="modal-header-left">
+                        <button type="button" class="modal-back-btn" onclick="closeCartModal()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h5 class="modal-title" id="cartModalTitle">
+                            <i class="fas fa-shopping-cart me-2"></i>Корзина
+                        </h5>
+                    </div>
+                    <div class="modal-header-right">
+                        <!-- Дополнительные кнопки если нужны -->
+                    </div>
                 </div>
                 <div class="modal-body" id="cartModalBody">
                     <div class="text-center py-5">
@@ -240,23 +254,28 @@
 
     <!-- Скрытые данные товаров для JavaScript -->
     <script type="application/json" id="products-data">
-        <?php echo json_encode($products->keyBy('id')->map(function($product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->description,
-                'article' => $product->article,
-                'photo_url' => $product->photo_url,
-                'specifications' => $product->specifications,
-                'quantity' => $product->quantity,
-                'price' => $product->price,
-                'formatted_price' => $product->formatted_price,
-                'availability_status' => $product->availability_status,
-                'isAvailable' => $product->isAvailable(),
-                'category_id' => $product->category_id
-            ];
-        })); ?>
-
+        <?php
+            $productsData = [];
+            if (isset($products) && $products->count() > 0) {
+                foreach ($products as $product) {
+                    $productsData[$product->id] = [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'description' => $product->description,
+                        'article' => $product->article,
+                        'photo_url' => $product->photo_url,
+                        'specifications' => $product->specifications,
+                        'quantity' => $product->quantity,
+                        'price' => $product->price,
+                        'formatted_price' => $product->formatted_price,
+                        'availability_status' => $product->availability_status,
+                        'isAvailable' => $product->isAvailable(),
+                        'category_id' => $product->category_id
+                    ];
+                }
+            }
+        ?>
+        <?php echo json_encode($productsData, 15, 512) ?>
     </script>
 
     <!-- Bootstrap JS -->

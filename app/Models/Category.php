@@ -20,6 +20,11 @@ class Category extends Model
         'is_active',
     ];
 
+    // Защита от массового назначения критических полей
+    protected $guarded = [
+        'id',
+    ];
+
     protected $casts = [
         'is_active' => 'boolean',
     ];
@@ -59,16 +64,22 @@ class Category extends Model
     /**
      * Scope для категорий конкретного пользователя
      */
-    public function scopeForUser($query, $userId)
+    public function scopeForUser($query, int $userId)
     {
+        if ($userId <= 0) {
+            throw new \InvalidArgumentException('User ID должен быть положительным числом');
+        }
         return $query->where('user_id', $userId);
     }
 
     /**
      * Scope для категорий конкретного бота
      */
-    public function scopeForBot($query, $botId)
+    public function scopeForBot($query, int $botId)
     {
+        if ($botId <= 0) {
+            throw new \InvalidArgumentException('Bot ID должен быть положительным числом');
+        }
         return $query->where('telegram_bot_id', $botId);
     }
 

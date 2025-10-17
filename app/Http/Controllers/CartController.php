@@ -314,9 +314,9 @@ class CartController extends Controller
             ], 404);
         }
 
-        // Проверить наличие товаров
+        // Проверить наличие товаров и зарезервировать их
         foreach ($cartItems as $cartItem) {
-            if (!$cartItem->product || !$cartItem->product->isAvailable() || $cartItem->product->quantity < $cartItem->quantity) {
+            if (!$cartItem->product || !$cartItem->product->isAvailableForReservation($cartItem->quantity)) {
                 return response()->json([
                     'success' => false,
                     'message' => "Товар \"{$cartItem->product->name}\" недоступен в нужном количестве"
@@ -345,6 +345,23 @@ class CartController extends Controller
         try {
             DB::beginTransaction();
 
+            // Резервируем товары перед созданием заказа
+            $reservationErrors = [];
+            foreach ($cartItems as $cartItem) {
+                $product = $cartItem->product;
+                if (!$product->reserve($cartItem->quantity)) {
+                    $reservationErrors[] = "Не удалось зарезервировать товар \"{$product->name}\"";
+                }
+            }
+
+            if (!empty($reservationErrors)) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка резервирования товаров: ' . implode(', ', $reservationErrors)
+                ], 400);
+            }
+
             // Создать заказ
             $customerName = trim(($request->user_data['first_name'] ?? '') . ' ' . ($request->user_data['last_name'] ?? ''));
             $totalAmount = $cartItems->sum('total_price');
@@ -358,13 +375,13 @@ class CartController extends Controller
                 'notes' => $request->notes,
                 'total_amount' => $totalAmount,
                 'status' => \App\Models\Order::STATUS_PENDING,
+                'expires_at' => now()->addHours(5), // 5 часов на оплату
             ]);
 
-            // Создать позиции заказа и уменьшить количество товаров
+            // Создать позиции заказа (товары уже зарезервированы)
             foreach ($cartItems as $cartItem) {
                 $product = $cartItem->product;
 
-                // Создать позицию заказа
                 \App\Models\OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
@@ -375,9 +392,6 @@ class CartController extends Controller
                     'price' => $cartItem->price,
                     'total_price' => $cartItem->total_price,
                 ]);
-
-                // Уменьшить количество товара
-                $product->decrement('quantity', $cartItem->quantity);
             }
 
             // Отправить уведомления через Telegram АСИНХРОННО

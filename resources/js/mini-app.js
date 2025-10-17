@@ -9,6 +9,49 @@ let userData = null;
 let allProducts = [];
 let allCategories = [];
 let isSearchActive = false;
+let isInCategoryView = false; // Флаг для отслеживания просмотра категории
+let isScrollLocked = false; // Флаг блокировки скролла для предотвращения сворачивания
+
+// Функция для экранирования HTML (защита от XSS)
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, function(m) { 
+        return map[m]; 
+    });
+}
+
+// Функция для получения CSRF токена
+function getCSRFToken() {
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    return csrfMeta ? csrfMeta.getAttribute('content') : null;
+}
+
+// Безопасная функция для fetch запросов с CSRF защитой
+function secureFetch(url, options = {}) {
+    const token = getCSRFToken();
+    
+    // Добавляем CSRF токен для POST/PUT/DELETE запросов
+    if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+        options.headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...options.headers
+        };
+        
+        if (token) {
+            options.headers['X-CSRF-TOKEN'] = token;
+        }
+    }
+    
+    return fetch(url, options);
+}
 
 // Основная функция инициализации
 function initApp() {
@@ -60,6 +103,9 @@ function initApp() {
             document.documentElement.style.setProperty('--tg-color-scheme', tg.colorScheme);
             document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
             document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+            
+            // Настраиваем поведение скролла для предотвращения сворачивания
+            setupScrollBehavior();
             
             // Скрытие кнопки "Назад"
             tg.BackButton.hide();
@@ -344,17 +390,17 @@ function renderCategories(categories) {
     }
 
     track.innerHTML = categories.map(category => `
-        <div class="category-card" onclick="filterByCategory(${category.id}, '${category.name.replace(/'/g, "\\'")}')">
+        <div class="category-card" onclick="filterByCategory(${category.id}, '${escapeHtml(category.name).replace(/'/g, "\\'")}')">
             <div class="card h-200">
-                <div class="card-body p-3">
+                <div class="card-body ">
                     <div class="d-flex align-items-center">
                         <div class="category-info">
-                            <div class="category-name">${category.name}</div>
-                            ${category.description ? `<div class="category-description">${category.description}</div>` : ''}
+                            <div class="category-name">${escapeHtml(category.name)}</div>
+                            ${category.description ? `<div class="category-description">${escapeHtml(category.description)}</div>` : ''}
                             <div class="category-products-count">${category.products_count || 0} товаров</div>
                         </div>
                         ${category.photo_url 
-                            ? `<img src="${category.photo_url}" class="category-image " alt="${category.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            ? `<img src="${escapeHtml(category.photo_url)}" class="category-image " alt="${escapeHtml(category.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                <div class="category-placeholder" style="display: none;">
                                    <i class="fas fa-folder"></i>
                                </div>`
@@ -381,10 +427,12 @@ function performSearch(query = null) {
         // Если поиск пустой или слишком короткий, показываем все товары
         showAllProducts();
         isSearchActive = false;
+        isInCategoryView = false;
         return;
     }
 
     isSearchActive = true;
+    isInCategoryView = false; // Выходим из режима категории при поиске
 
     const SIMILARITY_THRESHOLD = 65; // Порог совпадения 65%
 
@@ -429,7 +477,14 @@ function performSearch(query = null) {
             if (a.matchField === 'article' && b.matchField === 'description') return -1;
             if (b.matchField === 'article' && a.matchField === 'description') return 1;
             
-            return 0;
+            // При прочем равенстве сортируем по наличию (quantity>0 первее), затем по дате создания (новые первее)
+            const aInStock = (a.quantity || 0) > 0 ? 1 : 0;
+            const bInStock = (b.quantity || 0) > 0 ? 1 : 0;
+            if (bInStock !== aInStock) return bInStock - aInStock;
+
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return bTime - aTime;
         });
 
     console.log(`Найдено товаров: ${filteredProducts.length} из ${allProducts.length}`);
@@ -540,6 +595,7 @@ function filterByCategory(categoryId, categoryName) {
     console.log('Все товары:', allProducts);
     
     isSearchActive = true;
+    isInCategoryView = true; // Устанавливаем флаг просмотра категории
     
     // Преобразуем categoryId к числу для корректного сравнения
     const numCategoryId = parseInt(categoryId);
@@ -583,6 +639,14 @@ function filterByCategory(categoryId, categoryName) {
     if (searchInput) {
         searchInput.value = '';
     }
+    
+    // Добавляем CSS класс для отображения подсказки о свайпе
+    document.body.classList.add('category-view');
+    
+    // Показываем подсказку о свайпе через 1 секунду
+    setTimeout(() => {
+        showSwipeHint();
+    }, 1000);
 }
 
 // Отрисовка результатов для категории
@@ -660,10 +724,14 @@ function renderCategoryResults(products, categoryName) {
 // Показать все товары
 function showAllProducts() {
     isSearchActive = false;
+    isInCategoryView = false; // Сбрасываем флаг просмотра категории
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.value = '';
     }
+    
+    // Убираем CSS класс для подсказки о свайпе
+    document.body.classList.remove('category-view');
     
     // Перезагружаем страницу чтобы вернуть изначальное состояние
     window.location.reload();
@@ -773,22 +841,33 @@ function updateCartCounter() {
     fetch('/cart/count')
         .then(response => response.json())
         .then(data => {
-            const counter = document.querySelector('.cart-counter');
+            const counter = document.getElementById('cart-counter');
             const cartFloat = document.getElementById('cart-float');
             
             if (counter && cartFloat) {
                 if (data.count > 0) {
                     counter.textContent = data.count;
-                    counter.style.display = 'inline';
-                    cartFloat.style.display = 'block';
+                    counter.classList.remove('hidden');
+                    cartFloat.classList.remove('hidden');
+                    
+                    // Добавляем анимацию при обновлении счетчика
+                    counter.style.animation = 'none';
+                    setTimeout(() => {
+                        counter.style.animation = 'cart-counter-pulse 2s infinite';
+                    }, 50);
                 } else {
-                    counter.style.display = 'none';
-                    cartFloat.style.display = 'none';
+                    counter.classList.add('hidden');
+                    cartFloat.classList.add('hidden');
                 }
             }
         })
         .catch(error => {
             console.error('Ошибка получения счетчика корзины:', error);
+            // В случае ошибки скрываем кнопку корзины
+            const cartFloat = document.getElementById('cart-float');
+            if (cartFloat) {
+                cartFloat.classList.add('hidden');
+            }
         });
 }
 
@@ -807,8 +886,14 @@ async function showProductDetails(productId) {
         }
 
         // Показываем модальное окно с loader
-        const bsModal = new bootstrap.Modal(modal);
+        const bsModal = new bootstrap.Modal(modal, {
+            backdrop: true,
+            keyboard: false
+        });
         bsModal.show();
+        
+        // Добавляем класс для фиксации body
+        document.body.classList.add('modal-open');
         
         title.textContent = 'Загрузка...';
         body.innerHTML = `
@@ -851,7 +936,7 @@ async function showProductDetails(productId) {
 
 // Отображение товара в модальном окне
 function displayProductInModal(product, body, title, footer) {
-    title.textContent = product.name;
+    title.textContent = ''; // Убираем название из заголовка
     
     // Генерируем HTML для товара
     body.innerHTML = `
@@ -879,6 +964,8 @@ function displayProductInModal(product, body, title, footer) {
                         </p>
                     ` : ''}
                     
+                    <h4 class="modal-product-name mb-3">${escapeHtml(product.name)}</h4>
+                    
                     <div class="modal-product-price">
                         ${formatPrice(product.price)} ₽
                     </div>
@@ -892,7 +979,12 @@ function displayProductInModal(product, body, title, footer) {
                     ${product.specifications ? `
                         <div class="modal-product-specifications">
                             <h6>Характеристики</h6>
-                            <p>${product.specifications}</p>
+                            ${typeof product.specifications === 'object' && product.specifications !== null ? 
+                                Object.entries(product.specifications).map(([key, value]) => 
+                                    `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</p>`
+                                ).join('') :
+                                `<p>${escapeHtml(product.specifications)}</p>`
+                            }
                         </div>
                     ` : ''}
                     
@@ -1054,6 +1146,9 @@ function updateQuantityButtons(productId, quantity) {
 
 // Функция добавления товара в корзину с количеством
 function addToCartWithQuantity(productId, quantity) {
+    // Показываем состояние загрузки
+    setCartButtonLoading(true);
+    
     const formData = new FormData();
     formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
     formData.append('quantity', quantity);
@@ -1064,16 +1159,22 @@ function addToCartWithQuantity(productId, quantity) {
     })
     .then(response => response.json())
     .then(data => {
+        setCartButtonLoading(false);
+        
         if (data.success) {
             showAlert(`Товар добавлен в корзину (${quantity} шт.)!`);
             updateCartCounter();
+            animateCartButtonOnAdd();
             triggerHapticFeedback('success');
         } else {
+            setCartButtonError(true);
             showAlert(data.message || 'Ошибка при добавлении товара', 'error');
             triggerHapticFeedback('error');
         }
     })
     .catch(error => {
+        setCartButtonLoading(false);
+        setCartButtonError(true);
         console.error('Ошибка при добавлении товара в корзину:', error);
         showAlert('Ошибка при добавлении товара в корзину', 'error');
         triggerHapticFeedback('error');
@@ -1106,6 +1207,80 @@ function setupHapticFeedback() {
             triggerHapticFeedback('light');
         });
     });
+}
+
+// Функция для анимированного показа/скрытия кнопки корзины
+function toggleCartFloat(show = true, count = 0) {
+    const cartFloat = document.getElementById('cart-float');
+    const counter = document.getElementById('cart-counter');
+    
+    if (!cartFloat || !counter) return;
+    
+    if (show && count > 0) {
+        // Показываем кнопку корзины
+        counter.textContent = count;
+        counter.classList.remove('hidden');
+        cartFloat.classList.remove('hidden');
+        
+        // Добавляем анимацию пульсации для счетчика
+        counter.style.animation = 'cart-counter-pulse 2s infinite';
+    } else {
+        // Скрываем кнопку корзины
+        counter.classList.add('hidden');
+        cartFloat.classList.add('hidden');
+    }
+}
+
+// Функция для временной анимации при добавлении товара
+function animateCartButtonOnAdd() {
+    const cartBtn = document.querySelector('.cart-float-btn');
+    const cartIcon = document.querySelector('.cart-float-btn .fa-shopping-cart');
+    
+    if (cartBtn && cartIcon) {
+        // Анимация кнопки
+        cartBtn.style.transform = 'translateY(-4px) scale(1.1)';
+        cartBtn.style.boxShadow = '0 12px 32px rgba(16, 185, 129, 0.5)';
+        
+        // Анимация иконки
+        cartIcon.style.transform = 'rotate(-15deg) scale(1.2)';
+        
+        // Возвращаем в исходное состояние через 300мс
+        setTimeout(() => {
+            cartBtn.style.transform = '';
+            cartBtn.style.boxShadow = '';
+            cartIcon.style.transform = '';
+        }, 300);
+        
+        // Тактильная обратная связь
+        triggerHapticFeedback('medium');
+    }
+}
+
+// Функция для показа состояния загрузки кнопки корзины
+function setCartButtonLoading(loading = true) {
+    const cartBtn = document.querySelector('.cart-float-btn');
+    if (cartBtn) {
+        if (loading) {
+            cartBtn.classList.add('loading');
+            cartBtn.setAttribute('aria-busy', 'true');
+        } else {
+            cartBtn.classList.remove('loading');
+            cartBtn.setAttribute('aria-busy', 'false');
+        }
+    }
+}
+
+// Функция для показа ошибки на кнопке корзины
+function setCartButtonError(hasError = true) {
+    const cartBtn = document.querySelector('.cart-float-btn');
+    if (cartBtn) {
+        if (hasError) {
+            cartBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            setTimeout(() => {
+                cartBtn.style.background = '';
+            }, 2000);
+        }
+    }
 }
 
 // Функции для модального окна товара
@@ -1207,8 +1382,14 @@ function showCartModal() {
         }
 
         // Показываем модальное окно с loader
-        const bsModal = new bootstrap.Modal(modal);
+        const bsModal = new bootstrap.Modal(modal, {
+            backdrop: true,
+            keyboard: false
+        });
         bsModal.show();
+        
+        // Добавляем класс для фиксации body
+        document.body.classList.add('modal-open');
         
         body.innerHTML = `
             <div class="text-center py-5">
@@ -1284,8 +1465,8 @@ function displayCartItems(items, totalAmount) {
     items.forEach(item => {
         html += `
             <div class="cart-item mb-3 p-3 border rounded"style="flex-direction: column;" data-cart-id="${item.id}">
-                <div class="d-flex align-items-start">
-                    <div class="cart-item-image me-3 flex-shrink-0">
+                <div class="d-flex align-items-start" style="width: 100%; padding-bottom: 10px;">
+                    <div class="cart-item-image  flex-shrink-0">
                         ${item.photo_url ? 
                             `<img src="${item.photo_url}" class="img-fluid rounded" style="width: 80px; height: 80px; object-fit: cover;" alt="${item.name}">` :
                             `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="width: 80px; height: 80px;">
@@ -1611,6 +1792,322 @@ function proceedToCheckout() {
     showAlert('Функция оформления заказа будет реализована в следующих версиях', 'info');
 }
 
+// Функция закрытия модального окна товара
+function closeProductModal() {
+    try {
+        const modal = document.getElementById('productModal');
+        if (modal) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        }
+        
+        // Убираем класс фиксации body
+        document.body.classList.remove('modal-open');
+        
+        triggerHapticFeedback('light');
+    } catch (error) {
+        console.error('Ошибка при закрытии модального окна товара:', error);
+        // Убираем класс даже при ошибке
+        document.body.classList.remove('modal-open');
+    }
+}
+
+// Функция закрытия модального окна корзины
+function closeCartModal() {
+    try {
+        const modal = document.getElementById('cartModal');
+        if (modal) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        }
+        
+        // Убираем класс фиксации body
+        document.body.classList.remove('modal-open');
+        
+        triggerHapticFeedback('light');
+    } catch (error) {
+        console.error('Ошибка при закрытии модального окна корзины:', error);
+        // Убираем класс даже при ошибке
+        document.body.classList.remove('modal-open');
+    }
+}
+
+// Функция показа подсказки о возможности свайпа
+function showSwipeHint() {
+    // Показываем подсказку только в первый раз для пользователя
+    const hasSeenSwipeHint = localStorage.getItem('hasSeenSwipeHint');
+    if (hasSeenSwipeHint) {
+        return;
+    }
+    
+    // Создаем индикатор свайпа
+    const swipeIndicator = document.createElement('div');
+    swipeIndicator.className = 'swipe-indicator';
+    swipeIndicator.innerHTML = `
+        <span class="arrow">→</span>
+        <span>Свайп для выхода</span>
+    `;
+    
+    document.body.appendChild(swipeIndicator);
+    
+    // Убираем индикатор через 3 секунды
+    setTimeout(() => {
+        if (swipeIndicator.parentNode) {
+            swipeIndicator.remove();
+        }
+        // Запоминаем, что пользователь видел подсказку
+        localStorage.setItem('hasSeenSwipeHint', 'true');
+    }, 3000);
+}
+
+// Функция для настройки поведения скролла в Telegram WebApp
+function setupScrollBehavior() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        
+        try {
+            // Устанавливаем полноэкранный режим и блокируем сворачивание
+            tg.expand();
+            
+            // Отключаем стандартное поведение pull-to-refresh/close
+            tg.disableClosingConfirmation();
+            
+            // Блокируем возможность закрытия через свайп вниз
+            if (tg.isClosingConfirmationEnabled !== undefined) {
+                tg.isClosingConfirmationEnabled = false;
+            }
+            
+            // Устанавливаем фиксированную высоту viewport
+            if (tg.setViewportHeight) {
+                tg.setViewportHeight(window.innerHeight);
+            }
+            
+            console.log('Настройки скролла для Telegram WebApp применены');
+        } catch (error) {
+            console.error('Ошибка при настройке поведения скролла:', error);
+        }
+    }
+    
+    // Дополнительные настройки для веб-версии
+    document.body.style.touchAction = 'pan-x pan-y';
+    document.documentElement.style.touchAction = 'pan-x pan-y';
+}
+
+// Функция для предотвращения сворачивания при скролле
+function preventPullToClose() {
+    let startY = 0;
+    let startX = 0;
+    let isPreventingPull = false;
+    const PULL_THRESHOLD = 10; // Минимальное расстояние для активации защиты
+
+    function handleTouchStart(event) {
+        if (event.touches.length !== 1) return;
+        
+        const touch = event.touches[0];
+        startY = touch.clientY;
+        startX = touch.clientX;
+        isPreventingPull = false;
+        
+        // Получаем текущую позицию скролла
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || window.pageYOffset;
+        
+        // Если мы находимся в самом верху страницы, готовимся к блокировке
+        if (scrollTop <= 5) {
+            isPreventingPull = true;
+        }
+    }
+
+    function handleTouchMove(event) {
+        if (event.touches.length !== 1 || !isPreventingPull) return;
+        
+        const touch = event.touches[0];
+        const deltaY = touch.clientY - startY;
+        const deltaX = Math.abs(touch.clientX - startX);
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop || window.pageYOffset;
+        
+        // Если это вертикальный жест вниз на самом верху страницы
+        if (scrollTop <= 5 && deltaY > PULL_THRESHOLD && deltaX < 50) {
+            // Блокируем событие для предотвращения pull-to-close
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            
+            console.log('Заблокировано потенциальное сворачивание через pull-to-close');
+            
+            // Добавляем небольшую вибрацию для обратной связи
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('rigid');
+            }
+            
+            return false;
+        }
+    }
+
+    function handleTouchEnd(event) {
+        isPreventingPull = false;
+    }
+
+    // Используем capturing phase для более раннего перехвата
+    document.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
+    
+    // Добавляем дополнительную защиту через CSS
+    document.body.style.overscrollBehavior = 'none';
+    document.documentElement.style.overscrollBehavior = 'none';
+    
+    // Блокируем refresh/reload жесты
+    window.addEventListener('beforeunload', function(event) {
+        if (event.clientY < 50) {
+            event.preventDefault();
+            return false;
+        }
+    });
+    
+    console.log('Защита от сворачивания через скролл активирована');
+}
+
+// Функция для добавления поддержки свайпа
+function addSwipeSupport() {
+    let startX = 0;
+    let startY = 0;
+    let isSwipeStarted = false;
+
+    function handleTouchStart(event) {
+        if (event.touches.length !== 1) return;
+        
+        const touch = event.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        isSwipeStarted = true;
+    }
+
+    function handleTouchMove(event) {
+        if (!isSwipeStarted || event.touches.length !== 1) return;
+        
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        
+        // Проверяем, что это горизонтальный свайп справа налево
+        if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 50 && Math.abs(deltaY) < 100) {
+            // Свайп вправо - закрываем модальное окно
+            const activeModal = document.querySelector('.modal.show');
+            if (activeModal) {
+                if (activeModal.id === 'productModal') {
+                    closeProductModal();
+                } else if (activeModal.id === 'cartModal') {
+                    closeCartModal();
+                }
+            }
+            isSwipeStarted = false;
+        }
+    }
+
+    function handleTouchEnd() {
+        isSwipeStarted = false;
+    }
+
+    // Добавляем обработчики к модальным окнам
+    const modals = [
+        document.getElementById('productModal'),
+        document.getElementById('cartModal')
+    ];
+
+    modals.forEach(modal => {
+        if (modal) {
+            modal.addEventListener('touchstart', handleTouchStart, { passive: true });
+            modal.addEventListener('touchmove', handleTouchMove, { passive: true });
+            modal.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+    });
+}
+
+// Функция для добавления поддержки свайпа для выхода из категории
+function addCategorySwipeSupport() {
+    let startX = 0;
+    let startY = 0;
+    let isSwipeStarted = false;
+    const SWIPE_THRESHOLD = 100; // Минимальное расстояние свайпа
+    const EDGE_THRESHOLD = 50; // Максимальное расстояние от левого края для начала свайпа
+
+    function handleTouchStart(event) {
+        if (event.touches.length !== 1) return;
+        
+        const touch = event.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        
+        // Проверяем, что свайп начинается близко к левому краю экрана
+        if (startX <= EDGE_THRESHOLD) {
+            isSwipeStarted = true;
+            console.log('Начат свайп с левого края:', startX);
+        }
+    }
+
+    function handleTouchMove(event) {
+        if (!isSwipeStarted || event.touches.length !== 1) return;
+        
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        
+        // Проверяем, что это горизонтальный свайп слева направо
+        if (Math.abs(deltaX) > Math.abs(deltaY) && 
+            deltaX > SWIPE_THRESHOLD && 
+            Math.abs(deltaY) < 100) {
+            
+            console.log('Свайп вправо обнаружен, deltaX:', deltaX);
+            
+            // Если мы находимся в режиме просмотра категории - выходим
+            if (isInCategoryView) {
+                console.log('Выход из категории через свайп');
+                
+                // Показываем уведомление пользователю
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+                }
+                
+                showAllProducts();
+                isSwipeStarted = false;
+                return;
+            }
+            
+            // Если мы в режиме поиска - очищаем поиск
+            if (isSearchActive) {
+                console.log('Очистка поиска через свайп');
+                
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+                }
+                
+                showAllProducts();
+                isSwipeStarted = false;
+                return;
+            }
+            
+            isSwipeStarted = false;
+        }
+    }
+
+    function handleTouchEnd() {
+        isSwipeStarted = false;
+    }
+
+    // Добавляем обработчики к основному контейнеру приложения
+    const appContainer = document.getElementById('app');
+    if (appContainer) {
+        appContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+        appContainer.addEventListener('touchmove', handleTouchMove, { passive: true });
+        appContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+        console.log('Обработчики свайпа для выхода из категории добавлены');
+    }
+}
+
 // Глобальные функции для использования в HTML
 window.initApp = initApp;
 window.showAlert = showAlert;
@@ -1632,6 +2129,17 @@ window.removeFromCart = removeFromCart;
 window.clearCart = clearCart;
 window.proceedToCheckout = proceedToCheckout;
 window.refreshCartContent = refreshCartContent;
+window.closeProductModal = closeProductModal;
+window.closeCartModal = closeCartModal;
+window.showSwipeHint = showSwipeHint;
+window.setupScrollBehavior = setupScrollBehavior;
+window.preventPullToClose = preventPullToClose;
+window.addSwipeSupport = addSwipeSupport;
+window.addCategorySwipeSupport = addCategorySwipeSupport;
+window.toggleCartFloat = toggleCartFloat;
+window.animateCartButtonOnAdd = animateCartButtonOnAdd;
+window.setCartButtonLoading = setCartButtonLoading;
+window.setCartButtonError = setCartButtonError;
 
 // Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', function() {
@@ -1674,4 +2182,29 @@ document.addEventListener('DOMContentLoaded', function() {
             closePanel();
         }
     });
+    
+    // Обработчики событий для модальных окон
+    const productModal = document.getElementById('productModal');
+    const cartModal = document.getElementById('cartModal');
+    
+    if (productModal) {
+        productModal.addEventListener('hidden.bs.modal', function () {
+            document.body.classList.remove('modal-open');
+        });
+    }
+    
+    if (cartModal) {
+        cartModal.addEventListener('hidden.bs.modal', function () {
+            document.body.classList.remove('modal-open');
+        });
+    }
+    
+    // Добавляем поддержку свайпа для закрытия модальных окон
+    addSwipeSupport();
+    
+    // Добавляем поддержку свайпа для выхода из категории
+    addCategorySwipeSupport();
+    
+    // Настраиваем защиту от сворачивания через скролл
+    preventPullToClose();
 });

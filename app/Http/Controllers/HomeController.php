@@ -23,8 +23,17 @@ class HomeController extends Controller
      */
     public function index()
     {
-        // Получаем ботов текущего пользователя для отображения
-        $bots = auth()->user()->telegramBots()->latest()->get();
+        // Получаем ботов текущего пользователя с оптимизацией запросов
+        $bots = auth()->user()->telegramBots()
+            ->withCount(['products', 'categories', 'orders'])
+            ->with(['products' => function($query) {
+                $query->select('id', 'telegram_bot_id', 'name', 'price', 'is_active')
+                      ->where('is_active', true)
+                      ->latest()
+                      ->limit(3);
+            }])
+            ->latest()
+            ->get();
         
         return view('home', compact('bots'));
     }

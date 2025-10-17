@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
@@ -27,12 +28,14 @@ class Order extends Model
         'customer_address',
         'notes',
         'total_amount',
+        'expires_at',
         'status',
         'order_number',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'expires_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -170,6 +173,86 @@ class Order extends Model
             if (!$order->order_number) {
                 $order->order_number = self::generateOrderNumber();
             }
+            
+            // Устанавливаем время истечения заказа (5 часов с момента создания)
+            if (!$order->expires_at && $order->status === self::STATUS_PENDING) {
+                $order->expires_at = now()->addHours(5);
+            }
         });
+    }
+
+    /**
+     * Проверить, истек ли заказ
+     */
+    public function isExpired(): bool
+    {
+        return $this->expires_at && $this->expires_at->isPast() && $this->status === self::STATUS_PENDING;
+    }
+
+    /**
+     * Scope для поиска истекших заказов
+     */
+    public function scopeExpired($query)
+    {
+        return $query->where('status', self::STATUS_PENDING)
+                    ->where('expires_at', '<', now());
+    }
+
+    /**
+     * Scope для поиска заказов, ожидающих оплаты
+     */
+    public function scopePendingPayment($query)
+    {
+        return $query->where('status', self::STATUS_PENDING)
+                    ->where('expires_at', '>', now());
+    }
+
+    /**
+     * Отменить заказ и снять резерв товаров
+     */
+    public function cancelAndUnreserve(): bool
+    {
+        if (!$this->canBeCancelled()) {
+            return false;
+        }
+
+        DB::transaction(function () {
+            // Снимаем резерв с товаров
+            foreach ($this->items as $item) {
+                if ($item->product) {
+                    $item->product->unreserve($item->quantity);
+                }
+            }
+
+            // Обновляем статус заказа
+            $this->update(['status' => self::STATUS_CANCELLED]);
+        });
+
+        return true;
+    }
+
+    /**
+     * Получить время до истечения заказа в читаемом формате
+     */
+    public function getTimeUntilExpirationAttribute(): ?string
+    {
+        if (!$this->expires_at || $this->status !== self::STATUS_PENDING) {
+            return null;
+        }
+
+        $now = now();
+        if ($this->expires_at->isPast()) {
+            return 'Истек';
+        }
+
+        $diff = $now->diffInMinutes($this->expires_at);
+        
+        if ($diff >= 60) {
+            $hours = intval($diff / 60);
+            $minutes = $diff % 60;
+            return "{$hours} ч. {$minutes} мин.";
+        }
+        
+        return "{$diff} мин.";
     }
 }

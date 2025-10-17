@@ -85,6 +85,7 @@
                                                 </button>
                                                 <form method="POST" action="{{ route('telegram-bots.toggle', $bot) }}" class="d-inline">
                                                     @csrf
+                                                    @method('PATCH')
                                                     <button type="submit" class="btn btn-outline-{{ $bot->is_active ? 'warning' : 'success' }} btn-sm">
                                                         <i class="fas fa-{{ $bot->is_active ? 'pause' : 'play' }}"></i>
                                                     </button>

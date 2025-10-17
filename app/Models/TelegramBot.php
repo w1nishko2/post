@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TelegramBot extends Model
 {
@@ -25,6 +26,11 @@ class TelegramBot extends Model
         'commands',
         'is_active',
         'last_updated_at',
+    ];
+
+    // Защита от массового назначения критических полей
+    protected $guarded = [
+        'id',
     ];
 
     protected $casts = [
@@ -141,8 +147,11 @@ class TelegramBot extends Model
     /**
      * Scope для ботов конкретного пользователя
      */
-    public function scopeForUser($query, $userId)
+    public function scopeForUser($query, int $userId)
     {
+        if ($userId <= 0) {
+            throw new \InvalidArgumentException('User ID должен быть положительным числом');
+        }
         return $query->where('user_id', $userId);
     }
 
@@ -165,32 +174,32 @@ class TelegramBot extends Model
     /**
      * Связь с товарами этого бота
      */
-    public function products()
+    public function products(): HasMany
     {
-        return $this->hasMany(\App\Models\Product::class);
+        return $this->hasMany(Product::class);
     }
 
     /**
      * Получить активные товары этого бота
      */
-    public function activeProducts()
+    public function activeProducts(): HasMany
     {
-        return $this->hasMany(\App\Models\Product::class)->where('is_active', true);
+        return $this->hasMany(Product::class)->where('is_active', true);
     }
 
     /**
      * Связь с категориями этого бота
      */
-    public function categories()
+    public function categories(): HasMany
     {
-        return $this->hasMany(\App\Models\Category::class);
+        return $this->hasMany(Category::class);
     }
 
     /**
      * Получить активные категории этого бота
      */
-    public function activeCategories()
+    public function activeCategories(): HasMany
     {
-        return $this->hasMany(\App\Models\Category::class)->where('is_active', true);
+        return $this->hasMany(Category::class)->where('is_active', true);
     }
 }

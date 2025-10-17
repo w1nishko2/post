@@ -26,7 +26,8 @@ class ProductsTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
             'Описание', 
             'Артикул',
             'Категория',
-            'URL фото',
+            'URL фото категории',
+            'URL фото товара',
             'Характеристики (через ;)',
             'Количество',
             'Цена',
@@ -35,49 +36,13 @@ class ProductsTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
     }
 
     /**
-     * Данные-примеры для шаблона
+     * Данные для шаблона
      */
     public function array(): array
     {
         return [
-            // Пример 1 - Полностью заполненный товар (удалите эту строку)
-            [
-                'Смартфон Samsung Galaxy',
-                'Современный смартфон с отличной камерой и производительностью',
-                'SM001',
-                'Электроника',
-                'https://example.com/smartphone.jpg',
-                'Диагональ: 6.1 дюйма; ОЗУ: 8 ГБ; Накопитель: 128 ГБ; Камера: 50 Мп',
-                '25',
-                '45000',
-                '1'
-            ],
-            // Пример 2 - Товар с минимальным набором полей (удалите эту строку)
-            [
-                'Наушники Bluetooth',
-                '',
-                'BT002',
-                'Аксессуары', 
-                '',
-                'Тип: накладные; Время работы: 30 часов; Bluetooth: 5.0',
-                '15',
-                '3500.50',
-                '1'
-            ],
-            // Пример 3 - Неактивный товар без категории (удалите эту строку)
-            [
-                'Планшет iPad Air',
-                'Планшет для работы и развлечений',
-                'TB003',
-                '',
-                'https://example.com/ipad.jpg',
-                'Диагональ: 10.9 дюйма; Чип: M1; Накопитель: 64 ГБ',
-                '0',
-                '55000',
-                '0'
-            ],
             // Добавьте свои товары ниже (каждый товар в отдельной строке)
-            // ['Название вашего товара', 'Описание', 'Уникальный артикул', 'Категория', '', '', '1', '100', '1']
+            // ['Название товара', 'Описание', 'Артикул', 'Категория', 'URL фото категории', 'URL фото товара', 'Характеристики через ;', '1', '100', '1']
         ];
     }
 
@@ -99,13 +64,6 @@ class ProductsTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
                 ],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
-                ],
-            ],
-            // Стиль для примеров данных (теперь строки 2-4)
-            '2:4' => [
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E7F3FF'],
                 ],
             ],
         ];
@@ -131,29 +89,36 @@ class ProductsTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
                 
                 // Инструкции в колонке K (чтобы не мешать данным)
                 $sheet->setCellValue('K1', 'ИНСТРУКЦИЯ:');
-                $sheet->setCellValue('K2', '1. Удалите примеры товаров (строки 2-4)');
-                $sheet->setCellValue('K3', '2. Заполните свои товары');
-                $sheet->setCellValue('K4', '3. Сохраните файл');
-                $sheet->setCellValue('K5', '4. Загрузите через форму');
+                $sheet->setCellValue('K2', '1. Заполните свои товары в строках ниже');
+                $sheet->setCellValue('K3', '2. Сохраните файл');
+                $sheet->setCellValue('K4', '3. Загрузите через форму');
                 
-                $sheet->setCellValue('K7', 'ОБЯЗАТЕЛЬНЫЕ ПОЛЯ:');
-                $sheet->setCellValue('K8', '• Название товара');
-                $sheet->setCellValue('K9', '• Артикул (уникальный)');
+                $sheet->setCellValue('K6', 'ОБЯЗАТЕЛЬНЫЕ ПОЛЯ:');
+                $sheet->setCellValue('K7', '• Название товара');
+                $sheet->setCellValue('K8', '• Артикул (уникальный)');
                 
-                $sheet->setCellValue('K11', 'НЕОБЯЗАТЕЛЬНЫЕ ПОЛЯ:');
-                $sheet->setCellValue('K12', '• Описание');
-                $sheet->setCellValue('K13', '• Категория (название)');
-                $sheet->setCellValue('K14', '• URL фото');
+                $sheet->setCellValue('K10', 'НЕОБЯЗАТЕЛЬНЫЕ ПОЛЯ:');
+                $sheet->setCellValue('K11', '• Описание');
+                $sheet->setCellValue('K12', '• Категория (название)');
+                $sheet->setCellValue('K13', '• URL фото категории');
+                $sheet->setCellValue('K14', '• URL фото товара');
                 $sheet->setCellValue('K15', '• Характеристики (через ;)');
                 $sheet->setCellValue('K16', '• Количество (число)');
                 $sheet->setCellValue('K17', '• Цена (число)');
                 $sheet->setCellValue('K18', '• Активный (1 или 0)');
                 
+                $sheet->setCellValue('K20', 'ПРИМЕЧАНИЯ:');
+                $sheet->setCellValue('K21', '• Если категория не существует,');
+                $sheet->setCellValue('K22', '  она будет создана автоматически');
+                $sheet->setCellValue('K23', '• Фото категории применится ко всем');
+                $sheet->setCellValue('K24', '  товарам этой категории');
+                
                 // Стили для инструкций
                 $sheet->getStyle('K1')->getFont()->setBold(true)->setSize(12);
-                $sheet->getStyle('K7')->getFont()->setBold(true);
-                $sheet->getStyle('K11')->getFont()->setBold(true);
-                $sheet->getStyle('K1:K18')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('0066CC'));
+                $sheet->getStyle('K6')->getFont()->setBold(true);
+                $sheet->getStyle('K10')->getFont()->setBold(true);
+                $sheet->getStyle('K20')->getFont()->setBold(true);
+                $sheet->getStyle('K1:K24')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('0066CC'));
                 
                 // Устанавливаем ширину колонки K
                 $sheet->getColumnDimension('K')->setWidth(30);

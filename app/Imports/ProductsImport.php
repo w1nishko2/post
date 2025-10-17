@@ -5,12 +5,13 @@ namespace App\Imports;
 use App\Models\Product;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\Importable;
 
-class ProductsImport implements ToModel, WithHeadingRow
+class ProductsImport implements ToModel, WithStartRow
 {
     use Importable;
 
@@ -18,6 +19,7 @@ class ProductsImport implements ToModel, WithHeadingRow
     private $importedCount = 0;
     private $skippedCount = 0;
     private $telegramBotId;
+    private $processedCategories = []; // Кеш обработанных категорий
 
     public function __construct($telegramBotId = null)
     {
@@ -25,20 +27,50 @@ class ProductsImport implements ToModel, WithHeadingRow
     }
 
     /**
+     * Указываем, что данные начинаются со 2-й строки (пропускаем заголовки)
+     */
+    public function startRow(): int
+    {
+        return 2;
+    }
+
+    /**
      * Создание модели из строки Excel
      */
     public function model(array $row)
     {
-        // Laravel Excel конвертирует русские заголовки в транслитерированные ключи
-        $nameKey = 'nazvanie_tovara';
-        $articleKey = 'artikul';
-        $descriptionKey = 'opisanie';
-        $categoryKey = 'kategoriia';
-        $photoKey = 'url_foto';
-        $characteristicsKey = 'xarakteristiki_cerez';
-        $quantityKey = 'kolicestvo';
-        $priceKey = 'cena';
-        $activeKey = 'aktivnyi_10';
+        // Добавляем отладочную информацию
+        Log::info('Row data:', $row);
+        
+        // Если это первая строка, выводим все ключи для отладки
+        static $headerLogged = false;
+        if (!$headerLogged) {
+            Log::info('Available headers/keys:', array_keys($row));
+            $headerLogged = true;
+        }
+        
+        // Работаем с индексами столбцов согласно обновленному шаблону:
+        // 0: Название товара
+        // 1: Описание
+        // 2: Артикул  
+        // 3: Категория
+        // 4: URL фото категории
+        // 5: URL фото товара
+        // 6: Характеристики (через ;)
+        // 7: Количество
+        // 8: Цена
+        // 9: Активный (1/0)
+        
+        $name = isset($row[0]) ? trim($row[0]) : '';
+        $description = isset($row[1]) ? trim($row[1]) : '';
+        $article = isset($row[2]) ? trim($row[2]) : '';
+        $categoryName = isset($row[3]) ? trim($row[3]) : '';
+        $categoryPhotoUrl = isset($row[4]) ? trim($row[4]) : '';
+        $productPhotoUrl = isset($row[5]) ? trim($row[5]) : '';
+        $characteristicsRaw = isset($row[6]) ? trim($row[6]) : '';
+        $quantity = isset($row[7]) ? $row[7] : 0;
+        $price = isset($row[8]) ? $row[8] : 0;
+        $active = isset($row[9]) ? $row[9] : 1;
 
         // Пропускаем полностью пустые строки
         if (empty(array_filter($row, function($value) {
@@ -48,27 +80,23 @@ class ProductsImport implements ToModel, WithHeadingRow
         }
 
         // Пропускаем строки, где нет названия товара и артикула
-        if (empty(trim($row[$nameKey] ?? '')) && empty(trim($row[$articleKey] ?? ''))) {
-            return null;
-        }
-
-        // Пропускаем строки-примеры из шаблона (по артикулам)
-        if (isset($row[$articleKey]) && 
-            (in_array(trim($row[$articleKey]), ['SM001', 'BT002', 'TB003', 'ART001', 'ART002', 'ART003']))) {
-            $this->skippedCount++;
+        if (empty($name) && empty($article)) {
             return null;
         }
         
         // Проверяем обязательные поля для валидации
-        if (empty(trim($row[$nameKey] ?? '')) || empty(trim($row[$articleKey] ?? ''))) {
+        if (empty($name) || empty($article)) {
             $this->skippedCount++;
+            Log::warning('Skipping row due to missing required fields', [
+                'name' => $name,
+                'article' => $article,
+                'row' => $row
+            ]);
             return null;
         }
 
         // Обрабатываем и очищаем данные
-        $name = trim($row[$nameKey] ?? '');
-        $description = !empty(trim($row[$descriptionKey] ?? '')) ? trim($row[$descriptionKey]) : null;
-        $article = trim($row[$articleKey] ?? '');
+        $description = !empty($description) ? $description : null;
 
         // Проверяем уникальность артикула
         $existingProduct = Product::where('article', $article)
@@ -102,8 +130,8 @@ class ProductsImport implements ToModel, WithHeadingRow
         
         // Обрабатываем характеристики
         $specifications = [];
-        if (!empty($row[$characteristicsKey])) {
-            $specs = explode(';', $row[$characteristicsKey]);
+        if (!empty($characteristicsRaw)) {
+            $specs = explode(';', $characteristicsRaw);
             foreach ($specs as $spec) {
                 $spec = trim($spec);
                 if (!empty($spec)) {
@@ -114,69 +142,100 @@ class ProductsImport implements ToModel, WithHeadingRow
         
         // Обрабатываем категорию - ищем или создаем
         $category_id = null;
-        if (!empty(trim($row[$categoryKey] ?? ''))) {
-            $categoryName = trim($row[$categoryKey]);
+        if (!empty($categoryName)) {
+            // Проверяем кеш обработанных категорий
+            $cacheKey = $categoryName . '|' . $this->telegramBotId;
             
-            // Ищем существующую категорию для этого бота
-            $category = \App\Models\Category::where('name', $categoryName)
-                ->where('user_id', Auth::id())
-                ->where('telegram_bot_id', $this->telegramBotId)
-                ->first();
-            
-            // Если категории нет - создаем новую
-            if (!$category) {
-                try {
-                    $category = \App\Models\Category::create([
-                        'user_id' => Auth::id(),
-                        'telegram_bot_id' => $this->telegramBotId,
-                        'name' => $categoryName,
-                        'description' => null,
-                        'photo_url' => null,
-                        'is_active' => true,
-                    ]);
-                } catch (\Exception $e) {
-                    // Если не удалось создать категорию, продолжаем без неё
-                    $this->importErrors[] = "Предупреждение: Не удалось создать категорию '$categoryName' - " . $e->getMessage();
+            if (isset($this->processedCategories[$cacheKey])) {
+                $category_id = $this->processedCategories[$cacheKey];
+            } else {
+                // Ищем существующую категорию для этого бота
+                $category = \App\Models\Category::where('name', $categoryName)
+                    ->where('user_id', Auth::id())
+                    ->where('telegram_bot_id', $this->telegramBotId)
+                    ->first();
+                
+                // Проверяем и обрабатываем URL фото категории
+                $categoryPhotoUrlClean = null;
+                if (!empty($categoryPhotoUrl)) {
+                    if (filter_var($categoryPhotoUrl, FILTER_VALIDATE_URL) !== false) {
+                        $categoryPhotoUrlClean = $categoryPhotoUrl;
+                    }
                 }
-            }
-            
-            if ($category) {
-                $category_id = $category->id;
+                
+                // Если категории нет - создаем новую
+                if (!$category) {
+                    try {
+                        $category = \App\Models\Category::create([
+                            'user_id' => Auth::id(),
+                            'telegram_bot_id' => $this->telegramBotId,
+                            'name' => $categoryName,
+                            'description' => null,
+                            'photo_url' => $categoryPhotoUrlClean,
+                            'is_active' => true,
+                        ]);
+                        
+                        if ($categoryPhotoUrlClean) {
+                            Log::info("Created category '{$categoryName}' with photo: {$categoryPhotoUrlClean}");
+                        }
+                    } catch (\Exception $e) {
+                        // Если не удалось создать категорию, продолжаем без неё
+                        $this->importErrors[] = "Предупреждение: Не удалось создать категорию '$categoryName' - " . $e->getMessage();
+                    }
+                } else {
+                    // Если категория существует, но у неё нет фото, а в импорте есть - обновляем
+                    if (empty($category->photo_url) && $categoryPhotoUrlClean) {
+                        try {
+                            $category->update(['photo_url' => $categoryPhotoUrlClean]);
+                            Log::info("Updated category '{$categoryName}' with photo: {$categoryPhotoUrlClean}");
+                        } catch (\Exception $e) {
+                            $this->importErrors[] = "Предупреждение: Не удалось обновить фото категории '$categoryName' - " . $e->getMessage();
+                        }
+                    }
+                }
+                
+                if ($category) {
+                    $category_id = $category->id;
+                    // Кешируем результат
+                    $this->processedCategories[$cacheKey] = $category_id;
+                }
             }
         }
 
-        // Обрабатываем URL фото - проверяем, что это действительно URL
-        $photo_url = null;
-        if (!empty(trim($row[$photoKey] ?? ''))) {
-            $url = trim($row[$photoKey]);
-            if (filter_var($url, FILTER_VALIDATE_URL) !== false) {
-                $photo_url = $url;
+        // Обрабатываем URL фото товара - проверяем, что это действительно URL
+        $productPhotoUrlClean = null;
+        if (!empty($productPhotoUrl)) {
+            if (filter_var($productPhotoUrl, FILTER_VALIDATE_URL) !== false) {
+                $productPhotoUrlClean = $productPhotoUrl;
             }
         }
         
         // Обрабатываем количество - приводим к числу, по умолчанию 0
-        $quantity = 0;
-        if (isset($row[$quantityKey]) && is_numeric($row[$quantityKey])) {
-            $quantity = max(0, (int) $row[$quantityKey]);
+        $quantity_clean = 0;
+        if (isset($quantity) && is_numeric($quantity)) {
+            $quantity_clean = max(0, (int) $quantity);
         }
         
         // Обрабатываем цену - приводим к числу, по умолчанию 0
-        $price = 0;
-        if (isset($row[$priceKey]) && is_numeric($row[$priceKey])) {
-            $price = max(0, (float) $row[$priceKey]);
+        // Заменяем запятые на точки для корректного парсинга
+        $price_clean = 0;
+        if (isset($price)) {
+            $price_str = str_replace(',', '.', trim($price));
+            if (is_numeric($price_str)) {
+                $price_clean = max(0, (float) $price_str);
+            }
         }
         
         // Обрабатываем активность - более гибкая проверка
         $is_active = true; // по умолчанию активен
-        if (isset($row[$activeKey])) {
-            $active_value = $row[$activeKey];
-            if (is_numeric($active_value)) {
-                $is_active = (int) $active_value > 0;
-            } elseif (is_string($active_value)) {
-                $active_value = strtolower(trim($active_value));
+        if (isset($active)) {
+            if (is_numeric($active)) {
+                $is_active = (int) $active > 0;
+            } elseif (is_string($active)) {
+                $active_value = strtolower(trim($active));
                 $is_active = !in_array($active_value, ['0', 'false', 'нет', 'no', '']);
             } else {
-                $is_active = (bool) $active_value;
+                $is_active = (bool) $active;
             }
         }
 
@@ -190,16 +249,25 @@ class ProductsImport implements ToModel, WithHeadingRow
                 'name' => $name,
                 'description' => $description,
                 'article' => $article,
-                'photo_url' => $photo_url,
+                'photo_url' => $productPhotoUrlClean,
                 'specifications' => !empty($specifications) ? $specifications : null,
-                'quantity' => $quantity,
-                'price' => $price,
+                'quantity' => $quantity_clean,
+                'price' => $price_clean,
                 'is_active' => $is_active,
             ]);
         } catch (\Exception $e) {
             $this->importErrors[] = "Строка: Ошибка создания товара - " . $e->getMessage();
             $this->skippedCount++;
             $this->importedCount--;
+            Log::error('Error creating product', [
+                'error' => $e->getMessage(),
+                'data' => [
+                    'name' => $name,
+                    'article' => $article,
+                    'price' => $price_clean,
+                    'quantity' => $quantity_clean
+                ]
+            ]);
             return null;
         }
     }

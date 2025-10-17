@@ -24,8 +24,26 @@ class StoreProductRequest extends FormRequest
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             'article' => 'required|string|max:100|unique:products,article',
-            'category_id' => 'nullable|exists:categories,id',
-            'photo_url' => 'nullable|url|max:500',
+            'category_id' => [
+                'nullable',
+                'exists:categories,id',
+                // Проверяем, что категория принадлежит пользователю
+                function ($attribute, $value, $fail) {
+                    if ($value) {
+                        $category = \App\Models\Category::find($value);
+                        if (!$category || $category->user_id !== Auth::id()) {
+                            $fail('Выбранная категория не существует или не принадлежит вам.');
+                        }
+                    }
+                },
+            ],
+            'photo_url' => [
+                'nullable',
+                'url',
+                'max:500',
+                // Улучшенная валидация URL изображений
+                'regex:/^https?:\/\/[\w\-\._~:\/?#\[\]@!$&\'()*+,;=]+\.(?:jpg|jpeg|png|gif|webp|bmp)$/i'
+            ],
             'specifications' => 'nullable|array',
             'specifications.*' => 'string|max:255',
             'quantity' => 'required|integer|min:0|max:999999',
@@ -53,6 +71,7 @@ class StoreProductRequest extends FormRequest
             
             'photo_url.url' => 'Ссылка на фото должна быть корректным URL.',
             'photo_url.max' => 'Ссылка на фото не должна превышать 500 символов.',
+            'photo_url.regex' => 'Ссылка должна указывать на изображение (jpg, jpeg, png, gif, webp, bmp).',
             
             'specifications.array' => 'Характеристики должны быть в виде списка.',
             'specifications.*.string' => 'Каждая характеристика должна быть строкой.',

@@ -679,9 +679,26 @@ class TelegramBotService
         }
 
         $message = $this->buildAdminOrderMessage($order);
+        
+        // Создаем inline клавиатуру с кнопкой подтверждения оплаты
+        $inlineKeyboard = [
+            'inline_keyboard' => [
+                [
+                    [
+                        'text' => '✅ Подтвердить оплату',
+                        'callback_data' => "confirm_payment_{$order->id}"
+                    ],
+                    [
+                        'text' => '❌ Отменить заказ',
+                        'callback_data' => "cancel_order_{$order->id}"
+                    ]
+                ]
+            ]
+        ];
 
         $success = $this->sendMessage($bot, $bot->admin_telegram_id, $message, [
             'disable_web_page_preview' => true,
+            'reply_markup' => json_encode($inlineKeyboard)
         ]);
 
         if ($success) {
@@ -741,7 +758,8 @@ class TelegramBotService
     {
         $message = "🔔 <b>НОВЫЙ ЗАКАЗ!</b>\n\n";
         $message .= "📋 <b>Номер заказа:</b> {$order->order_number}\n";
-        $message .= "💰 <b>Сумма:</b> {$order->formatted_total}\n\n";
+        $message .= "💰 <b>Сумма:</b> {$order->formatted_total}\n";
+        $message .= "⏰ <b>Время на оплату:</b> {$order->time_until_expiration}\n\n";
 
         // Информация о клиенте
         $message .= "👤 <b>КЛИЕНТ:</b>\n";
@@ -775,7 +793,8 @@ class TelegramBotService
             $message .= "💬 <b>Комментарий:</b>\n{$order->notes}\n\n";
         }
 
-        $message .= "⏰ <b>Время заказа:</b> " . $order->created_at->format('d.m.Y H:i:s');
+        $message .= "⏰ <b>Время заказа:</b> " . $order->created_at->format('d.m.Y H:i:s') . "\n";
+        $message .= "⚠️ <b>Истекает:</b> " . $order->expires_at->format('d.m.Y H:i:s');
 
         return $message;
     }
@@ -795,9 +814,89 @@ class TelegramBotService
             $message .= "• {$item->product_name} - {$item->quantity} шт.\n";
         }
 
-        $message .= "\n📞 <b>С вами свяжутся в ближайшее время для подтверждения заказа и уточнения деталей доставки.</b>\n\n";
+        $message .= "\n⏰ <b>ВАЖНО!</b> У вас есть <b>5 часов</b> на оплату заказа.\n";
+        $message .= "Заказ истекает: <b>" . $order->expires_at->format('d.m.Y в H:i') . "</b>\n\n";
+        
+        $message .= "📞 <b>С вами свяжутся в ближайшее время для подтверждения заказа и уточнения деталей доставки.</b>\n\n";
         $message .= "Спасибо за ваш заказ! 🙏";
 
         return $message;
+    }
+
+    /**
+     * Ответить на callback query
+     */
+    public function answerCallbackQuery(TelegramBot $bot, string $callbackQueryId, string $text, bool $showAlert = false): bool
+    {
+        try {
+            $data = [
+                'callback_query_id' => $callbackQueryId,
+                'text' => $text,
+                'show_alert' => $showAlert
+            ];
+
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/answerCallbackQuery", $data);
+
+            return $response->successful() && $response->json('ok');
+        } catch (\Exception $e) {
+            Log::error('Ошибка при ответе на callback query', [
+                'bot_id' => $bot->id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Редактировать текст сообщения
+     */
+    public function editMessageText(TelegramBot $bot, int $chatId, int $messageId, string $text, array $options = []): bool
+    {
+        try {
+            $data = array_merge([
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $text,
+                'parse_mode' => 'HTML'
+            ], $options);
+
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/editMessageText", $data);
+
+            return $response->successful() && $response->json('ok');
+        } catch (\Exception $e) {
+            Log::error('Ошибка при редактировании сообщения', [
+                'bot_id' => $bot->id,
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Удалить inline клавиатуру из сообщения
+     */
+    public function editMessageReplyMarkup(TelegramBot $bot, int $chatId, int $messageId): bool
+    {
+        try {
+            $data = [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'reply_markup' => json_encode(['inline_keyboard' => []])
+            ];
+
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$bot->bot_token}/editMessageReplyMarkup", $data);
+
+            return $response->successful() && $response->json('ok');
+        } catch (\Exception $e) {
+            Log::error('Ошибка при удалении клавиатуры', [
+                'bot_id' => $bot->id,
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 }

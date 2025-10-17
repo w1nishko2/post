@@ -10,6 +10,7 @@ use App\Exports\ProductsTemplateExport;
 use App\Imports\ProductsImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
@@ -48,12 +49,8 @@ class ProductController extends Controller
      */
     public function index(\App\Models\TelegramBot $telegramBot)
     {
-        // Проверяем, что бот принадлежит текущему пользователю
-        if ($telegramBot->user_id !== Auth::id()) {
-            abort(403, 'У вас нет доступа к этому боту.');
-        }
-
-        $products = $telegramBot->products()->latest()->paginate(12);
+        // Проверка владения теперь выполняется middleware
+    $products = $telegramBot->products()->with(['category'])->orderedForListing()->paginate(12);
 
         return view('products.index', compact('products', 'telegramBot'));
     }
@@ -63,11 +60,7 @@ class ProductController extends Controller
      */
     public function create(TelegramBot $telegramBot)
     {
-        // Проверяем, что бот принадлежит текущему пользователю
-        if ($telegramBot->user_id !== Auth::id()) {
-            abort(403, 'У вас нет доступа к этому боту.');
-        }
-
+        // Проверка владения теперь выполняется middleware
         // Получаем активные категории для этого бота
         $categories = $telegramBot->activeCategories()->orderBy('name')->get();
 
@@ -79,11 +72,7 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request, TelegramBot $telegramBot)
     {
-        // Проверяем, что бот принадлежит текущему пользователю
-        if ($telegramBot->user_id !== Auth::id()) {
-            abort(403, 'У вас нет доступа к этому боту.');
-        }
-
+        // Проверка владения теперь выполняется middleware
         $validated = $request->validated();
         $validated['user_id'] = Auth::id();
         $validated['telegram_bot_id'] = $telegramBot->id;
@@ -215,24 +204,32 @@ class ProductController extends Controller
             $message = "Импорт завершен! Добавлено товаров: {$importedCount}";
             
             if ($skippedCount > 0) {
-                $message .= ", пропущено примеров: {$skippedCount}";
+                $message .= ", пропущено записей: {$skippedCount}";
             }
 
             if (!empty($errors)) {
-                $errorMessage = "Обнаружены ошибки в следующих строках:\n";
-                foreach ($errors as $error) {
-                    $errorMessage .= "Строка {$error['row']}: " . implode(', ', $error['errors']) . "\n";
-                }
+                $errorMessage = "Обнаружены ошибки:\n" . implode("\n", $errors);
                 
                 return redirect()->route('bot.products.index', $telegramBot)
                     ->with('warning', $message)
                     ->with('import_errors', $errorMessage);
             }
 
+            if ($importedCount == 0 && $skippedCount > 0) {
+                return redirect()->route('bot.products.index', $telegramBot)
+                    ->with('error', 'Не удалось импортировать ни одного товара. Проверьте формат файла и заголовки столбцов.');
+            }
+
             return redirect()->route('bot.products.index', $telegramBot)
                 ->with('success', $message);
 
         } catch (\Exception $e) {
+            Log::error('Import error: ' . $e->getMessage(), [
+                'file' => $request->file('excel_file')->getClientOriginalName(),
+                'user_id' => Auth::id(),
+                'bot_id' => $telegramBot->id
+            ]);
+            
             return redirect()->route('bot.products.index', $telegramBot)
                 ->with('error', 'Ошибка при импорте файла: ' . $e->getMessage());
         }

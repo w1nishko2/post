@@ -12,7 +12,16 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Автоматическая отмена просроченных заказов каждые 15 минут
+        $schedule->command('orders:cancel-expired')
+                 ->everyFifteenMinutes()
+                 ->withoutOverlapping()
+                 ->runInBackground();
+
+        // Альтернативно можно использовать Job
+        // $schedule->job(new \App\Jobs\CancelExpiredOrdersJob)
+        //          ->everyTenMinutes()
+        //          ->withoutOverlapping();
     }
 
     /**

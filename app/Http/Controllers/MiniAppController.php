@@ -29,10 +29,10 @@ class MiniAppController extends Controller
         }
 
         // Получаем активные товары конкретного бота
-        $products = $bot->activeProducts()
-                       ->with('category')
-                       ->orderBy('created_at', 'desc')
-                       ->paginate(12);
+    $products = $bot->activeProducts()
+               ->with('category')
+               ->orderedForListing()
+               ->paginate(12);
 
         // Получаем активные категории с количеством товаров
         $categories = $bot->activeCategories()
@@ -107,11 +107,44 @@ class MiniAppController extends Controller
         parse_str($initData, $data);
 
         // Базовая валидация структуры данных
-        if (!isset($data['user']) || !isset($data['auth_date'])) {
+        if (!isset($data['user']) || !isset($data['auth_date']) || !isset($data['hash'])) {
             Log::warning('Invalid Telegram WebApp data structure', [
                 'init_data_keys' => array_keys($data),
                 'user_agent' => $request->userAgent(),
                 'ip' => $request->ip()
+            ]);
+            return null;
+        }
+
+        // Проверяем подпись данных от Telegram
+        $hash = $data['hash'];
+        unset($data['hash']);
+
+        // Формируем data_check_string согласно документации Telegram
+        ksort($data);
+        $data_check_arr = [];
+        foreach ($data as $k => $v) {
+            $data_check_arr[] = $k . '=' . $v;
+        }
+        $data_check_string = implode("\n", $data_check_arr);
+
+        // Получаем токен бота для проверки подписи
+        $botToken = config('services.telegram.bot_token') ?? env('TELEGRAM_BOT_TOKEN');
+        if (!$botToken) {
+            Log::error('Telegram bot token not configured');
+            return null;
+        }
+
+        // Вычисляем HMAC согласно документации Telegram
+        $secret_key = hash('sha256', $botToken, true);
+        $hmac = hash_hmac('sha256', $data_check_string, $secret_key);
+
+        if (!hash_equals($hmac, $hash)) {
+            Log::warning('Telegram WebApp data hash verification failed', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'expected_hash' => $hmac,
+                'received_hash' => $hash
             ]);
             return null;
         }
@@ -181,8 +214,9 @@ class MiniAppController extends Controller
             return response()->json(['error' => 'Bot not found'], 404);
         }
 
-        $products = $bot->activeProducts()
-                       ->with('category')
+    $products = $bot->activeProducts()
+               ->with('category')
+               ->orderedForListing()
                        ->get()
                        ->map(function ($product) {
                            return [
@@ -193,6 +227,7 @@ class MiniAppController extends Controller
                                'photo_url' => $product->photo_url,
                                'price' => $product->price,
                                'formatted_price' => $product->formatted_price,
+                               'created_at' => $product->created_at ? $product->created_at->toISOString() : null,
                                'quantity' => $product->quantity,
                                'category_id' => $product->category_id,
                                'category_name' => $product->category ? $product->category->name : null,
@@ -255,7 +290,7 @@ class MiniAppController extends Controller
         $query = $request->get('q', '');
         $categoryId = $request->get('category_id');
 
-        $productsQuery = $bot->activeProducts()->with('category');
+    $productsQuery = $bot->activeProducts()->with('category')->orderedForListing();
 
         if (!empty($query)) {
             $productsQuery->where(function ($q) use ($query) {
@@ -278,6 +313,7 @@ class MiniAppController extends Controller
                 'photo_url' => $product->photo_url,
                 'price' => $product->price,
                 'formatted_price' => $product->formatted_price,
+                'created_at' => $product->created_at ? $product->created_at->toISOString() : null,
                 'quantity' => $product->quantity,
                 'category_id' => $product->category_id,
                 'category_name' => $product->category ? $product->category->name : null,
@@ -304,10 +340,10 @@ class MiniAppController extends Controller
             return response()->json(['error' => 'Bot not found'], 404);
         }
 
-        $product = $bot->products()
-                      ->where('id', $productId)
-                      ->with('category')
-                      ->first();
+    $product = $bot->products()
+              ->where('id', $productId)
+              ->with('category')
+              ->first();
 
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
@@ -349,15 +385,21 @@ class MiniAppController extends Controller
         $validatedCart = [];
         $issues = [];
 
+        // Оптимизация: получаем все товары одним запросом вместо N+1
+        $productIds = collect($cartItems)->pluck('id')->unique()->filter()->all();
+        $products = $bot->products()
+                       ->whereIn('id', $productIds)
+                       ->get()
+                       ->keyBy('id');
+
         foreach ($cartItems as $item) {
-            $product = $bot->products()
-                          ->where('id', $item['id'])
-                          ->first();
+            $productId = $item['id'] ?? null;
+            $product = $products->get($productId);
 
             if (!$product) {
                 $issues[] = [
                     'type' => 'product_not_found',
-                    'product_id' => $item['id'],
+                    'product_id' => $productId,
                     'message' => 'Товар не найден'
                 ];
                 continue;
@@ -366,20 +408,20 @@ class MiniAppController extends Controller
             if (!$product->is_active) {
                 $issues[] = [
                     'type' => 'product_inactive',
-                    'product_id' => $item['id'],
+                    'product_id' => $productId,
                     'product_name' => $product->name,
                     'message' => 'Товар недоступен'
                 ];
                 continue;
             }
 
-            $requestedQuantity = $item['quantity'] ?? 1;
+            $requestedQuantity = max(1, intval($item['quantity'] ?? 1));
             $availableQuantity = $product->quantity;
 
             if ($availableQuantity <= 0) {
                 $issues[] = [
                     'type' => 'out_of_stock',
-                    'product_id' => $item['id'],
+                    'product_id' => $productId,
                     'product_name' => $product->name,
                     'message' => 'Товар закончился'
                 ];
@@ -389,7 +431,7 @@ class MiniAppController extends Controller
             if ($requestedQuantity > $availableQuantity) {
                 $issues[] = [
                     'type' => 'insufficient_quantity',
-                    'product_id' => $item['id'],
+                    'product_id' => $productId,
                     'product_name' => $product->name,
                     'requested' => $requestedQuantity,
                     'available' => $availableQuantity,

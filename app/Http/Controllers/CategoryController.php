@@ -88,7 +88,7 @@ class CategoryController extends Controller
 
         $products = $category->products()
             ->active()
-            ->latest()
+            ->orderedForListing()
             ->paginate(12);
 
         return view('categories.show', compact('telegramBot', 'category', 'products'));
