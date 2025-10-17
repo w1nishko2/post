@@ -1794,43 +1794,74 @@ function proceedToCheckout() {
         return;
     }
 
-    const cartItems = JSON.parse(localStorage.getItem('cart') || '[]');
-    if (cartItems.length === 0) {
-        showAlert('Корзина пуста', 'warning');
-        return;
-    }
-
     // Показываем загрузку
-    showAlert('Оформляем заказ...', 'info');
+    showAlert('Проверяем корзину...', 'info');
 
-    // Подготавливаем данные для отправки
-    const orderData = {
-        bot_short_name: document.querySelector('meta[name="short-name"]').getAttribute('content'),
-        user_data: userData,
-        notes: '' // Можно добавить поле для комментариев
-    };
-
-    // Отправляем запрос на оформление заказа
-    secureFetch('/cart/checkout', {
-        method: 'POST',
-        body: JSON.stringify(orderData)
+    // Сначала получаем актуальные данные корзины с сервера
+    fetch('/cart', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
     })
     .then(response => response.json())
+    .then(cartData => {
+        if (!cartData.success || !cartData.items || cartData.items.length === 0) {
+            showAlert('Корзина пуста', 'warning');
+            return;
+        }
+
+        // Показываем загрузку оформления
+        showAlert('Оформляем заказ...', 'info');
+
+        // Подготавливаем данные для отправки
+        const orderData = {
+            bot_short_name: document.querySelector('meta[name="short-name"]').getAttribute('content'),
+            user_data: userData,
+            notes: '' // Можно добавить поле для комментариев
+        };
+
+        // Отправляем запрос на оформление заказа
+        return secureFetch('/cart/checkout', {
+            method: 'POST',
+            body: JSON.stringify(orderData)
+        });
+    })
+    .then(response => {
+        if (!response) return; // Если корзина была пуста
+        return response.json();
+    })
     .then(data => {
+        if (!data) return; // Если корзина была пуста
+        
         if (data.success) {
-            // Очищаем корзину
-            localStorage.removeItem('cart');
-            updateCartCounter();
-            
             // Закрываем модальное окно корзины
             closeCartModal();
             
             // Показываем успешное сообщение
             showAlert(`Заказ успешно оформлен! Номер заказа: ${data.order.order_number}`, 'success');
             
-            // Обновляем содержимое корзины
+            // Обновляем счетчик корзины
+            updateCartCounter();
+            
+            // Обновляем содержимое корзины (очищаем)
             setTimeout(() => {
-                displayCartItems([]);
+                const body = document.getElementById('cartModalBody');
+                if (body) {
+                    body.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                            <h5>Корзина пуста</h5>
+                            <p class="text-muted">Добавьте товары для оформления заказа</p>
+                        </div>
+                    `;
+                }
+                
+                const footer = document.getElementById('cartModalFooter');
+                if (footer) {
+                    footer.classList.add('d-none');
+                }
             }, 1000);
             
             triggerHapticFeedback('success');
