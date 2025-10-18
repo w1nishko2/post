@@ -151,7 +151,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="quantity" class="form-label">Количество в наличии <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control @error('quantity') is-invalid @enderror" 
@@ -162,7 +162,7 @@
                                     @enderror
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="price" class="form-label">Цена за штуку (₽) <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control @error('price') is-invalid @enderror" 
@@ -174,7 +174,20 @@
                                     @enderror
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="markup_percentage" class="form-label">Наценка (%)</label>
+                                    <input type="number" class="form-control @error('markup_percentage') is-invalid @enderror" 
+                                           id="markup_percentage" name="markup_percentage" value="{{ old('markup_percentage', 0) }}" 
+                                           step="0.01" min="0" max="1000" 
+                                           placeholder="10.00">
+                                    @error('markup_percentage')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="form-text">Наценка к базовой цене</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
                                 <div class="mb-3">
                                     <label class="form-label">&nbsp;</label>
                                     <div class="form-check">
@@ -183,6 +196,35 @@
                                         <label class="form-check-label" for="is_active">
                                             Товар активен (доступен для продажи)
                                         </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Блок расчёта цены с наценкой -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Расчёт цены с наценкой</h6>
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Базовая цена:</small>
+                                                <div id="base-price-display" class="fw-bold">0 ₽</div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Наценка:</small>
+                                                <div id="markup-display" class="fw-bold text-info">0% (0 ₽)</div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Итоговая цена:</small>
+                                                <div id="final-price-display" class="fw-bold text-success fs-5">0 ₽</div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Общая стоимость:</small>
+                                                <div id="total-value-display" class="fw-bold text-primary">0 ₽</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -234,6 +276,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Автоматическое форматирование цены
     const priceInput = document.getElementById('price');
+    const markupInput = document.getElementById('markup_percentage');
+    const quantityInput = document.getElementById('quantity');
     
     if (priceInput) {
         priceInput.addEventListener('blur', function() {
@@ -241,40 +285,35 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isNaN(value)) {
                 this.value = value.toFixed(2);
             }
+            updatePriceCalculation();
         });
     }
 
-    // Подсчет общей стоимости
-    const quantityInput = document.getElementById('quantity');
-    
-    function updateTotalValue() {
+    if (markupInput) {
+        markupInput.addEventListener('input', updatePriceCalculation);
+    }
+
+    // Функция обновления расчёта цены с наценкой
+    function updatePriceCalculation() {
+        const basePrice = parseFloat(priceInput.value) || 0;
+        const markupPercentage = parseFloat(markupInput.value) || 0;
         const quantity = parseInt(quantityInput.value) || 0;
-        const price = parseFloat(priceInput.value) || 0;
-        const total = quantity * price;
         
-        let totalContainer = document.getElementById('total-value');
+        const markupAmount = basePrice * (markupPercentage / 100);
+        const finalPrice = basePrice + markupAmount;
+        const totalValue = finalPrice * quantity;
         
-        if (!totalContainer && total > 0) {
-            totalContainer = document.createElement('div');
-            totalContainer.id = 'total-value';
-            totalContainer.className = 'alert alert-info mt-2';
-            priceInput.parentNode.appendChild(totalContainer);
-        }
-        
-        if (totalContainer) {
-            if (total > 0) {
-                totalContainer.innerHTML = '<strong>Общая стоимость:</strong> ' + total.toLocaleString('ru-RU') + ' ₽';
-                totalContainer.style.display = 'block';
-            } else {
-                totalContainer.style.display = 'none';
-            }
-        }
+        // Обновляем отображение
+        document.getElementById('base-price-display').textContent = basePrice.toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('markup-display').textContent = markupPercentage + '% (' + markupAmount.toLocaleString('ru-RU') + ' ₽)';
+        document.getElementById('final-price-display').textContent = finalPrice.toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('total-value-display').textContent = totalValue.toLocaleString('ru-RU') + ' ₽';
     }
     
     if (quantityInput && priceInput) {
-        quantityInput.addEventListener('input', updateTotalValue);
-        priceInput.addEventListener('input', updateTotalValue);
-        updateTotalValue(); // Инициализация
+        quantityInput.addEventListener('input', updatePriceCalculation);
+        priceInput.addEventListener('input', updatePriceCalculation);
+        updatePriceCalculation(); // Инициализация
     }
 });
 </script>

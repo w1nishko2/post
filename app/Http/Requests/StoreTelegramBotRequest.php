@@ -39,6 +39,7 @@ class StoreTelegramBotRequest extends FormRequest
                 Rule::unique('telegram_bots')
             ],
             'admin_telegram_id' => 'nullable|string|max:20|regex:/^\d+$/',
+            'admin_telegram_username' => 'nullable|string|max:32|regex:/^[a-zA-Z0-9_]+$/',
             'api_id' => 'nullable|string|max:255',
             'api_hash' => 'nullable|string|max:255',
             'mini_app_url' => 'nullable|string|max:255',
@@ -66,6 +67,9 @@ class StoreTelegramBotRequest extends FormRequest
             'admin_telegram_id.max' => 'ID администратора не должен превышать 20 символов.',
             'admin_telegram_id.regex' => 'ID администратора должен содержать только цифры.',
             
+            'admin_telegram_username.max' => 'Username администратора не должен превышать 32 символа.',
+            'admin_telegram_username.regex' => 'Username может содержать только буквы, цифры и подчеркивания.',
+            
             'mini_app_url.url' => 'URL Mini App должен быть корректным URL адресом.',
             'mini_app_url.max' => 'URL Mini App не должен превышать 255 символов.',
             
@@ -83,6 +87,13 @@ class StoreTelegramBotRequest extends FormRequest
         if ($this->has('bot_username')) {
             $this->merge([
                 'bot_username' => ltrim($this->bot_username, '@')
+            ]);
+        }
+
+        // Очищаем admin_telegram_username от символа @
+        if ($this->has('admin_telegram_username')) {
+            $this->merge([
+                'admin_telegram_username' => ltrim($this->admin_telegram_username, '@')
             ]);
         }
 

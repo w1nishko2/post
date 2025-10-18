@@ -17,6 +17,7 @@ class TelegramBot extends Model
         'bot_username',
         'bot_token',
         'admin_telegram_id',
+        'admin_telegram_username',
         'api_id',
         'api_hash',
         'webhook_url',
@@ -201,5 +202,35 @@ class TelegramBot extends Model
     public function activeCategories(): HasMany
     {
         return $this->hasMany(Category::class)->where('is_active', true);
+    }
+
+    /**
+     * Получить ссылку на админа в Telegram
+     */
+    public function getAdminTelegramLinkAttribute(): ?string
+    {
+        if (empty($this->admin_telegram_username)) {
+            return null;
+        }
+
+        // Убираем @ если он есть в начале
+        $username = ltrim($this->admin_telegram_username, '@');
+        
+        return "https://t.me/{$username}";
+    }
+
+    /**
+     * Получить отформатированную ссылку на админа для сообщений
+     */
+    public function getFormattedAdminLinkAttribute(): ?string
+    {
+        if (empty($this->admin_telegram_username)) {
+            return null;
+        }
+
+        // Убираем @ если он есть в начале
+        $username = ltrim($this->admin_telegram_username, '@');
+        
+        return "<a href=\"https://t.me/{$username}\">👤 Написать администратору</a>";
     }
 }

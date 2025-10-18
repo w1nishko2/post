@@ -29,6 +29,7 @@ class ProductFactory extends Factory
             ],
             'quantity' => $this->faker->numberBetween(0, 100),
             'price' => $this->faker->randomFloat(2, 10, 1000),
+            'markup_percentage' => $this->faker->randomFloat(2, 0, 50),
             'is_active' => true,
         ];
     }

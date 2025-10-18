@@ -785,7 +785,7 @@ class TelegramBotService
                 $message .= " (арт. {$item->product_article})";
             }
             $message .= "\n  Количество: {$item->quantity} шт.\n";
-            $message .= "  Цена: {$item->formatted_price}\n";
+            $message .= "  Цена: {$item->formatted_price_with_markup}\n";
             $message .= "  Сумма: {$item->formatted_total_price}\n\n";
         }
 
@@ -794,7 +794,15 @@ class TelegramBotService
         }
 
         $message .= "⏰ <b>Время заказа:</b> " . $order->created_at->format('d.m.Y H:i:s') . "\n";
-        $message .= "⚠️ <b>Истекает:</b> " . $order->expires_at->format('d.m.Y H:i:s');
+        $message .= "⚠️ <b>Истекает:</b> " . $order->expires_at->format('d.m.Y H:i:s') . "\n\n";
+        
+        // Добавляем информацию о том, что клиент может связаться с администратором
+        $bot = $order->telegramBot;
+        if ($bot && $bot->admin_telegram_link) {
+            $message .= "💬 <b>Клиент может написать вам:</b> " . $bot->admin_telegram_link;
+        } else {
+            $message .= "ℹ️ <b>Совет:</b> Настройте username администратора в настройках бота для удобной связи с клиентами";
+        }
 
         return $message;
     }
@@ -804,6 +812,8 @@ class TelegramBotService
      */
     private function buildCustomerOrderMessage(\App\Models\Order $order): string
     {
+        $bot = $order->telegramBot;
+        
         $message = "✅ <b>Ваш заказ принят!</b>\n\n";
         $message .= "📋 <b>Номер заказа:</b> {$order->order_number}\n";
         $message .= "💰 <b>Сумма:</b> {$order->formatted_total}\n\n";
@@ -818,6 +828,13 @@ class TelegramBotService
         $message .= "Заказ истекает: <b>" . $order->expires_at->format('d.m.Y в H:i') . "</b>\n\n";
         
         $message .= "📞 <b>С вами свяжутся в ближайшее время для подтверждения заказа и уточнения деталей доставки.</b>\n\n";
+        
+        // Добавляем ссылку на админа, если она настроена
+        if ($bot && $bot->formatted_admin_link) {
+            $message .= "💬 <b>Вопросы по заказу?</b>\n";
+            $message .= $bot->formatted_admin_link . "\n\n";
+        }
+        
         $message .= "Спасибо за ваш заказ! 🙏";
 
         return $message;

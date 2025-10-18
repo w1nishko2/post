@@ -125,7 +125,7 @@
                                     </div>
                                     
                                     <div class="product-price-wrapper">
-                                        <span class="product-price">{{ $product->formatted_price }}</span>
+                                        <span class="product-price">{{ $product->formatted_price_with_markup }}</span>
                                     </div>
                                     
                                     <div class="product-quantity-wrapper">
@@ -266,7 +266,7 @@
                         'specifications' => $product->specifications,
                         'quantity' => $product->quantity,
                         'price' => $product->price,
-                        'formatted_price' => $product->formatted_price,
+                        'formatted_price' => $product->formatted_price_with_markup,
                         'availability_status' => $product->availability_status,
                         'isAvailable' => $product->isAvailable(),
                         'category_id' => $product->category_id

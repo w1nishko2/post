@@ -78,92 +78,96 @@
             </div>
             <?php endif; ?>
 
-            <!-- Блок для управления категориями -->
+            <!-- Блоки управления в одном ряду -->
             <?php if(isset($telegramBot)): ?>
-            <div class="card mb-4 shadow-sm" style="border-radius: 16px; overflow: hidden;">
-                <div class="card-header" style="background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 20%); border-bottom: 2px solid #f59e0b;">
-                    <h6 class="mb-0" style="color: #92400e; font-weight: 700;">
-                        <i class="fas fa-folder me-2"></i> Управление категориями
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <p class="mb-2 text-muted">
+            <div class="row mb-4">
+                <!-- Блок управления категориями -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 20%); border-bottom: 2px solid #f59e0b;">
+                            <h6 class="mb-0" style="color: #92400e; font-weight: 700;">
+                                <i class="fas fa-folder me-2"></i> Управление категориями
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2 text-muted small">
                                 <i class="fas fa-info-circle"></i> 
-                                Создавайте категории для организации товаров в магазине. Категории помогают покупателям легче находить нужные товары.
+                                Создавайте категории для организации товаров в магазине.
                             </p>
-                            <small class="text-muted">
+                            <small class="text-muted d-block mb-3">
                                 Товары можно привязывать к категориям при создании/редактировании или через импорт Excel.
                             </small>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="<?php echo e(route('bot.categories.index', $telegramBot)); ?>" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-list"></i> Все категории
+                                </a>
+                                <a href="<?php echo e(route('bot.categories.create', $telegramBot)); ?>" class="btn btn-outline-warning btn-sm">
+                                    <i class="fas fa-plus"></i> Новая категория
+                                </a>
+                            </div>
                         </div>
-                        <div class="col-md-4 text-md-end">
-                            <a href="<?php echo e(route('bot.categories.index', $telegramBot)); ?>" class="btn btn-warning btn-sm me-2">
-                                <i class="fas fa-list"></i> Все категории
-                            </a>
-                            <a href="<?php echo e(route('bot.categories.create', $telegramBot)); ?>" class="btn btn-outline-warning btn-sm">
-                                <i class="fas fa-plus"></i> Новая категория
-                            </a>
+                    </div>
+                </div>
+
+                <!-- Блок массового управления товарами -->
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 20%); border-bottom: 2px solid #10b981;">
+                            <h6 class="mb-0" style="color: #065f46; font-weight: 700;">
+                                <i class="fas fa-file-excel me-2"></i> Массовое управление товарами
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <!-- Скачать шаблон -->
+                                <div class="col-12">
+                                    <div class="border rounded p-3">
+                                        <h6 class="text-primary mb-2 small">
+                                            <i class="fas fa-download"></i> Скачать шаблон
+                                        </h6>
+                                        <p class="text-muted small mb-2">
+                                            Excel шаблон для массового добавления товаров.
+                                        </p>
+                                        <a href="<?php echo e(route('bot.products.download-template', $telegramBot)); ?>" class="btn btn-outline-success btn-sm">
+                                            <i class="fas fa-file-download"></i> Скачать шаблон
+                                        </a>
+                                    </div>
+                                </div>
+                                
+                                <!-- Загрузить файл -->
+                                <div class="col-12">
+                                    <div class="border rounded p-3">
+                                        <h6 class="text-info mb-2 small">
+                                            <i class="fas fa-upload"></i> Загрузить товары
+                                        </h6>
+                                        <form action="<?php echo e(route('bot.products.import', $telegramBot)); ?>" method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-2">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="file" name="excel_file" class="form-control form-control-sm" 
+                                                   accept=".xlsx,.xls,.csv" required>
+                                            <button type="submit" class="btn btn-outline-info btn-sm">
+                                                <i class="fas fa-file-upload"></i> Импортировать
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card shadow-sm" style="border-radius: 16px;">
+                        <div class="card-body text-center py-4">
+                            <i class="fas fa-robot fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Выберите бота для управления товарами и категориями</h5>
+                            <p class="text-muted">Сначала создайте или выберите Telegram бота для работы с товарами</p>
                         </div>
                     </div>
                 </div>
             </div>
             <?php endif; ?>
-
-            <!-- Блок для импорта/экспорта товаров -->
-            <div class="card mb-4 shadow-sm" style="border-radius: 16px; overflow: hidden;">
-                <div class="card-header" style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 20%); border-bottom: 2px solid #10b981;">
-                    <h6 class="mb-0" style="color: #065f46; font-weight: 700;">
-                        <i class="fas fa-file-excel me-2"></i> Массовое управление товарами
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <!-- Скачать шаблон -->
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 h-100">
-                                <h6 class="text-primary mb-2">
-                                    <i class="fas fa-download"></i> Скачать шаблон
-                                </h6>
-                                <p class="text-muted small mb-3">
-                                    Скачайте Excel шаблон с примерами заполнения для массового добавления товаров.
-                                </p>
-                                <?php if(isset($telegramBot)): ?>
-                                    <a href="<?php echo e(route('bot.products.download-template', $telegramBot)); ?>" class="btn btn-outline-success btn-sm">
-                                        <i class="fas fa-file-download"></i> Скачать template_products.xlsx
-                                    </a>
-                                <?php else: ?>
-                                    <span class="text-muted">Выберите бота для скачивания шаблона</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        
-                        <!-- Загрузить файл -->
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 h-100">
-                                <h6 class="text-info mb-2">
-                                    <i class="fas fa-upload"></i> Загрузить товары
-                                </h6>
-                                <p class="text-muted small mb-3">
-                                    Заполните шаблон и загрузите файл для массового добавления товаров.
-                                </p>
-                                <?php if(isset($telegramBot)): ?>
-                                    <form action="<?php echo e(route('bot.products.import', $telegramBot)); ?>" method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-2">
-                                        <?php echo csrf_field(); ?>
-                                        <input type="file" name="excel_file" class="form-control form-control-sm" 
-                                               accept=".xlsx,.xls,.csv" required>
-                                        <button type="submit" class="btn btn-outline-info btn-sm">
-                                            <i class="fas fa-file-upload"></i> Импортировать
-                                        </button>
-                                    </form>
-                                <?php else: ?>
-                                    <span class="text-muted">Выберите бота для импорта</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Контент товаров -->
             <div class="card">
@@ -219,7 +223,7 @@
                                             </div>
                                             <div class="mb-2">
                                                 <strong>Цена:</strong>
-                                                <span class="text-success fw-bold"><?php echo e($product->formatted_price); ?></span>
+                                                <span class="text-success fw-bold"><?php echo e($product->formatted_price_with_markup); ?></span>
                                             </div>
                                             <div class="mb-2">
                                                 <strong>Количество:</strong>

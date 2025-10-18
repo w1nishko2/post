@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\TelegramBot;
+use App\Models\Category;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Exports\ProductsTemplateExport;
@@ -295,6 +296,7 @@ class ProductController extends Controller
             'description' => 'sometimes|nullable|string',
             'article' => 'sometimes|nullable|string|max:100',
             'specifications' => 'sometimes|nullable|string',
+            'markup_percentage' => 'sometimes|nullable|numeric|min:0|max:1000',
         ];
 
         $validated = $request->validate($rules);
@@ -306,6 +308,181 @@ class ProductController extends Controller
             'message' => 'Товар обновлен',
             'product' => $product->fresh(['category'])
         ]);
+    }
+
+    /**
+     * Update single field of product from inline editing
+     */
+    public function updateField(Request $request, TelegramBot $telegramBot)
+    {
+        // Проверяем, что бот принадлежит текущему пользователю
+        if ($telegramBot->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Доступ запрещен'], 403);
+        }
+
+        $request->validate([
+            'id' => 'required|integer|exists:products,id',
+            'field' => 'required|string|in:name,price,quantity,category_id,is_active,description,article,markup_percentage',
+            'value' => 'required'
+        ]);
+
+        $product = Product::where('id', $request->id)
+            ->where('telegram_bot_id', $telegramBot->id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        // Валидируем значение в зависимости от поля
+        $fieldRules = [
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0|max:999999.99',
+            'quantity' => 'required|integer|min:0|max:999999',
+            'category_id' => 'nullable|exists:categories,id',
+            'is_active' => 'required|boolean',
+            'description' => 'nullable|string|max:2000',
+            'article' => 'nullable|string|max:100',
+            'markup_percentage' => 'nullable|numeric|min:0|max:1000',
+        ];
+
+        $fieldValidator = $request->validate([
+            'value' => $fieldRules[$request->field] ?? 'required'
+        ]);
+
+        // Дополнительная проверка для категории
+        if ($request->field === 'category_id' && $request->value) {
+            $category = Category::find($request->value);
+            if (!$category || $category->user_id !== Auth::id() || $category->telegram_bot_id !== $telegramBot->id) {
+                return response()->json(['error' => 'Категория не найдена'], 404);
+            }
+        }
+
+        $product->update([$request->field => $fieldValidator['value']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Поле обновлено',
+            'product' => $product->fresh(['category'])
+        ]);
+    }
+
+    /**
+     * Массовое применение наценки к товарам
+     */
+    public function bulkMarkup(Request $request, TelegramBot $telegramBot)
+    {
+        // Проверяем, что бот принадлежит текущему пользователю
+        if ($telegramBot->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Доступ запрещен'], 403);
+        }
+
+        $request->validate([
+            'markup_percentage' => 'required|numeric|min:0|max:1000',
+            'only_without_markup' => 'boolean'
+        ]);
+
+        $markupPercentage = $request->input('markup_percentage');
+        $onlyWithoutMarkup = $request->input('only_without_markup', true);
+
+        try {
+            DB::beginTransaction();
+
+            // Строим запрос для товаров этого бота
+            $query = Product::where('telegram_bot_id', $telegramBot->id)
+                          ->where('user_id', Auth::id());
+
+            // Если нужно применить только к товарам без наценки
+            if ($onlyWithoutMarkup) {
+                $query->where(function($q) {
+                    $q->whereNull('markup_percentage')
+                      ->orWhere('markup_percentage', 0);
+                });
+            }
+
+            $affectedCount = $query->update(['markup_percentage' => $markupPercentage]);
+
+            DB::commit();
+
+            $message = $affectedCount > 0 
+                ? "Наценка {$markupPercentage}% успешно применена к {$affectedCount} товарам"
+                : "Не найдено товаров для применения наценки";
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'affected_count' => $affectedCount
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Ошибка при массовом применении наценки: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Произошла ошибка при применении наценки'
+            ], 500);
+        }
+    }
+
+    /**
+     * Массовое изменение статуса товаров
+     */
+    public function bulkStatus(Request $request, TelegramBot $telegramBot)
+    {
+        // Проверяем, что бот принадлежит текущему пользователю
+        if ($telegramBot->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Доступ запрещен'], 403);
+        }
+
+        $request->validate([
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'required|integer|exists:products,id',
+            'status' => 'required|in:active,inactive'
+        ]);
+
+        $productIds = $request->input('product_ids');
+        $status = $request->input('status');
+        $isActive = $status === 'active' ? 1 : 0;
+
+        try {
+            DB::beginTransaction();
+
+            // Проверяем, что все товары принадлежат этому боту и пользователю
+            $validProducts = Product::where('telegram_bot_id', $telegramBot->id)
+                                  ->where('user_id', Auth::id())
+                                  ->whereIn('id', $productIds)
+                                  ->pluck('id')
+                                  ->toArray();
+
+            if (empty($validProducts)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не найдено товаров для изменения статуса'
+                ], 400);
+            }
+
+            // Обновляем статус товаров
+            $affectedCount = Product::whereIn('id', $validProducts)
+                                  ->update(['is_active' => $isActive]);
+
+            DB::commit();
+
+            $statusText = $isActive ? 'активированы' : 'деактивированы';
+            $message = "Успешно {$statusText} {$affectedCount} товаров";
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'affected_count' => $affectedCount
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Ошибка при массовом изменении статуса: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Произошла ошибка при изменении статуса товаров'
+            ], 500);
+        }
     }
 
     /**

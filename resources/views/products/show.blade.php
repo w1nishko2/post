@@ -103,7 +103,7 @@
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Цена:</strong></div>
                                 <div class="col-sm-8">
-                                    <span class="h4 text-success">{{ $product->formatted_price }}</span>
+                                    <span class="h4 text-success">{{ $product->formatted_price_with_markup }}</span>
                                 </div>
                             </div>
 
@@ -200,7 +200,7 @@
                             <div class="row text-center">
                                 <div class="col-md-3">
                                     <div class="border-end">
-                                        <h4 class="text-primary">{{ $product->formatted_price }}</h4>
+                                        <h4 class="text-primary">{{ $product->formatted_price_with_markup }}</h4>
                                         <small class="text-muted">Цена за штуку</small>
                                     </div>
                                 </div>

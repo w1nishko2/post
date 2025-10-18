@@ -200,15 +200,31 @@
                         @enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label for="admin_telegram_id" class="form-label">ID администратора (необязательно)</label>
-                        <input type="text" class="form-control @error('admin_telegram_id') is-invalid @enderror" 
-                               id="admin_telegram_id" name="admin_telegram_id" value="{{ old('admin_telegram_id') }}" 
-                               placeholder="123456789">
-                        <div class="form-text">Telegram ID администратора для получения уведомлений о покупках</div>
-                        @error('admin_telegram_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="admin_telegram_id" class="form-label">ID администратора (необязательно)</label>
+                                <input type="text" class="form-control @error('admin_telegram_id') is-invalid @enderror" 
+                                       id="admin_telegram_id" name="admin_telegram_id" value="{{ old('admin_telegram_id') }}" 
+                                       placeholder="123456789">
+                                <div class="form-text">Telegram ID администратора для уведомлений</div>
+                                @error('admin_telegram_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="admin_telegram_username" class="form-label">Username администратора (необязательно)</label>
+                                <input type="text" class="form-control @error('admin_telegram_username') is-invalid @enderror" 
+                                       id="admin_telegram_username" name="admin_telegram_username" value="{{ old('admin_telegram_username') }}" 
+                                       placeholder="admin_username">
+                                <div class="form-text">Username для создания ссылки связи с клиентами</div>
+                                @error('admin_telegram_username')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -281,12 +297,25 @@
                                    name="bot_name" value="{{ $bot->bot_name }}" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="admin_telegram_id_{{ $bot->id }}" class="form-label">ID администратора</label>
-                            <input type="text" class="form-control" id="admin_telegram_id_{{ $bot->id }}" 
-                                   name="admin_telegram_id" value="{{ $bot->admin_telegram_id }}" 
-                                   placeholder="123456789">
-                            <div class="form-text">Telegram ID администратора для получения уведомлений о покупках</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="admin_telegram_id_{{ $bot->id }}" class="form-label">ID администратора</label>
+                                    <input type="text" class="form-control" id="admin_telegram_id_{{ $bot->id }}" 
+                                           name="admin_telegram_id" value="{{ $bot->admin_telegram_id }}" 
+                                           placeholder="123456789">
+                                    <div class="form-text">Telegram ID для уведомлений</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="admin_telegram_username_{{ $bot->id }}" class="form-label">Username администратора</label>
+                                    <input type="text" class="form-control" id="admin_telegram_username_{{ $bot->id }}" 
+                                           name="admin_telegram_username" value="{{ $bot->admin_telegram_username }}" 
+                                           placeholder="admin_username">
+                                    <div class="form-text">Username для связи с клиентами</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="row">

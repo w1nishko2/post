@@ -22,6 +22,7 @@ class Product extends Model
         'quantity',
         'reserved_quantity',
         'price',
+        'markup_percentage',
         'is_active',
     ];
 
@@ -33,6 +34,7 @@ class Product extends Model
     protected $casts = [
         'specifications' => 'array',
         'price' => 'decimal:2',
+        'markup_percentage' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
@@ -132,6 +134,39 @@ class Product extends Model
     public function getFormattedPriceAttribute(): string
     {
         return number_format((float) $this->price, 0, ',', ' ') . ' ₽';
+    }
+
+    /**
+     * Получить цену с наценкой
+     */
+    public function getPriceWithMarkupAttribute(): float
+    {
+        $markup = $this->markup_percentage ?? 0;
+        return $this->price * (1 + $markup / 100);
+    }
+
+    /**
+     * Получить форматированную цену с наценкой
+     */
+    public function getFormattedPriceWithMarkupAttribute(): string
+    {
+        return number_format($this->price_with_markup, 0, ',', ' ') . ' ₽';
+    }
+
+    /**
+     * Получить размер наценки в деньгах
+     */
+    public function getMarkupAmountAttribute(): float
+    {
+        return $this->price_with_markup - $this->price;
+    }
+
+    /**
+     * Получить форматированную наценку в деньгах
+     */
+    public function getFormattedMarkupAmountAttribute(): string
+    {
+        return number_format($this->markup_amount, 0, ',', ' ') . ' ₽';
     }
 
     /**

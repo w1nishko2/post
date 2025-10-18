@@ -108,7 +108,7 @@ class CartController extends Controller
                     'article' => $item->product->article,
                     'photo_url' => $item->product->photo_url,
                     'price' => $item->price,
-                    'formatted_price' => $item->product->formatted_price,
+                    'formatted_price' => $item->product->formatted_price_with_markup,
                     'quantity' => $item->quantity,
                     'available_quantity' => $item->product->quantity,
                     'total_price' => $item->total_price,

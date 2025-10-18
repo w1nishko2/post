@@ -245,9 +245,11 @@ endif;
 unset($__errorArgs, $__bag); ?>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="admin_telegram_id" class="form-label">ID администратора (необязательно)</label>
-                        <input type="text" class="form-control <?php $__errorArgs = ['admin_telegram_id'];
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="admin_telegram_id" class="form-label">ID администратора (необязательно)</label>
+                                <input type="text" class="form-control <?php $__errorArgs = ['admin_telegram_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -255,19 +257,47 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>" 
-                               id="admin_telegram_id" name="admin_telegram_id" value="<?php echo e(old('admin_telegram_id')); ?>" 
-                               placeholder="123456789">
-                        <div class="form-text">Telegram ID администратора для получения уведомлений о покупках</div>
-                        <?php $__errorArgs = ['admin_telegram_id'];
+                                       id="admin_telegram_id" name="admin_telegram_id" value="<?php echo e(old('admin_telegram_id')); ?>" 
+                                       placeholder="123456789">
+                                <div class="form-text">Telegram ID администратора для уведомлений</div>
+                                <?php $__errorArgs = ['admin_telegram_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?>
-                            <div class="invalid-feedback"><?php echo e($message); ?></div>
-                        <?php unset($message);
+                                    <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="admin_telegram_username" class="form-label">Username администратора (необязательно)</label>
+                                <input type="text" class="form-control <?php $__errorArgs = ['admin_telegram_username'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                       id="admin_telegram_username" name="admin_telegram_username" value="<?php echo e(old('admin_telegram_username')); ?>" 
+                                       placeholder="admin_username">
+                                <div class="form-text">Username для создания ссылки связи с клиентами</div>
+                                <?php $__errorArgs = ['admin_telegram_username'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                    <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -382,12 +412,25 @@ unset($__errorArgs, $__bag); ?>
                                    name="bot_name" value="<?php echo e($bot->bot_name); ?>" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="admin_telegram_id_<?php echo e($bot->id); ?>" class="form-label">ID администратора</label>
-                            <input type="text" class="form-control" id="admin_telegram_id_<?php echo e($bot->id); ?>" 
-                                   name="admin_telegram_id" value="<?php echo e($bot->admin_telegram_id); ?>" 
-                                   placeholder="123456789">
-                            <div class="form-text">Telegram ID администратора для получения уведомлений о покупках</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="admin_telegram_id_<?php echo e($bot->id); ?>" class="form-label">ID администратора</label>
+                                    <input type="text" class="form-control" id="admin_telegram_id_<?php echo e($bot->id); ?>" 
+                                           name="admin_telegram_id" value="<?php echo e($bot->admin_telegram_id); ?>" 
+                                           placeholder="123456789">
+                                    <div class="form-text">Telegram ID для уведомлений</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="admin_telegram_username_<?php echo e($bot->id); ?>" class="form-label">Username администратора</label>
+                                    <input type="text" class="form-control" id="admin_telegram_username_<?php echo e($bot->id); ?>" 
+                                           name="admin_telegram_username" value="<?php echo e($bot->admin_telegram_username); ?>" 
+                                           placeholder="admin_username">
+                                    <div class="form-text">Username для связи с клиентами</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="row">

@@ -59,6 +59,7 @@ class UpdateProductRequest extends FormRequest
             'specifications.*' => 'string|max:255',
             'quantity' => 'required|integer|min:0|max:999999',
             'price' => 'required|numeric|min:0|max:999999.99',
+            'markup_percentage' => 'nullable|numeric|min:0|max:1000',
             'is_active' => 'boolean',
         ];
     }
@@ -97,6 +98,10 @@ class UpdateProductRequest extends FormRequest
             'price.numeric' => 'Цена должна быть числом.',
             'price.min' => 'Цена не может быть отрицательной.',
             'price.max' => 'Цена не может превышать 999999.99.',
+            
+            'markup_percentage.numeric' => 'Наценка должна быть числом.',
+            'markup_percentage.min' => 'Наценка не может быть отрицательной.',
+            'markup_percentage.max' => 'Наценка не может превышать 1000%.',
             
             'is_active.boolean' => 'Статус активности должен быть true или false.',
         ];

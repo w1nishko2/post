@@ -41,7 +41,10 @@ Route::middleware(['auth'])->group(function () {
         
         // Табличное представление товаров
         Route::get('/bots/{telegramBot}/products-table', [App\Http\Controllers\ProductController::class, 'table'])->name('bot.products.table');
+        Route::post('/bots/{telegramBot}/products/update-field', [App\Http\Controllers\ProductController::class, 'updateField'])->name('bot.products.update-field');
         Route::patch('/bots/{telegramBot}/products/{product}/quick-update', [App\Http\Controllers\ProductController::class, 'quickUpdate'])->name('bot.products.quick-update');
+        Route::post('/bots/{telegramBot}/products/bulk-markup', [App\Http\Controllers\ProductController::class, 'bulkMarkup'])->name('bot.products.bulk-markup');
+        Route::post('/bots/{telegramBot}/products/bulk-status', [App\Http\Controllers\ProductController::class, 'bulkStatus'])->name('bot.products.bulk-status');
         
         Route::put('/bots/{telegramBot}/products/{product}', [App\Http\Controllers\ProductController::class, 'update'])
             ->middleware('throttle:20,1') // Максимум 20 обновлений в минуту
