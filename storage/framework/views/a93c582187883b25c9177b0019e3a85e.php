@@ -1,32 +1,34 @@
-@extends('layouts.app')
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            @if (session('success'))
+            <?php if(session('success')): ?>
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
+                    <?php echo e(session('success')); ?>
 
-            @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-            @endif
+            <?php endif; ?>
+
+            <?php if(session('error')): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <?php echo e(session('error')); ?>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <?php endif; ?>
 
             <!-- Навигационная панель -->
             <div class="card mb-4 shadow-sm" style="border-radius: 16px; overflow: hidden;">
                 <div class="card-body p-0">
                     <nav class="nav nav-pills nav-fill" style="padding: 0.5rem;">
-                        <a class="nav-link" href="{{ route('home') }}"
+                        <a class="nav-link" href="<?php echo e(route('home')); ?>"
                            style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
                             <i class="fas fa-robot me-2"></i>Мои боты
                         </a>
-                        <a class="nav-link active" href="{{ route('products.select-bot') }}"
+                        <a class="nav-link active" href="<?php echo e(route('products.select-bot')); ?>"
                            style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
                             <i class="fas fa-boxes me-2"></i>Мои товары
                         </a>
@@ -34,7 +36,7 @@
                 </div>
             </div>
 
-            @if(isset($telegramBot))
+            <?php if(isset($telegramBot)): ?>
                 <!-- Информация о боте -->
                 <div class="card mb-4">
                     <div class="card-body">
@@ -46,33 +48,33 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <h6 class="mb-1">{{ $telegramBot->bot_name }}</h6>
+                                    <h6 class="mb-1"><?php echo e($telegramBot->bot_name); ?></h6>
                                     <small class="text-muted">Просмотр товара в магазине</small>
                                 </div>
                             </div>
                             <div>
-                                <a href="{{ route('bot.products.index', $telegramBot) }}" class="btn btn-outline-secondary btn-sm">
+                                <a href="<?php echo e(route('bot.products.index', $telegramBot)); ?>" class="btn btn-outline-secondary btn-sm">
                                     <i class="fas fa-arrow-left"></i> К товарам магазина
                                 </a>
                             </div>
                         </div>
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
 
             <div class="row">
                 <div class="col-md-6">
                     <!-- Фотография товара -->
                     <div class="card mb-4">
                         <div class="card-body text-center">
-                            @if($product->photo_url)
-                                <img src="{{ $product->photo_url }}" class="img-fluid rounded" 
-                                     alt="{{ $product->name }}" style="max-height: 400px;"
+                            <?php if($product->photo_url): ?>
+                                <img src="<?php echo e($product->photo_url); ?>" class="img-fluid rounded" 
+                                     alt="<?php echo e($product->name); ?>" style="max-height: 400px;"
                                      onerror="this.src='https://via.placeholder.com/400x300?text=Нет+фото'">
-                            @else
+                            <?php else: ?>
                                 <img src="https://via.placeholder.com/400x300?text=Нет+фото" 
                                      class="img-fluid rounded" alt="Нет фото">
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -81,37 +83,37 @@
                     <!-- Информация о товаре -->
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4 class="mb-0">{{ $product->name }}</h4>
-                            @if(isset($telegramBot))
+                            <h4 class="mb-0"><?php echo e($product->name); ?></h4>
+                            <?php if(isset($telegramBot)): ?>
                                 <div class="btn-group">
-                                    <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" class="btn btn-outline-primary btn-sm">
+                                    <a href="<?php echo e(route('bot.products.edit', [$telegramBot, $product])); ?>" class="btn btn-outline-primary btn-sm">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="{{ route('bot.products.index', $telegramBot) }}" class="btn btn-outline-secondary btn-sm">
+                                    <a href="<?php echo e(route('bot.products.index', $telegramBot)); ?>" class="btn btn-outline-secondary btn-sm">
                                         <i class="fas fa-arrow-left"></i>
                                     </a>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                         
                         <div class="card-body">
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Артикул:</strong></div>
-                                <div class="col-sm-8"><code>{{ $product->article }}</code></div>
+                                <div class="col-sm-8"><code><?php echo e($product->article); ?></code></div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Цена:</strong></div>
                                 <div class="col-sm-8">
-                                    <span class="h4 text-success">{{ $product->formatted_price }}</span>
+                                    <span class="h4 text-success"><?php echo e($product->formatted_price); ?></span>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Количество:</strong></div>
                                 <div class="col-sm-8">
-                                    <span class="badge bg-{{ $product->quantity > 5 ? 'success' : ($product->quantity > 0 ? 'warning' : 'danger') }} fs-6">
-                                        {{ $product->quantity }} шт.
+                                    <span class="badge bg-<?php echo e($product->quantity > 5 ? 'success' : ($product->quantity > 0 ? 'warning' : 'danger')); ?> fs-6">
+                                        <?php echo e($product->quantity); ?> шт.
                                     </span>
                                 </div>
                             </div>
@@ -119,70 +121,71 @@
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Статус:</strong></div>
                                 <div class="col-sm-8">
-                                    @php
+                                    <?php
                                         $status = $product->availability_status;
                                         $statusClass = 'secondary';
                                         if($status === 'В наличии') $statusClass = 'success';
                                         elseif($status === 'Заканчивается') $statusClass = 'warning';
                                         elseif($status === 'Нет в наличии') $statusClass = 'danger';
-                                    @endphp
-                                    <span class="badge bg-{{ $statusClass }} fs-6">{{ $status }}</span>
+                                    ?>
+                                    <span class="badge bg-<?php echo e($statusClass); ?> fs-6"><?php echo e($status); ?></span>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Активность:</strong></div>
                                 <div class="col-sm-8">
-                                    <span class="badge bg-{{ $product->is_active ? 'success' : 'secondary' }} fs-6">
-                                        {{ $product->is_active ? 'Активен' : 'Неактивен' }}
+                                    <span class="badge bg-<?php echo e($product->is_active ? 'success' : 'secondary'); ?> fs-6">
+                                        <?php echo e($product->is_active ? 'Активен' : 'Неактивен'); ?>
+
                                     </span>
                                 </div>
                             </div>
 
-                            @if($product->description)
+                            <?php if($product->description): ?>
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Описание:</strong></div>
-                                <div class="col-sm-8">{{ $product->description }}</div>
+                                <div class="col-sm-8"><?php echo e($product->description); ?></div>
                             </div>
-                            @endif
+                            <?php endif; ?>
 
-                            @if($product->specifications && count($product->specifications) > 0)
+                            <?php if($product->specifications && count($product->specifications) > 0): ?>
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Характеристики:</strong></div>
                                 <div class="col-sm-8">
                                     <ul class="list-unstyled mb-0">
-                                        @foreach($product->specifications as $spec)
-                                            <li>• {{ $spec }}</li>
-                                        @endforeach
+                                        <?php $__currentLoopData = $product->specifications; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $spec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <li>• <?php echo e($spec); ?></li>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                     </ul>
                                 </div>
                             </div>
-                            @endif
+                            <?php endif; ?>
 
                             <div class="row mb-3">
                                 <div class="col-sm-4"><strong>Создан:</strong></div>
-                                <div class="col-sm-8">{{ $product->created_at->format('d.m.Y H:i') }}</div>
+                                <div class="col-sm-8"><?php echo e($product->created_at->format('d.m.Y H:i')); ?></div>
                             </div>
 
                             <div class="row mb-4">
                                 <div class="col-sm-4"><strong>Обновлен:</strong></div>
-                                <div class="col-sm-8">{{ $product->updated_at->format('d.m.Y H:i') }}</div>
+                                <div class="col-sm-8"><?php echo e($product->updated_at->format('d.m.Y H:i')); ?></div>
                             </div>
 
                             <!-- Действия -->
                             <div class="d-grid gap-2">
                               
                                 
-                                @if(isset($telegramBot))
+                                <?php if(isset($telegramBot)): ?>
                                     <div class="btn-group">
-                                        <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" class="btn btn-outline-primary">
+                                        <a href="<?php echo e(route('bot.products.edit', [$telegramBot, $product])); ?>" class="btn btn-outline-primary">
                                             <i class="fas fa-edit"></i> Редактировать
                                         </a>
                                         <button type="button" class="btn btn-outline-danger" onclick="deleteProduct()">
                                             <i class="fas fa-trash"></i> Удалить
                                         </button>
                                     </div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -200,19 +203,19 @@
                             <div class="row text-center">
                                 <div class="col-md-3">
                                     <div class="border-end">
-                                        <h4 class="text-primary">{{ $product->formatted_price }}</h4>
+                                        <h4 class="text-primary"><?php echo e($product->formatted_price); ?></h4>
                                         <small class="text-muted">Цена за штуку</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="border-end">
-                                        <h4 class="text-info">{{ $product->quantity }}</h4>
+                                        <h4 class="text-info"><?php echo e($product->quantity); ?></h4>
                                         <small class="text-muted">Количество в наличии</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="border-end">
-                                        <h4 class="text-success">{{ number_format($product->quantity * $product->price, 0, ',', ' ') }} ₽</h4>
+                                        <h4 class="text-success"><?php echo e(number_format($product->quantity * $product->price, 0, ',', ' ')); ?> ₽</h4>
                                         <small class="text-muted">Общая стоимость</small>
                                     </div>
                                 </div>
@@ -229,16 +232,16 @@
     </div>
 </div>
 
-@if(isset($telegramBot))
+<?php if(isset($telegramBot)): ?>
     <!-- Скрытая форма для удаления -->
-    <form id="delete-form" method="POST" action="{{ route('bot.products.destroy', [$telegramBot, $product]) }}" class="d-none">
-        @csrf
-        @method('DELETE')
+    <form id="delete-form" method="POST" action="<?php echo e(route('bot.products.destroy', [$telegramBot, $product])); ?>" class="d-none">
+        <?php echo csrf_field(); ?>
+        <?php echo method_field('DELETE'); ?>
     </form>
-@endif
-@endsection
+<?php endif; ?>
+<?php $__env->stopSection(); ?>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Функция добавления в корзину
@@ -271,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Функция удаления товара
     window.deleteProduct = function() {
-        if (confirm('Вы уверены, что хотите удалить товар "{{ $product->name }}"?\n\nЭто действие нельзя отменить!')) {
+        if (confirm('Вы уверены, что хотите удалить товар "<?php echo e($product->name); ?>"?\n\nЭто действие нельзя отменить!')) {
             document.getElementById('delete-form').submit();
         }
     };
@@ -312,4 +315,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-@endpush
+<?php $__env->stopPush(); ?>
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\OSPanel\domains\post\resources\views/products/show.blade.php ENDPATH**/ ?>

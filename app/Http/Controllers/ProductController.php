@@ -7,9 +7,11 @@ use App\Models\TelegramBot;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Exports\ProductsTemplateExport;
+use App\Exports\ProductsDataExport;
 use App\Imports\ProductsImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -53,6 +55,113 @@ class ProductController extends Controller
     $products = $telegramBot->products()->with(['category'])->orderedForListing()->paginate(12);
 
         return view('products.index', compact('products', 'telegramBot'));
+    }
+
+    /**
+     * Display products in table format for bulk editing.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function table(Request $request, \App\Models\TelegramBot $telegramBot)
+    {
+        $query = $telegramBot->products()->with(['category']);
+        
+        // Отладочная информация
+        Log::info('Search request', [
+            'search' => $request->get('search'),
+            'search_raw' => $request->input('search'),
+            'search_decoded' => urldecode($request->get('search', '')),
+            'all_params' => $request->all(),
+            'bot_id' => $telegramBot->id,
+            'total_products' => $telegramBot->products()->count()
+        ]);
+        
+        // Поиск по различным полям
+        if ($search = $request->get('search')) {
+            // Декодируем URL-кодированную строку и убираем лишние пробелы
+            $searchTerm = trim(urldecode($search));
+            Log::info('Searching for decoded: ' . $searchTerm);
+            Log::info('Search term length: ' . strlen($searchTerm));
+            Log::info('Search term bytes: ' . bin2hex($searchTerm));
+            
+            // Логируем первые несколько товаров для сравнения
+            $allProducts = $telegramBot->products()->limit(5)->get(['id', 'name']);
+            Log::info('Sample products:', $allProducts->pluck('name', 'id')->toArray());
+            
+            // Логируем SQL запрос
+            DB::enableQueryLog();
+            
+            $query->where(function($q) use ($searchTerm) {
+                // Основной поиск - простой и надежный
+                $q->where('name', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('article', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('description', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('specifications', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('price', 'LIKE', "%{$searchTerm}%");
+                
+                // Поиск по названию категории
+                $q->orWhereHas('category', function($categoryQuery) use ($searchTerm) {
+                    $categoryQuery->where('name', 'LIKE', "%{$searchTerm}%");
+                });
+                
+                // Поиск по ID если введено число
+                if (is_numeric($searchTerm)) {
+                    $q->orWhere('id', $searchTerm)
+                      ->orWhere('quantity', $searchTerm);
+                }
+                
+                // Поиск по статусу товара
+                $lowerSearch = mb_strtolower($searchTerm);
+                if (in_array($lowerSearch, ['активен', 'активный', 'active', 'да', 'yes', '1'])) {
+                    $q->orWhere('is_active', 1);
+                } elseif (in_array($lowerSearch, ['неактивен', 'неактивный', 'inactive', 'нет', 'no', '0'])) {
+                    $q->orWhere('is_active', 0);
+                }
+            });
+        }
+
+        // Фильтр по категории
+        if ($categoryId = $request->get('category_id')) {
+            $query->where('category_id', $categoryId);
+        }
+
+        // Фильтр по статусу - применяется только если значение явно указано (0 или 1)
+        $isActiveParam = $request->get('is_active');
+        if ($isActiveParam !== null && $isActiveParam !== '') {
+            // Дополнительная проверка что значение валидное (0 или 1)
+            if (in_array($isActiveParam, ['0', '1', 0, 1], true)) {
+                $query->where('is_active', (int)$isActiveParam);
+            }
+        }
+
+        // Сортировка
+        $sortBy = $request->get('sort_by', 'id');
+        $sortDirection = $request->get('sort_direction', 'desc');
+        
+        $allowedSorts = ['id', 'name', 'price', 'quantity', 'created_at', 'article'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('id', 'desc');
+        }
+
+        $products = $query->paginate(20)->appends($request->all());
+        $categories = $telegramBot->categories()->active()->get();
+
+        // Логируем выполненные SQL запросы
+        if ($request->get('search')) {
+            $queries = DB::getQueryLog();
+            Log::info('SQL queries:', $queries);
+        }
+
+        // Отладочная информация о результатах
+        Log::info('Search results', [
+            'found_products' => count($products->items()),
+            'total_found' => $products->total(),
+            'search_term' => $request->get('search')
+        ]);
+
+        return view('products.table', compact('products', 'telegramBot', 'categories'));
     }
 
     /**
@@ -163,6 +272,43 @@ class ProductController extends Controller
     }
 
     /**
+     * Quick update product from table view.
+     */
+    public function quickUpdate(Request $request, TelegramBot $telegramBot, Product $product)
+    {
+        // Проверяем, что бот и товар принадлежат текущему пользователю
+        if ($telegramBot->user_id !== Auth::id() || $product->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Доступ запрещен'], 403);
+        }
+
+        // Проверяем, что товар принадлежит этому боту
+        if ($product->telegram_bot_id !== $telegramBot->id) {
+            return response()->json(['error' => 'Товар не найден'], 404);
+        }
+
+        $rules = [
+            'name' => 'sometimes|required|string|max:255',
+            'price' => 'sometimes|required|numeric|min:0',
+            'quantity' => 'sometimes|required|integer|min:0',
+            'category_id' => 'sometimes|nullable|exists:categories,id',
+            'is_active' => 'sometimes|boolean',
+            'description' => 'sometimes|nullable|string',
+            'article' => 'sometimes|nullable|string|max:100',
+            'specifications' => 'sometimes|nullable|string',
+        ];
+
+        $validated = $request->validate($rules);
+        
+        $product->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Товар обновлен',
+            'product' => $product->fresh(['category'])
+        ]);
+    }
+
+    /**
      * Скачать шаблон Excel для импорта товаров
      */
     public function downloadTemplate(TelegramBot $telegramBot)
@@ -173,6 +319,26 @@ class ProductController extends Controller
         }
 
         return Excel::download(new ProductsTemplateExport, 'template_products.xlsx');
+    }
+
+    /**
+     * Экспорт всех товаров магазина в Excel
+     */
+    public function exportData(TelegramBot $telegramBot)
+    {
+        // Проверяем, что бот принадлежит текущему пользователю
+        if ($telegramBot->user_id !== Auth::id()) {
+            abort(403, 'У вас нет доступа к этому боту.');
+        }
+
+        $fileName = 'products_' . $telegramBot->bot_username . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+        
+        // Настройка правильной кодировки для русских символов
+        return Excel::download(new ProductsDataExport($telegramBot), $fileName, \Maatwebsite\Excel\Excel::XLSX, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 
     /**

@@ -39,6 +39,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/bots/{telegramBot}/products/{product}', [App\Http\Controllers\ProductController::class, 'show'])->name('bot.products.show');
         Route::get('/bots/{telegramBot}/products/{product}/edit', [App\Http\Controllers\ProductController::class, 'edit'])->name('bot.products.edit');
         
+        // Табличное представление товаров
+        Route::get('/bots/{telegramBot}/products-table', [App\Http\Controllers\ProductController::class, 'table'])->name('bot.products.table');
+        Route::patch('/bots/{telegramBot}/products/{product}/quick-update', [App\Http\Controllers\ProductController::class, 'quickUpdate'])->name('bot.products.quick-update');
+        
         Route::put('/bots/{telegramBot}/products/{product}', [App\Http\Controllers\ProductController::class, 'update'])
             ->middleware('throttle:20,1') // Максимум 20 обновлений в минуту
             ->name('bot.products.update');
@@ -49,6 +53,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Роуты для импорта/экспорта товаров в контексте бота
         Route::get('/bots/{telegramBot}/products-template/download', [App\Http\Controllers\ProductController::class, 'downloadTemplate'])->name('bot.products.download-template');
+        Route::get('/bots/{telegramBot}/products-data/export', [App\Http\Controllers\ProductController::class, 'exportData'])->name('bot.products.export-data');
         
         Route::post('/bots/{telegramBot}/products/import', [App\Http\Controllers\ProductController::class, 'importFromExcel'])
             ->middleware('throttle:10,5') // Максимум 10 импортов в 5 минут
@@ -92,6 +97,14 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
     Route::get('api/orders/bot', [App\Http\Controllers\OrderController::class, 'botOrders'])->name('orders.bot');
     Route::get('api/orders/stats', [App\Http\Controllers\OrderController::class, 'stats'])->name('orders.stats');
+
+    // Роуты для профиля пользователя
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ProfileController::class, 'show'])->name('show');
+        Route::patch('/email', [App\Http\Controllers\ProfileController::class, 'updateEmail'])->name('update.email');
+        Route::patch('/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('update.password');
+        Route::patch('/name', [App\Http\Controllers\ProfileController::class, 'updateName'])->name('update.name');
+    });
 });
 
 // Роуты для корзины (доступны всем, включая неавторизованных через сессию)

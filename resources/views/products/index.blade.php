@@ -166,9 +166,14 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Управление товарами</h5>
                     @if(isset($telegramBot))
-                        <a href="{{ route('bot.products.create', $telegramBot) }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Добавить товар
-                        </a>
+                        <div>
+                            <a href="{{ route('bot.products.table', $telegramBot) }}" class="btn btn-outline-secondary me-2" title="Табличный вид">
+                                <i class="fas fa-table"></i> Таблица
+                            </a>
+                            <a href="{{ route('bot.products.create', $telegramBot) }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Добавить товар
+                            </a>
+                        </div>
                     @else
                         <span class="text-muted">Выберите бота для добавления товаров</span>
                     @endif
@@ -179,18 +184,14 @@
                         <div class="row">
                             @foreach($products as $product)
                                 <div class="col-md-6 col-lg-4 mb-4">
-                                    <div class="card h-100 product-card">
+                                    <div class="card h-100 product-card" style="cursor: pointer;" onclick="window.location.href='{{ route('bot.products.show', [$telegramBot, $product]) }}'">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <h6 class="mb-0 text-truncate">{{ $product->name }}</h6>
                                             @if(isset($telegramBot))
-                                                <div class="btn-group" role="group">
+                                                <div class="btn-group" role="group" onclick="event.stopPropagation();">
                                                     <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" class="btn btn-outline-primary btn-sm" 
                                                        title="Редактировать">
                                                         <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" class="btn btn-outline-info btn-sm" 
-                                                       title="Подробнее">
-                                                        <i class="fas fa-eye"></i>
                                                     </a>
                                                     <form method="POST" action="{{ route('bot.products.destroy', [$telegramBot, $product]) }}" 
                                                           class="d-inline" onsubmit="return confirm('Вы уверены, что хотите удалить товар {{ $product->name }}?')">
