@@ -31,6 +31,7 @@ class ProductsTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
             'Характеристики (через ;)',
             'Количество',
             'Цена',
+            'Наценка (%)',
             'Активный (1/0)'
         ];
     }
@@ -105,20 +106,23 @@ class ProductsTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
                 $sheet->setCellValue('K15', '• Характеристики (через ;)');
                 $sheet->setCellValue('K16', '• Количество (число)');
                 $sheet->setCellValue('K17', '• Цена (число)');
-                $sheet->setCellValue('K18', '• Активный (1 или 0)');
+                $sheet->setCellValue('K18', '• Наценка (% от 0 до 1000)');
+                $sheet->setCellValue('K19', '• Активный (1 или 0)');
                 
-                $sheet->setCellValue('K20', 'ПРИМЕЧАНИЯ:');
-                $sheet->setCellValue('K21', '• Если категория не существует,');
-                $sheet->setCellValue('K22', '  она будет создана автоматически');
-                $sheet->setCellValue('K23', '• Фото категории применится ко всем');
-                $sheet->setCellValue('K24', '  товарам этой категории');
+                $sheet->setCellValue('K21', 'ПРИМЕЧАНИЯ:');
+                $sheet->setCellValue('K22', '• Если категория не существует,');
+                $sheet->setCellValue('K23', '  она будет создана автоматически');
+                $sheet->setCellValue('K24', '• Фото категории применится ко всем');
+                $sheet->setCellValue('K25', '  товарам этой категории');
+                $sheet->setCellValue('K26', '• Наценка указывается в процентах');
+                $sheet->setCellValue('K27', '  (например: 15 = 15% наценки)');
                 
                 // Стили для инструкций
                 $sheet->getStyle('K1')->getFont()->setBold(true)->setSize(12);
                 $sheet->getStyle('K6')->getFont()->setBold(true);
                 $sheet->getStyle('K10')->getFont()->setBold(true);
-                $sheet->getStyle('K20')->getFont()->setBold(true);
-                $sheet->getStyle('K1:K24')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('0066CC'));
+                $sheet->getStyle('K21')->getFont()->setBold(true);
+                $sheet->getStyle('K1:K27')->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('0066CC'));
                 
                 // Устанавливаем ширину колонки K
                 $sheet->getColumnDimension('K')->setWidth(30);

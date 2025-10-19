@@ -3,12 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
-class Order extends Model
+class Order extends BaseModel
 {
     use HasFactory;
 
@@ -136,8 +136,8 @@ class Order extends Model
      */
     public static function generateOrderNumber(): string
     {
-        $date = now()->format('Ymd');
-        $lastOrder = self::whereDate('created_at', today())
+        $date = Carbon::now('Europe/Moscow')->format('Ymd');
+        $lastOrder = self::whereDate('created_at', Carbon::today('Europe/Moscow'))
                         ->orderBy('id', 'desc')
                         ->first();
         
@@ -174,9 +174,9 @@ class Order extends Model
                 $order->order_number = self::generateOrderNumber();
             }
             
-            // Устанавливаем время истечения заказа (5 часов с момента создания)
+            // Устанавливаем время истечения заказа (5 часов с момента создания) в московском времени
             if (!$order->expires_at && $order->status === self::STATUS_PENDING) {
-                $order->expires_at = now()->addHours(5);
+                $order->expires_at = Carbon::now('Europe/Moscow')->addHours(5);
             }
         });
     }
@@ -195,7 +195,7 @@ class Order extends Model
     public function scopeExpired($query)
     {
         return $query->where('status', self::STATUS_PENDING)
-                    ->where('expires_at', '<', now());
+                    ->where('expires_at', '<', Carbon::now('Europe/Moscow'));
     }
 
     /**
@@ -204,7 +204,7 @@ class Order extends Model
     public function scopePendingPayment($query)
     {
         return $query->where('status', self::STATUS_PENDING)
-                    ->where('expires_at', '>', now());
+                    ->where('expires_at', '>', Carbon::now('Europe/Moscow'));
     }
 
     /**
@@ -240,12 +240,14 @@ class Order extends Model
             return null;
         }
 
-        $now = now();
-        if ($this->expires_at->isPast()) {
+        $now = Carbon::now('Europe/Moscow');
+        $expiresAt = $this->expires_at->setTimezone('Europe/Moscow');
+        
+        if ($expiresAt->isPast()) {
             return 'Истек';
         }
 
-        $diff = $now->diffInMinutes($this->expires_at);
+        $diff = $now->diffInMinutes($expiresAt);
         
         if ($diff >= 60) {
             $hours = intval($diff / 60);
@@ -254,5 +256,16 @@ class Order extends Model
         }
         
         return "{$diff} мин.";
+    }
+
+    /**
+     * Получить форматированное время истечения заказа в московском времени
+     */
+    public function getFormattedExpiresAtAttribute(): string
+    {
+        if ($this->expires_at) {
+            return $this->expires_at->setTimezone('Europe/Moscow')->format('d.m.Y H:i:s');
+        }
+        return '-';
     }
 }

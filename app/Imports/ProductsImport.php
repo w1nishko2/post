@@ -59,7 +59,8 @@ class ProductsImport implements ToModel, WithStartRow
         // 6: Характеристики (через ;)
         // 7: Количество
         // 8: Цена
-        // 9: Активный (1/0)
+        // 9: Наценка (%)
+        // 10: Активный (1/0)
         
         $name = isset($row[0]) ? trim($row[0]) : '';
         $description = isset($row[1]) ? trim($row[1]) : '';
@@ -70,7 +71,8 @@ class ProductsImport implements ToModel, WithStartRow
         $characteristicsRaw = isset($row[6]) ? trim($row[6]) : '';
         $quantity = isset($row[7]) ? $row[7] : 0;
         $price = isset($row[8]) ? $row[8] : 0;
-        $active = isset($row[9]) ? $row[9] : 1;
+        $markup = isset($row[9]) ? $row[9] : 0;
+        $active = isset($row[10]) ? $row[10] : 1;
 
         // Пропускаем полностью пустые строки
         if (empty(array_filter($row, function($value) {
@@ -226,6 +228,17 @@ class ProductsImport implements ToModel, WithStartRow
             }
         }
         
+        // Обрабатываем наценку - приводим к числу, по умолчанию 0
+        // Заменяем запятые на точки для корректного парсинга
+        // Ограничиваем от 0 до 1000%
+        $markup_clean = 0;
+        if (isset($markup)) {
+            $markup_str = str_replace(',', '.', trim($markup));
+            if (is_numeric($markup_str)) {
+                $markup_clean = max(0, min(1000, (float) $markup_str));
+            }
+        }
+        
         // Обрабатываем активность - более гибкая проверка
         $is_active = true; // по умолчанию активен
         if (isset($active)) {
@@ -253,6 +266,7 @@ class ProductsImport implements ToModel, WithStartRow
                 'specifications' => !empty($specifications) ? $specifications : null,
                 'quantity' => $quantity_clean,
                 'price' => $price_clean,
+                'markup_percentage' => $markup_clean,
                 'is_active' => $is_active,
             ]);
         } catch (\Exception $e) {
@@ -265,6 +279,7 @@ class ProductsImport implements ToModel, WithStartRow
                     'name' => $name,
                     'article' => $article,
                     'price' => $price_clean,
+                    'markup_percentage' => $markup_clean,
                     'quantity' => $quantity_clean
                 ]
             ]);

@@ -52,6 +52,7 @@ class ProductsDataExport implements FromCollection, WithHeadings, WithStyles, Sh
             mb_convert_encoding('Характеристики (через ;)', 'UTF-8', 'UTF-8'),
             mb_convert_encoding('Количество', 'UTF-8', 'UTF-8'),
             mb_convert_encoding('Цена', 'UTF-8', 'UTF-8'),
+            mb_convert_encoding('Наценка (%)', 'UTF-8', 'UTF-8'),
             mb_convert_encoding('Активный (1/0)', 'UTF-8', 'UTF-8')
         ];
     }
@@ -71,6 +72,7 @@ class ProductsDataExport implements FromCollection, WithHeadings, WithStyles, Sh
             $this->formatText($product->specifications),
             $product->quantity ?: 0,
             $product->price ?: 0,
+            $product->markup_percentage ?: 0,
             $product->is_active ? '1' : '0'
         ];
     }
@@ -113,7 +115,7 @@ class ProductsDataExport implements FromCollection, WithHeadings, WithStyles, Sh
     public function styles(Worksheet $sheet)
     {
         // Стиль для заголовков
-        $sheet->getStyle('A1:J1')->applyFromArray([
+        $sheet->getStyle('A1:K1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['argb' => 'FFFFFF'],
@@ -130,13 +132,13 @@ class ProductsDataExport implements FromCollection, WithHeadings, WithStyles, Sh
         ]);
 
         // Выравнивание текста в ячейках
-        $sheet->getStyle('A:J')->getAlignment()->setWrapText(true);
-        $sheet->getStyle('A:J')->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+        $sheet->getStyle('A:K')->getAlignment()->setWrapText(true);
+        $sheet->getStyle('A:K')->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
 
         // Границы для всех ячеек с данными
         $lastRow = $sheet->getHighestRow();
         if ($lastRow > 1) {
-            $sheet->getStyle('A1:J' . $lastRow)->applyFromArray([
+            $sheet->getStyle('A1:K' . $lastRow)->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -156,11 +158,12 @@ class ProductsDataExport implements FromCollection, WithHeadings, WithStyles, Sh
         $sheet->getColumnDimension('G')->setWidth(30);  // Характеристики
         $sheet->getColumnDimension('H')->setWidth(12);  // Количество
         $sheet->getColumnDimension('I')->setWidth(12);  // Цена
-        $sheet->getColumnDimension('J')->setWidth(15);  // Активный
+        $sheet->getColumnDimension('J')->setWidth(15);  // Наценка (%)
+        $sheet->getColumnDimension('K')->setWidth(15);  // Активный
 
         // Выравнивание для числовых колонок
-        $sheet->getStyle('H:I')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('J')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('H:J')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('K')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         return $sheet;
     }
@@ -180,7 +183,8 @@ class ProductsDataExport implements FromCollection, WithHeadings, WithStyles, Sh
             'G' => NumberFormat::FORMAT_TEXT, // Характеристики - текст
             'H' => NumberFormat::FORMAT_NUMBER, // Количество - число
             'I' => NumberFormat::FORMAT_NUMBER_00, // Цена - число с 2 знаками
-            'J' => NumberFormat::FORMAT_TEXT, // Активный - текст
+            'J' => NumberFormat::FORMAT_NUMBER_00, // Наценка (%) - число с 2 знаками
+            'K' => NumberFormat::FORMAT_TEXT, // Активный - текст
         ];
     }
 
