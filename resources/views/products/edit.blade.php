@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
+<div class="container-xl">
     <div class="row justify-content-center">
         <div class="col-md-10">
             @if ($errors->any())
@@ -24,7 +24,7 @@
                         </a>
                         <a class="nav-link active" href="{{ route('products.select-bot') }}"
                            style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
-                            <i class="fas fa-boxes me-2"></i>Мои товары
+                            <i class="fas fa-boxes me-2"></i>Мои магазины
                         </a>
                     </nav>
                 </div>
@@ -288,19 +288,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (photoUrlInput) {
         photoUrlInput.addEventListener('blur', function() {
             const url = this.value.trim();
-            let previewContainer = document.getElementById('photo-preview');
+            let previewcontainer = document.getElementById('photo-preview');
             
-            if (!previewContainer) {
-                previewContainer = document.createElement('div');
-                previewContainer.id = 'photo-preview';
-                previewContainer.className = 'mt-2';
-                this.parentNode.appendChild(previewContainer);
+            if (!previewcontainer) {
+                previewcontainer = document.createElement('div');
+                previewcontainer.id = 'photo-preview';
+                previewcontainer.className = 'mt-2';
+                this.parentNode.appendChild(previewcontainer);
             }
             
             if (url && url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
-                previewContainer.innerHTML = '<img src="' + url + '" class="img-thumbnail" style="max-width: 200px; max-height: 200px;" onerror="this.style.display=\'none\'">';
+                previewcontainer.innerHTML = '<img src="' + url + '" class="img-thumbnail" style="max-width: 200px; max-height: 200px;" onerror="this.style.display=\'none\'">';
             } else {
-                previewContainer.innerHTML = '';
+                previewcontainer.innerHTML = '';
             }
         });
     }

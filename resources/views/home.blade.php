@@ -23,7 +23,7 @@
     </script>
 @endif
 
-<div class="container">
+<div class="container-xl">
     <div class="row justify-content-center">
         <div class="col-md-12">
             @if (session('success'))
@@ -52,7 +52,7 @@
                         <a class="nav-link {{ request()->is('products*') || request()->routeIs('products.*') ? 'active' : '' }}" 
                            href="{{ route('products.select-bot') }}"
                            style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
-                            <i class="fas fa-boxes me-2"></i>Мои товары
+                            <i class="fas fa-boxes me-2"></i>Мои магазины
                         </a>
                     </nav>
                 </div>
