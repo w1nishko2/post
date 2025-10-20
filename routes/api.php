@@ -41,3 +41,14 @@ Route::middleware('auth:sanctum')->prefix('telegram-bots')->group(function () {
     Route::delete('/{bot}', [App\Http\Controllers\TelegramBotController::class, 'destroy']);
     Route::post('/{bot}/toggle', [App\Http\Controllers\TelegramBotController::class, 'toggle']);
 });
+
+// API для работы с Яндекс.Диском (публичные, не требуют авторизации)
+Route::prefix('yandex-disk')->group(function () {
+    Route::post('/validate-folder', [App\Http\Controllers\Api\YandexDiskController::class, 'validateFolderUrl']);
+    Route::post('/get-images', [App\Http\Controllers\Api\YandexDiskController::class, 'getFolderImages']);
+    Route::post('/get-urls', [App\Http\Controllers\Api\YandexDiskController::class, 'getImageUrls']);
+    Route::post('/get-file', [App\Http\Controllers\Api\YandexDiskController::class, 'getFileInfo']);
+});
+
+// Прокси для изображений Яндекс.Диска
+Route::get('/yandex-image-proxy', [App\Http\Controllers\YandexImageProxyController::class, 'proxy']);

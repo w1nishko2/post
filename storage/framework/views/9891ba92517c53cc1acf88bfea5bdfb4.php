@@ -1,28 +1,26 @@
-@extends('layouts.app')
-
-@section('content')
-<div class="container-xl">
+<?php $__env->startSection('content'); ?>
+<div class="container">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            @if ($errors->any())
+            <?php if($errors->any()): ?>
                 <div class="alert alert-danger">
                     <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
+                        <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <li><?php echo e($error); ?></li>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </ul>
                 </div>
-            @endif
+            <?php endif; ?>
 
             <!-- Навигационная панель -->
             <div class="card mb-4 shadow-sm" style="border-radius: 16px; overflow: hidden;">
                 <div class="card-body p-0">
                     <nav class="nav nav-pills nav-fill" style="padding: 0.5rem;">
-                        <a class="nav-link" href="{{ route('home') }}"
+                        <a class="nav-link" href="<?php echo e(route('home')); ?>"
                            style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
                             <i class="fas fa-robot me-2"></i>Мои боты
                         </a>
-                        <a class="nav-link active" href="{{ route('products.select-bot') }}"
+                        <a class="nav-link active" href="<?php echo e(route('products.select-bot')); ?>"
                            style="border-radius: 12px; font-weight: 600; padding: 1rem 1.5rem; margin: 0.25rem; transition: all 0.3s ease;">
                             <i class="fas fa-boxes me-2"></i>Мои магазины
                         </a>
@@ -30,7 +28,7 @@
                 </div>
             </div>
 
-            @if(isset($telegramBot))
+            <?php if(isset($telegramBot)): ?>
                 <!-- Информация о боте -->
                 <div class="card mb-4">
                     <div class="card-body">
@@ -41,147 +39,213 @@
                                 </div>
                             </div>
                             <div>
-                                <h6 class="mb-1">{{ $telegramBot->bot_name }}</h6>
-                                <small class="text-muted">Редактирование товара в магазине</small>
+                                <h6 class="mb-1"><?php echo e($telegramBot->bot_name); ?></h6>
+                                <small class="text-muted">Добавление товара в магазин</small>
                             </div>
                         </div>
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
 
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Редактировать товар: {{ $product->name }}</h5>
-                    <div>
-                        @if(isset($telegramBot))
-                            <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" class="btn btn-outline-info">
-                                <i class="fas fa-eye"></i> Просмотр
-                            </a>
-                            <a href="{{ route('bot.products.index', $telegramBot) }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i> Назад к товарам
-                            </a>
-                        @else
-                            <a href="{{ route('products.select-bot') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i> Выбрать магазин
-                            </a>
-                        @endif
-                    </div>
+                    <h5 class="mb-0">Добавить новый товар</h5>
+                    <?php if(isset($telegramBot)): ?>
+                        <a href="<?php echo e(route('bot.products.index', $telegramBot)); ?>" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Назад к товарам
+                        </a>
+                    <?php else: ?>
+                        <a href="<?php echo e(route('products.select-bot')); ?>" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Выбрать магазин
+                        </a>
+                    <?php endif; ?>
                 </div>
 
                 <div class="card-body">
-                    @if(isset($telegramBot))
-                        <form method="POST" action="{{ route('bot.products.update', [$telegramBot, $product]) }}">
-                            @csrf
-                            @method('PUT')
-                    @else
+                    <?php if(isset($telegramBot)): ?>
+                        <form method="POST" action="<?php echo e(route('bot.products.store', $telegramBot)); ?>">
+                            <?php echo csrf_field(); ?>
+                    <?php else: ?>
                         <div class="text-center py-4">
-                            <p class="text-muted">Товар не привязан к магазину</p>
-                            <a href="{{ route('products.select-bot') }}" class="btn btn-primary">Выбрать магазин</a>
+                            <p class="text-muted">Сначала выберите магазин для добавления товара</p>
+                            <a href="<?php echo e(route('products.select-bot')); ?>" class="btn btn-primary">Выбрать магазин</a>
                         </div>
-                    @endif
+                    <?php endif; ?>
                         
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="mb-3">
                                     <label for="name" class="form-label">Название товара <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                           id="name" name="name" value="{{ old('name', $product->name) }}" 
+                                    <input type="text" class="form-control <?php $__errorArgs = ['name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                           id="name" name="name" value="<?php echo e(old('name')); ?>" 
                                            placeholder="Например: Тормозные колодки передние" required>
-                                    @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <?php $__errorArgs = ['name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                        <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="article" class="form-label">Артикул <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control @error('article') is-invalid @enderror" 
-                                           id="article" name="article" value="{{ old('article', $product->article) }}" 
+                                    <input type="text" class="form-control <?php $__errorArgs = ['article'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                           id="article" name="article" value="<?php echo e(old('article')); ?>" 
                                            placeholder="BP001" required>
-                                    @error('article')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <?php $__errorArgs = ['article'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                        <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="category_id" class="form-label">Категория</label>
-                            <select class="form-select @error('category_id') is-invalid @enderror" 
+                            <select class="form-select <?php $__errorArgs = ['category_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
                                     id="category_id" name="category_id">
                                 <option value="">Выберите категорию (необязательно)</option>
-                                @if(isset($categories))
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" 
-                                                {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
+                                <?php if(isset($categories)): ?>
+                                    <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($category->id); ?>" 
+                                                <?php echo e(old('category_id') == $category->id ? 'selected' : ''); ?>>
+                                            <?php echo e($category->name); ?>
+
                                         </option>
-                                    @endforeach
-                                @endif
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                <?php endif; ?>
                             </select>
-                            @error('category_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">Если не выберете категорию, товар будет без категории</div>
+                            <?php $__errorArgs = ['category_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                            <div class="form-text">Если не выберете категорию, товар будет добавлен без категории</div>
                         </div>
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Описание</label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" 
+                            <textarea class="form-control <?php $__errorArgs = ['description'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
                                       id="description" name="description" rows="4" 
-                                      placeholder="Подробное описание товара...">{{ old('description', $product->description) }}</textarea>
-                            @error('description')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                                      placeholder="Подробное описание товара..."><?php echo e(old('description')); ?></textarea>
+                            <?php $__errorArgs = ['description'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                         </div>
 
                         <div class="mb-3">
                             <label for="photo_url" class="form-label">Ссылка на фотографию</label>
-                            <input type="url" class="form-control @error('photo_url') is-invalid @enderror" 
-                                   id="photo_url" name="photo_url" value="{{ old('photo_url', $product->photo_url) }}" 
+                            <input type="url" class="form-control <?php $__errorArgs = ['photo_url'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                   id="photo_url" name="photo_url" value="<?php echo e(old('photo_url')); ?>" 
                                    placeholder="https://example.com/photo.jpg">
-                            @error('photo_url')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            @if($product->photo_url)
-                                <div class="mt-2" id="current-photo">
-                                    <img src="{{ $product->photo_url }}" class="img-thumbnail" 
-                                         style="max-width: 200px; max-height: 200px;" 
-                                         onerror="this.style.display='none'">
-                                </div>
-                            @endif
+                            <?php $__errorArgs = ['photo_url'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                         </div>
 
                         <div class="mb-3">
                             <label for="yandex_disk_folder_url" class="form-label">Ссылка на папку с фотографиями (Яндекс.Диск)</label>
-                            <input type="url" class="form-control @error('yandex_disk_folder_url') is-invalid @enderror" 
-                                   id="yandex_disk_folder_url" name="yandex_disk_folder_url" value="{{ old('yandex_disk_folder_url', $product->yandex_disk_folder_url) }}" 
+                            <input type="url" class="form-control <?php $__errorArgs = ['yandex_disk_folder_url'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                   id="yandex_disk_folder_url" name="yandex_disk_folder_url" value="<?php echo e(old('yandex_disk_folder_url')); ?>" 
                                    placeholder="https://disk.yandex.ru/d/hV4dQv-tEeXN_A">
                             <div class="form-text">
                                 Если указать ссылку на папку, будут использованы все фотографии из неё. 
                                 Поле "Ссылка на фотографию" будет игнорироваться.
                             </div>
-                            @error('yandex_disk_folder_url')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <?php $__errorArgs = ['yandex_disk_folder_url'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                             
                             <!-- Кнопка для загрузки фотографий из папки -->
                             <div class="mt-2">
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="load-yandex-photos" 
-                                        {{ $product->yandex_disk_folder_url ? '' : 'disabled' }}>
-                                    <i class="fas fa-download"></i> 
-                                    {{ $product->photos_gallery ? 'Обновить фотографии из папки' : 'Загрузить фотографии из папки' }}
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="load-yandex-photos" disabled>
+                                    <i class="fas fa-download"></i> Загрузить фотографии из папки
                                 </button>
-                                <span class="text-muted ms-2" id="yandex-status">
-                                    @if($product->photos_gallery && is_array($product->photos_gallery) && count($product->photos_gallery) > 0)
-                                        <i class="fas fa-check text-success"></i> Загружено {{ count($product->photos_gallery) }} фотографий
-                                    @endif
-                                </span>
+                                <span class="text-muted ms-2" id="yandex-status"></span>
                             </div>
                         </div>
 
                         <!-- Блок предпросмотра фотографий -->
-                        <div class="mb-3" id="photos-preview" style="{{ $product->photos_gallery && is_array($product->photos_gallery) && count($product->photos_gallery) > 0 ? '' : 'display: none;' }}">
+                        <div class="mb-3" id="photos-preview" style="display: none;">
                             <label class="form-label">Предпросмотр фотографий</label>
                             <div class="card">
                                 <div class="card-body">
@@ -198,54 +262,110 @@
                         </div>
 
                         <!-- Скрытые поля для хранения данных галереи -->
-                        <input type="hidden" id="photos_gallery" name="photos_gallery" value="{{ old('photos_gallery', json_encode($product->photos_gallery)) }}">
-                        <input type="hidden" id="main_photo_index" name="main_photo_index" value="{{ old('main_photo_index', $product->main_photo_index) }}">
+                        <input type="hidden" id="photos_gallery" name="photos_gallery" value="<?php echo e(old('photos_gallery')); ?>">
+                        <input type="hidden" id="main_photo_index" name="main_photo_index" value="<?php echo e(old('main_photo_index', 0)); ?>">
 
                         <div class="mb-3">
                             <label for="specifications_text" class="form-label">Характеристики товара</label>
-                            <textarea class="form-control @error('specifications') is-invalid @enderror" 
+                            <textarea class="form-control <?php $__errorArgs = ['specifications'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
                                       id="specifications_text" name="specifications_text" rows="6" 
-                                      placeholder="Введите каждую характеристику с новой строки:&#10;Материал: Пластик&#10;Цвет: Черный&#10;Вес: 500 г&#10;Гарантия: 1 год">{{ old('specifications_text', is_array($product->specifications) ? implode("\n", $product->specifications) : '') }}</textarea>
+                                      placeholder="Введите каждую характеристику с новой строки:&#10;Материал: Пластик&#10;Цвет: Черный&#10;Вес: 500 г&#10;Гарантия: 1 год"><?php echo e(old('specifications_text') ? implode("\n", old('specifications_text')) : ''); ?></textarea>
                             <div class="form-text">Каждую характеристику вводите с новой строки</div>
-                            @error('specifications')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <?php $__errorArgs = ['specifications'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                         </div>
 
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="quantity" class="form-label">Количество в наличии <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control @error('quantity') is-invalid @enderror" 
-                                           id="quantity" name="quantity" value="{{ old('quantity', $product->quantity) }}" 
+                                    <input type="number" class="form-control <?php $__errorArgs = ['quantity'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                           id="quantity" name="quantity" value="<?php echo e(old('quantity', 0)); ?>" 
                                            min="0" max="999999" required>
-                                    @error('quantity')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <?php $__errorArgs = ['quantity'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                        <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="price" class="form-label">Цена за штуку (₽) <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control @error('price') is-invalid @enderror" 
-                                           id="price" name="price" value="{{ old('price', $product->price) }}" 
+                                    <input type="number" class="form-control <?php $__errorArgs = ['price'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                           id="price" name="price" value="<?php echo e(old('price')); ?>" 
                                            step="0.01" min="0" max="999999.99" 
                                            placeholder="2500.00" required>
-                                    @error('price')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <?php $__errorArgs = ['price'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                        <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label for="markup_percentage" class="form-label">Наценка (%)</label>
-                                    <input type="number" class="form-control @error('markup_percentage') is-invalid @enderror" 
-                                           id="markup_percentage" name="markup_percentage" value="{{ old('markup_percentage', $product->markup_percentage) }}" 
+                                    <input type="number" class="form-control <?php $__errorArgs = ['markup_percentage'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" 
+                                           id="markup_percentage" name="markup_percentage" value="<?php echo e(old('markup_percentage', 0)); ?>" 
                                            step="0.01" min="0" max="1000" 
                                            placeholder="10.00">
-                                    @error('markup_percentage')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <?php $__errorArgs = ['markup_percentage'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                        <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                                     <div class="form-text">Наценка к базовой цене</div>
                                 </div>
                             </div>
@@ -254,7 +374,7 @@
                                     <label class="form-label">&nbsp;</label>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="is_active" 
-                                               name="is_active" value="1" {{ old('is_active', $product->is_active) ? 'checked' : '' }}>
+                                               name="is_active" value="1" <?php echo e(old('is_active', true) ? 'checked' : ''); ?>>
                                         <label class="form-check-label" for="is_active">
                                             Товар активен (доступен для продажи)
                                         </label>
@@ -272,19 +392,19 @@
                                         <div class="row">
                                             <div class="col-md-3">
                                                 <small class="text-muted">Базовая цена:</small>
-                                                <div id="base-price-display" class="fw-bold">{{ number_format($product->price, 0, ',', ' ') }} ₽</div>
+                                                <div id="base-price-display" class="fw-bold">0 ₽</div>
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Наценка:</small>
-                                                <div id="markup-display" class="fw-bold text-info">{{ $product->markup_percentage }}% ({{ number_format($product->markup_amount, 0, ',', ' ') }} ₽)</div>
+                                                <div id="markup-display" class="fw-bold text-info">0% (0 ₽)</div>
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Итоговая цена:</small>
-                                                <div id="final-price-display" class="fw-bold text-success fs-5">{{ number_format($product->price_with_markup, 0, ',', ' ') }} ₽</div>
+                                                <div id="final-price-display" class="fw-bold text-success fs-5">0 ₽</div>
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Общая стоимость:</small>
-                                                <div id="total-value-display" class="fw-bold text-primary">{{ number_format($product->price_with_markup * $product->quantity, 0, ',', ' ') }} ₽</div>
+                                                <div id="total-value-display" class="fw-bold text-primary">0 ₽</div>
                                             </div>
                                         </div>
                                     </div>
@@ -292,53 +412,30 @@
                             </div>
                         </div>
 
-                        @if(isset($telegramBot))
+                        <?php if(isset($telegramBot)): ?>
                             <div class="d-flex justify-content-between">
-                                <div>
-                                    <a href="{{ route('bot.products.index', $telegramBot) }}" class="btn btn-secondary">
-                                        <i class="fas fa-times"></i> Отмена
-                                    </a>
-                                    <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" class="btn btn-outline-info">
-                                        <i class="fas fa-eye"></i> Просмотр
-                                    </a>
-                                </div>
-                                <div>
-                                    <button type="button" class="btn btn-outline-danger me-2" onclick="deleteProduct()">
-                                        <i class="fas fa-trash"></i> Удалить
-                                    </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> Сохранить изменения
-                                    </button>
-                                </div>
+                                <a href="<?php echo e(route('bot.products.index', $telegramBot)); ?>" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Отмена
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Сохранить товар
+                                </button>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </form>
-
-                    @if(isset($telegramBot))
-                        <!-- Скрытая форма для удаления -->
-                        <form id="delete-form" method="POST" action="{{ route('bot.products.destroy', [$telegramBot, $product]) }}" class="d-none">
-                            @csrf
-                            @method('DELETE')
-                        </form>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Глобальные переменные для работы с галереей
-    let photosGallery = @json($product->photos_gallery ?? []);
-    let mainPhotoIndex = {{ $product->main_photo_index ?? 0 }};
-    
-    // Убеждаемся, что photosGallery это массив
-    if (!Array.isArray(photosGallery)) {
-        photosGallery = [];
-    }
+    let photosGallery = [];
+    let mainPhotoIndex = 0;
     
     // Предварительный просмотр изображения
     const photoUrlInput = document.getElementById('photo_url');
@@ -347,11 +444,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const yandexStatus = document.getElementById('yandex-status');
     const photosPreview = document.getElementById('photos-preview');
     const photosGrid = document.getElementById('photos-grid');
-    
-    // Инициализация предпросмотра если есть фотографии
-    if (photosGallery.length > 0) {
-        renderPhotosPreview();
-    }
     
     if (photoUrlInput) {
         photoUrlInput.addEventListener('blur', function() {
@@ -376,6 +468,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else {
                 previewcontainer.innerHTML = '';
+            }
+        });
+    }
+
+    // Обработка поля Яндекс.Диск
+    if (yandexFolderInput) {
+        yandexFolderInput.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url) {
+                validateYandexUrl(url);
+            } else {
+                loadPhotosBtn.disabled = true;
+                yandexStatus.textContent = '';
+                hidePhotosPreview();
+            }
+        });
+    }
+
+    // Загрузка фотографий из Яндекс.Диска
+    if (loadPhotosBtn) {
+        loadPhotosBtn.addEventListener('click', function() {
+            const folderUrl = yandexFolderInput.value.trim();
+            if (folderUrl) {
+                loadYandexPhotos(folderUrl);
             }
         });
     }
@@ -418,34 +534,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Обработка поля Яндекс.Диск
-    if (yandexFolderInput) {
-        yandexFolderInput.addEventListener('input', function() {
-            const url = this.value.trim();
-            if (url) {
-                validateYandexUrl(url);
-            } else {
-                loadPhotosBtn.disabled = true;
-                yandexStatus.textContent = '';
-                hidePhotosPreview();
-            }
-        });
-    }
-
-    // Загрузка фотографий из Яндекс.Диска
-    if (loadPhotosBtn) {
-        loadPhotosBtn.addEventListener('click', function() {
-            const folderUrl = yandexFolderInput.value.trim();
-            if (folderUrl) {
-                loadYandexPhotos(folderUrl);
-            }
-        });
-    }
-
     // Функция валидации URL Яндекс.Диска
     async function validateYandexUrl(url) {
         try {
-            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i> Проверка ссылки...';
+            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Проверка ссылки...';
             loadPhotosBtn.disabled = true;
 
             const response = await fetch('/api/yandex-disk/validate-folder', {
@@ -463,12 +555,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 yandexStatus.innerHTML = '<i class="fas fa-check text-success"></i> Ссылка действительна';
                 loadPhotosBtn.disabled = false;
             } else {
-                yandexStatus.innerHTML = `<i class="fas fa-times text-danger"></i> ${result.message || 'Ошибка проверки ссылки'}`;
+                yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> ' + (result.message || 'Ошибка проверки ссылки');
                 loadPhotosBtn.disabled = true;
             }
         } catch (error) {
             console.error('Ошибка валидации:', error);
-            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка проверки ссылки. Проверьте подключение к интернету.';
+            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка проверки ссылки';
             loadPhotosBtn.disabled = true;
         }
     }
@@ -476,9 +568,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция загрузки фотографий из Яндекс.Диска
     async function loadYandexPhotos(folderUrl) {
         try {
-            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i> Загрузка фотографий...';
+            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка фотографий...';
             loadPhotosBtn.disabled = true;
-            loadPhotosBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
 
             const response = await fetch('/api/yandex-disk/get-images', {
                 method: 'POST',
@@ -492,38 +583,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success && result.data.images.length > 0) {
-                // Сохраняем оригинальные URL (display_url) для сохранения в базу
-                photosGallery = result.data.images.map(img => img.display_url);
+                photosGallery = result.data.images.map(img => img.url);
                 mainPhotoIndex = 0;
                 
                 yandexStatus.innerHTML = `<i class="fas fa-check text-success"></i> Загружено ${result.data.images.length} фотографий`;
                 loadPhotosBtn.disabled = false;
-                loadPhotosBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить фотографии из папки';
                 
                 // Сохраняем данные о изображениях для отображения
                 window.yandexImages = result.data.images;
-                
-                console.log('Photos loaded:', photosGallery); // Для отладки
-                console.log('Yandex images:', window.yandexImages); // Для отладки
-                
                 renderPhotosPreview();
                 showPhotosPreview();
                 updateHiddenFields();
-                
-                // Очищаем поле single photo URL, так как теперь используется галерея
-                photoUrlInput.value = '';
             } else {
-                const message = result.message || 'Фотографии не найдены или папка пуста';
-                yandexStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${message}`;
+                yandexStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> ' + (result.message || 'Фотографии не найдены');
                 loadPhotosBtn.disabled = false;
-                loadPhotosBtn.innerHTML = '<i class="fas fa-download"></i> Загрузить фотографии из папки';
                 hidePhotosPreview();
             }
         } catch (error) {
             console.error('Ошибка загрузки фотографий:', error);
-            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка загрузки. Проверьте подключение к интернету.';
+            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка загрузки фотографий';
             loadPhotosBtn.disabled = false;
-            loadPhotosBtn.innerHTML = '<i class="fas fa-download"></i> Загрузить фотографии из папки';
         }
     }
 
@@ -535,17 +614,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const col = document.createElement('div');
             col.className = 'col-md-3 col-sm-4 col-6 mb-3';
             
-            // Используем прокси для изображений Яндекс.Диска
-            let displayUrl = photoUrl;
-            if (photoUrl && photoUrl.includes('downloader.disk.yandex.ru') && !photoUrl.includes('/api/yandex-image-proxy')) {
-                displayUrl = `/api/yandex-image-proxy?url=${encodeURIComponent(photoUrl)}`;
-            } else if (window.yandexImages && window.yandexImages[index]) {
-                // Fallback к preview URL если доступен
-                displayUrl = window.yandexImages[index].display_url || window.yandexImages[index].preview || photoUrl;
-                if (displayUrl && displayUrl.includes('downloader.disk.yandex.ru') && !displayUrl.includes('/api/yandex-image-proxy')) {
-                    displayUrl = `/api/yandex-image-proxy?url=${encodeURIComponent(displayUrl)}`;
-                }
-            }
+            // Используем preview URL если доступен, иначе основной URL
+            const displayUrl = window.yandexImages && window.yandexImages[index] 
+                ? (window.yandexImages[index].display_url || window.yandexImages[index].preview || photoUrl)
+                : photoUrl;
             
             col.innerHTML = `
                 <div class="position-relative photo-item" data-index="${index}">
@@ -586,14 +658,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Обновление скрытых полей
     function updateHiddenFields() {
-        const galleryJson = JSON.stringify(photosGallery);
-        document.getElementById('photos_gallery').value = galleryJson;
+        document.getElementById('photos_gallery').value = JSON.stringify(photosGallery);
         document.getElementById('main_photo_index').value = mainPhotoIndex;
-        
-        console.log('Updating hidden fields:'); // Для отладки
-        console.log('- photosGallery array:', photosGallery);
-        console.log('- galleryJson string:', galleryJson);
-        console.log('- mainPhotoIndex:', mainPhotoIndex);
     }
 
     // Автоматическое форматирование цены
@@ -637,13 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
         priceInput.addEventListener('input', updatePriceCalculation);
         updatePriceCalculation(); // Инициализация
     }
-
-    // Функция удаления товара
-    window.deleteProduct = function() {
-        if (confirm('Вы уверены, что хотите удалить товар "{{ $product->name }}"?\n\nЭто действие нельзя отменить!')) {
-            document.getElementById('delete-form').submit();
-        }
-    };
 });
 </script>
-@endpush
+<?php $__env->stopPush(); ?>
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\OSPanel\domains\post\resources\views/products/create.blade.php ENDPATH**/ ?>

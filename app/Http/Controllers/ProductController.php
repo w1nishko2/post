@@ -187,7 +187,29 @@ class ProductController extends Controller
         $validated['user_id'] = Auth::id();
         $validated['telegram_bot_id'] = $telegramBot->id;
 
-        Product::create($validated);
+        // Логирование данных галереи для отладки
+        Log::info('Creating product with gallery data', [
+            'user_id' => Auth::id(),
+            'bot_id' => $telegramBot->id,
+            'request_all' => $request->all(),
+            'request_yandex_url' => $request->input('yandex_disk_folder_url'),
+            'validated_yandex_url' => $validated['yandex_disk_folder_url'] ?? null,
+            'yandex_disk_folder_url' => $validated['yandex_disk_folder_url'] ?? null,
+            'photos_gallery_raw' => $request->input('photos_gallery'),
+            'photos_gallery_validated' => $validated['photos_gallery'] ?? null,
+            'main_photo_index' => $validated['main_photo_index'] ?? null,
+            'photos_gallery_processed' => $validated['photos_gallery'] ?? null
+        ]);
+
+        $product = Product::create($validated);
+
+        // Логируем результат сохранения
+        Log::info('Product created successfully', [
+            'product_id' => $product->id,
+            'yandex_url_saved' => $product->yandex_disk_folder_url,
+            'photos_gallery_saved' => $product->photos_gallery,
+            'main_photo_index_saved' => $product->main_photo_index
+        ]);
 
         return redirect()->route('bot.products.index', $telegramBot)->with('success', 'Товар успешно добавлен!');
     }
@@ -247,7 +269,34 @@ class ProductController extends Controller
         }
 
         $validated = $request->validated();
+
+        // Логирование данных галереи для отладки
+        Log::info('Updating product with gallery data', [
+            'product_id' => $product->id,
+            'user_id' => Auth::id(),
+            'bot_id' => $telegramBot->id,
+            'request_all' => $request->all(),
+            'request_yandex_url' => $request->input('yandex_disk_folder_url'),
+            'validated_yandex_url' => $validated['yandex_disk_folder_url'] ?? null,
+            'old_yandex_disk_folder_url' => $product->yandex_disk_folder_url,
+            'new_yandex_disk_folder_url' => $validated['yandex_disk_folder_url'] ?? null,
+            'old_photos_gallery' => $product->photos_gallery,
+            'photos_gallery_raw' => $request->input('photos_gallery'),
+            'photos_gallery_validated' => $validated['photos_gallery'] ?? null,
+            'old_main_photo_index' => $product->main_photo_index,
+            'new_main_photo_index' => $validated['main_photo_index'] ?? null,
+            'photos_gallery_processed' => $validated['photos_gallery'] ?? null
+        ]);
+
         $product->update($validated);
+
+        // Логируем результат обновления
+        Log::info('Product updated successfully', [
+            'product_id' => $product->id,
+            'yandex_url_saved' => $product->fresh()->yandex_disk_folder_url,
+            'photos_gallery_saved' => $product->fresh()->photos_gallery,
+            'main_photo_index_saved' => $product->fresh()->main_photo_index
+        ]);
 
         return redirect()->route('bot.products.index', $telegramBot)->with('success', 'Товар успешно обновлен!');
     }

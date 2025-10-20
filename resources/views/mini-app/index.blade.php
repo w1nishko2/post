@@ -80,8 +80,8 @@
                 @foreach($products as $product)
                 <article class="product-card" onclick="showProductDetails({{ $product->id }})">
                     <div class="product-image">
-                        @if($product->photo_url)
-                            <img src="{{ $product->photo_url }}" 
+                        @if($product->main_photo_url)
+                            <img src="{{ $product->main_photo_url }}" 
                                  alt="{{ $product->name }}"
                                  loading="lazy"
                                  onerror="this.style.display='none'; this.parentElement.classList.add('no-image');">
@@ -251,6 +251,8 @@
                         'description' => $product->description,
                         'article' => $product->article,
                         'photo_url' => $product->photo_url,
+                        'main_photo_url' => $product->main_photo_url,
+                        'photos_gallery' => $product->photos_gallery,
                         'specifications' => $product->specifications,
                         'quantity' => $product->quantity,
                         'price' => $product->price,

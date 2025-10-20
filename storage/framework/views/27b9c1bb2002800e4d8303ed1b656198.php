@@ -80,8 +80,8 @@
                 <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <article class="product-card" onclick="showProductDetails(<?php echo e($product->id); ?>)">
                     <div class="product-image">
-                        <?php if($product->photo_url): ?>
-                            <img src="<?php echo e($product->photo_url); ?>" 
+                        <?php if($product->main_photo_url): ?>
+                            <img src="<?php echo e($product->main_photo_url); ?>" 
                                  alt="<?php echo e($product->name); ?>"
                                  loading="lazy"
                                  onerror="this.style.display='none'; this.parentElement.classList.add('no-image');">
@@ -251,6 +251,8 @@
                         'description' => $product->description,
                         'article' => $product->article,
                         'photo_url' => $product->photo_url,
+                        'main_photo_url' => $product->main_photo_url,
+                        'photos_gallery' => $product->photos_gallery,
                         'specifications' => $product->specifications,
                         'quantity' => $product->quantity,
                         'price' => $product->price,

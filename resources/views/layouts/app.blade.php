@@ -6,6 +6,11 @@
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    @auth
+    <!-- API Token для авторизованных пользователей -->
+    <meta name="api-token" content="{{ auth()->user()->createToken('web-token')->plainTextToken }}">
+    @endauth
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 

@@ -6,6 +6,11 @@
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+    
+    <?php if(auth()->guard()->check()): ?>
+    <!-- API Token для авторизованных пользователей -->
+    <meta name="api-token" content="<?php echo e(auth()->user()->createToken('web-token')->plainTextToken); ?>">
+    <?php endif; ?>
 
     <title><?php echo e(config('app.name', 'Laravel')); ?></title>
 

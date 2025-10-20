@@ -554,10 +554,11 @@ function renderSearchResults(products, query) {
 
     const productsHTML = products.map(product => `
         <article class="product-card" onclick="showProductDetails(${product.id})">
-            <div class="product-image ${!product.photo_url ? 'no-image' : ''}">
-                ${product.photo_url 
-                    ? `<img src="${escapeHtml(product.photo_url)}" alt="${escapeHtml(product.name)}" 
-                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">` 
+            <div class="product-image ${!product.main_photo_url && !product.photo_url ? 'no-image' : ''}">
+                ${product.main_photo_url || product.photo_url 
+                    ? `<img src="${escapeHtml(processImageUrl(product.main_photo_url || product.photo_url))}" alt="${escapeHtml(product.name)}" 
+                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">
+                      ${product.has_multiple_photos ? '<div class="position-absolute top-0 start-0 p-1"><span class="badge bg-dark bg-opacity-75"><i class="fas fa-images"></i></span></div>' : ''}` 
                     : ''
                 }
                 ${getStatusBadge(product)}
@@ -673,10 +674,11 @@ function renderCategoryResults(products, categoryName) {
 
     const productsHTML = products.map(product => `
         <article class="product-card" onclick="showProductDetails(${product.id})">
-            <div class="product-image ${!product.photo_url ? 'no-image' : ''}">
-                ${product.photo_url 
-                    ? `<img src="${escapeHtml(product.photo_url)}" alt="${escapeHtml(product.name)}" 
-                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">` 
+            <div class="product-image ${!product.main_photo_url && !product.photo_url ? 'no-image' : ''}">
+                ${product.main_photo_url || product.photo_url 
+                    ? `<img src="${escapeHtml(processImageUrl(product.main_photo_url || product.photo_url))}" alt="${escapeHtml(product.name)}" 
+                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">
+                      ${product.has_multiple_photos ? '<div class="position-absolute top-0 start-0 p-1"><span class="badge bg-dark bg-opacity-75"><i class="fas fa-images"></i></span></div>' : ''}` 
                     : ''
                 }
                 ${getStatusBadge(product)}
@@ -728,6 +730,19 @@ function formatPrice(price) {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2
     });
+}
+
+// Функция для обработки URL изображений (использует прокси для Яндекс.Диска)
+function processImageUrl(url) {
+    if (!url) return url;
+    
+    // Если URL уже проксирован Laravel или не от Яндекс.Диска, возвращаем как есть
+    if (url.includes('/api/yandex-image-proxy') || !url.includes('downloader.disk.yandex.ru')) {
+        return url;
+    }
+    
+    // Если это URL от Яндекс.Диска, используем прокси
+    return `/api/yandex-image-proxy?url=${encodeURIComponent(url)}`;
 }
 
 // Функция для вычисления расстояния Левенштейна
@@ -922,10 +937,42 @@ function displayProductInModal(product, body, title, footer) {
     // Генерируем HTML для товара
     body.innerHTML = `
         <div class="row g-4">
-            ${product.photo_url ? `
+            ${product.photos_gallery && product.photos_gallery.length > 0 ? `
+                <div class="col-md-6">
+                    <div class="product-gallery">
+                        <img src="${processImageUrl(product.photos_gallery[0])}" alt="${product.name}" 
+                             class="gallery-main-image" id="main-gallery-image"
+                             onclick="openGalleryFullscreen(0)">
+                        
+                        ${product.photos_gallery.length > 1 ? `
+                            <div class="gallery-counter">
+                                <span id="gallery-current">1</span> / ${product.photos_gallery.length}
+                            </div>
+                            
+                            <button class="gallery-navigation prev" onclick="previousGalleryImage()" id="gallery-prev">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="gallery-navigation next" onclick="nextGalleryImage()" id="gallery-next">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            
+                            <div class="gallery-thumbnails">
+                                ${product.photos_gallery.map((photo, index) => `
+                                    <img src="${processImageUrl(photo)}" alt="${product.name} ${index + 1}" 
+                                         class="gallery-thumbnail ${index === 0 ? 'active' : ''}" 
+                                         onclick="setGalleryImage(${index})"
+                                         data-index="${index}">
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${getProductStatusBadge(product)}
+                    </div>
+                </div>
+            ` : (product.main_photo_url || product.photo_url ? `
                 <div class="col-md-6">
                     <div class="position-relative">
-                        <img src="${product.photo_url}" alt="${product.name}" 
+                        <img src="${processImageUrl(product.main_photo_url || product.photo_url)}" alt="${product.name}" 
                              class="modal-product-image" 
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="product-image-placeholder" style="display: none;">
@@ -935,9 +982,9 @@ function displayProductInModal(product, body, title, footer) {
                         ${getProductStatusBadge(product)}
                     </div>
                 </div>
-            ` : ''}
+            ` : '')}
             
-            <div class="${product.photo_url ? 'col-md-6' : 'col-12'}">
+            <div class="${(product.photos_gallery && product.photos_gallery.length > 0) || product.main_photo_url || product.photo_url ? 'col-md-6' : 'col-12'}">
                 <div class="product-info">
                     ${product.article ? `
                         <p class="text-muted mb-2">
@@ -996,7 +1043,32 @@ function displayProductInModal(product, body, title, footer) {
                 </div>
             </div>
         </div>
+        
+        <!-- Fullscreen галерея -->
+        <div class="gallery-fullscreen" id="gallery-fullscreen">
+            <div class="gallery-fullscreen-content">
+                <button class="gallery-fullscreen-close" onclick="closeGalleryFullscreen()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <img src="" alt="" class="gallery-fullscreen-image" id="fullscreen-image">
+                
+                ${product.photos_gallery && product.photos_gallery.length > 1 ? `
+                    <button class="gallery-fullscreen-nav prev" onclick="previousFullscreenImage()">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="gallery-fullscreen-nav next" onclick="nextFullscreenImage()">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                ` : ''}
+            </div>
+        </div>
     `;
+    
+    // Сохраняем данные галереи в глобальной переменной для функций навигации
+    window.currentGallery = {
+        photos: product.photos_gallery || [],
+        currentIndex: 0
+    };
     
     // Настраиваем footer
     footer.style.display = 'block';
@@ -1444,8 +1516,8 @@ function displayCartItems(items, totalAmount) {
             <div class="cart-item mb-3 p-3 border rounded"style="flex-direction: column;" data-cart-id="${item.id}">
                 <div class="d-flex align-items-start" style="width: 100%; padding-bottom: 10px;">
                     <div class="cart-item-image  flex-shrink-0">
-                        ${item.photo_url ? 
-                            `<img src="${item.photo_url}" class="img-fluid rounded" style="width: 80px; height: 80px; object-fit: cover;" alt="${item.name}">` :
+                        ${item.main_photo_url || item.photo_url ? 
+                            `<img src="${item.main_photo_url || item.photo_url}" class="img-fluid rounded" style="width: 80px; height: 80px; object-fit: cover;" alt="${item.name}">` :
                             `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="width: 80px; height: 80px;">
                                 <i class="fas fa-image text-muted fa-2x"></i>
                             </div>`
@@ -2206,6 +2278,146 @@ window.toggleCartFloat = toggleCartFloat;
 window.animateCartButtonOnAdd = animateCartButtonOnAdd;
 window.setCartButtonLoading = setCartButtonLoading;
 window.setCartButtonError = setCartButtonError;
+
+// Функции галереи
+window.setGalleryImage = setGalleryImage;
+window.previousGalleryImage = previousGalleryImage;
+window.nextGalleryImage = nextGalleryImage;
+window.openGalleryFullscreen = openGalleryFullscreen;
+window.closeGalleryFullscreen = closeGalleryFullscreen;
+window.previousFullscreenImage = previousFullscreenImage;
+window.nextFullscreenImage = nextFullscreenImage;
+
+// ===== ФУНКЦИИ ГАЛЕРЕИ =====
+
+// Установка изображения в галерее
+function setGalleryImage(index) {
+    if (!window.currentGallery || !window.currentGallery.photos || index < 0 || index >= window.currentGallery.photos.length) {
+        return;
+    }
+    
+    window.currentGallery.currentIndex = index;
+    
+    const mainImage = document.getElementById('main-gallery-image');
+    const counter = document.getElementById('gallery-current');
+    const thumbnails = document.querySelectorAll('.gallery-thumbnail');
+    
+    if (mainImage) {
+        mainImage.src = processImageUrl(window.currentGallery.photos[index]);
+    }
+    
+    if (counter) {
+        counter.textContent = index + 1;
+    }
+    
+    // Обновляем активный thumbnail
+    thumbnails.forEach((thumb, i) => {
+        if (i === index) {
+            thumb.classList.add('active');
+        } else {
+            thumb.classList.remove('active');
+        }
+    });
+    
+    // Обновляем навигационные кнопки
+    updateGalleryNavigation();
+}
+
+// Предыдущее изображение
+function previousGalleryImage() {
+    if (!window.currentGallery || !window.currentGallery.photos) return;
+    
+    const newIndex = Math.max(0, window.currentGallery.currentIndex - 1);
+    setGalleryImage(newIndex);
+}
+
+// Следующее изображение
+function nextGalleryImage() {
+    if (!window.currentGallery || !window.currentGallery.photos) return;
+    
+    const newIndex = Math.min(window.currentGallery.photos.length - 1, window.currentGallery.currentIndex + 1);
+    setGalleryImage(newIndex);
+}
+
+// Обновление состояния навигационных кнопок
+function updateGalleryNavigation() {
+    if (!window.currentGallery || !window.currentGallery.photos) return;
+    
+    const prevBtn = document.getElementById('gallery-prev');
+    const nextBtn = document.getElementById('gallery-next');
+    
+    if (prevBtn) {
+        prevBtn.disabled = window.currentGallery.currentIndex === 0;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = window.currentGallery.currentIndex === window.currentGallery.photos.length - 1;
+    }
+}
+
+// Открытие полноэкранной галереи
+function openGalleryFullscreen(startIndex = null) {
+    if (!window.currentGallery || !window.currentGallery.photos) return;
+    
+    if (startIndex !== null) {
+        window.currentGallery.currentIndex = startIndex;
+    }
+    
+    const fullscreenGallery = document.getElementById('gallery-fullscreen');
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    
+    if (fullscreenGallery && fullscreenImage) {
+        fullscreenImage.src = processImageUrl(window.currentGallery.photos[window.currentGallery.currentIndex]);
+        fullscreenGallery.classList.add('show');
+        
+        // Блокируем прокрутку
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Закрытие полноэкранной галереи
+function closeGalleryFullscreen() {
+    const fullscreenGallery = document.getElementById('gallery-fullscreen');
+    
+    if (fullscreenGallery) {
+        fullscreenGallery.classList.remove('show');
+        
+        // Разблокируем прокрутку
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Предыдущее изображение в полноэкранном режиме
+function previousFullscreenImage() {
+    if (!window.currentGallery || !window.currentGallery.photos) return;
+    
+    const newIndex = Math.max(0, window.currentGallery.currentIndex - 1);
+    window.currentGallery.currentIndex = newIndex;
+    
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    if (fullscreenImage) {
+        fullscreenImage.src = processImageUrl(window.currentGallery.photos[newIndex]);
+    }
+    
+    // Обновляем также основную галерею
+    setGalleryImage(newIndex);
+}
+
+// Следующее изображение в полноэкранном режиме
+function nextFullscreenImage() {
+    if (!window.currentGallery || !window.currentGallery.photos) return;
+    
+    const newIndex = Math.min(window.currentGallery.photos.length - 1, window.currentGallery.currentIndex + 1);
+    window.currentGallery.currentIndex = newIndex;
+    
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    if (fullscreenImage) {
+        fullscreenImage.src = processImageUrl(window.currentGallery.photos[newIndex]);
+    }
+    
+    // Обновляем также основную галерею
+    setGalleryImage(newIndex);
+}
 
 // Инициализация при загрузке DOM
 document.addEventListener('DOMContentLoaded', function() {
