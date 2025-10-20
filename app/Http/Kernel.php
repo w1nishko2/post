@@ -37,6 +37,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\TrackVisitorStatistics::class,
         ],
 
         'api' => [
@@ -62,9 +63,11 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'ownership' => \App\Http\Middleware\EnsureOwnership::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
+        'statistics.access' => \App\Http\Middleware\EnsureUserOwnsStatistics::class,
         'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'track.miniapp' => \App\Http\Middleware\TrackMiniAppStatistics::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
     ];
 }

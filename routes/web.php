@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -108,6 +109,11 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('update.password');
         Route::patch('/name', [App\Http\Controllers\ProfileController::class, 'updateName'])->name('update.name');
     });
+
+    // Роуты для статистики
+    Route::get('statistics', [App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics.index');
+    Route::get('statistics/chart-data', [App\Http\Controllers\StatisticsController::class, 'chartData'])->name('statistics.chart-data');
+    Route::get('statistics/generate-report', [App\Http\Controllers\StatisticsController::class, 'generateFullReport'])->name('statistics.generate-report');
 });
 
 // Роуты для корзины (доступны всем, включая неавторизованных через сессию)
@@ -131,7 +137,7 @@ Route::post('/telegram/webhook/{bot}', [App\Http\Controllers\TelegramWebhookCont
     ->where('bot', '[0-9]+');
 
 // API роуты для Mini App
-Route::prefix('{shortName}/api')->where(['shortName' => '[a-zA-Z0-9_]+'])->group(function () {
+Route::prefix('{shortName}/api')->where(['shortName' => '[a-zA-Z0-9_]+'])->middleware('track.miniapp')->group(function () {
     Route::get('/products', [App\Http\Controllers\MiniAppController::class, 'getProducts'])->name('mini-app.api.products');
     Route::get('/categories', [App\Http\Controllers\MiniAppController::class, 'getCategories'])->name('mini-app.api.categories');
     Route::get('/search', [App\Http\Controllers\MiniAppController::class, 'searchProducts'])->name('mini-app.api.search');
@@ -143,4 +149,5 @@ Route::prefix('{shortName}/api')->where(['shortName' => '[a-zA-Z0-9_]+'])->group
 // Роут для Mini App (должен быть в самом конце, чтобы не конфликтовать с другими роутами)
 Route::get('/{shortName}', [App\Http\Controllers\MiniAppController::class, 'show'])
     ->where('shortName', '[a-zA-Z0-9_]+')
+    ->middleware('track.miniapp')
     ->name('mini-app.show');

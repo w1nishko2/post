@@ -69,28 +69,7 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- Left Side Of Navbar -->
                     <ul class="navbar-nav me-auto">
-                        <?php if(auth()->guard()->check()): ?>
-                            <li class="nav-item">
-                                <a class="nav-link" href="<?php echo e(route('home')); ?>">
-                                    <i class="fas fa-home"></i> Главная
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="<?php echo e(route('telegram-bots.index')); ?>">
-                                    <i class="fab fa-telegram"></i> Боты
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="<?php echo e(route('orders.index')); ?>">
-                                    <i class="fas fa-shopping-cart"></i> Заказы
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="<?php echo e(route('statistics.index')); ?>">
-                                    <i class="fas fa-chart-line"></i> Статистика
-                                </a>
-                            </li>
-                        <?php endif; ?>
+
                     </ul>
 
                     <!-- Right Side Of Navbar -->
@@ -148,4 +127,4 @@
     <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>
-<?php /**PATH C:\OSPanel\domains\post\resources\views/layouts/app.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\OSPanel\domains\post\resources\views\layouts\app.blade.php ENDPATH**/ ?>

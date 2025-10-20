@@ -6,6 +6,7 @@ use App\Models\TelegramBot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class MiniAppController extends Controller
 {
@@ -462,5 +463,61 @@ class MiniAppController extends Controller
             'has_issues' => count($issues) > 0,
             'total_amount' => array_sum(array_column($validatedCart, 'total_price'))
         ]);
+    }
+    
+    /**
+     * Отследить посещение Mini App
+     */
+    private function trackMiniAppVisit($bot, $request)
+    {
+        try {
+            // Получаем данные из Telegram WebApp
+            $telegramData = $this->extractTelegramDataFromRequest($request);
+            
+            \App\Models\VisitorStatistics::create([
+                'user_id' => $bot->user_id, // ID владельца бота
+                'telegram_bot_id' => $bot->id,
+                'session_id' => $request->session()->getId(),
+                'telegram_chat_id' => $telegramData['chat_id'] ?? null,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'referer' => $request->header('Referer'),
+                'page_url' => $request->fullUrl(),
+                'visited_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Ошибка при отслеживании посещения Mini App: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Извлечь данные Telegram из запроса
+     */
+    private function extractTelegramDataFromRequest($request)
+    {
+        $data = [];
+        
+        // Пытаемся получить chat_id из различных источников
+        if ($request->has('tgChatId')) {
+            $data['chat_id'] = $request->get('tgChatId');
+        }
+        
+        if ($request->has('chat_id')) {
+            $data['chat_id'] = $request->get('chat_id');
+        }
+        
+        // Пытаемся извлечь из Telegram WebApp Init Data
+        $initData = $request->header('X-Telegram-Web-App-Init-Data') ?? $request->input('_auth');
+        if ($initData) {
+            parse_str($initData, $parsedData);
+            if (isset($parsedData['user'])) {
+                $userData = json_decode($parsedData['user'], true);
+                if ($userData && isset($userData['id'])) {
+                    $data['chat_id'] = $userData['id'];
+                }
+            }
+        }
+        
+        return $data;
     }
 }
