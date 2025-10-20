@@ -107,8 +107,14 @@ function initApp() {
             // Настраиваем поведение скролла для предотвращения сворачивания
             setupScrollBehavior();
             
-            // Скрытие кнопки "Назад"
-            tg.BackButton.hide();
+            // Скрытие кнопки "Назад" (только для поддерживаемых версий)
+            if (tg.BackButton && typeof tg.BackButton.hide === 'function') {
+                try {
+                    tg.BackButton.hide();
+                } catch (e) {
+                    console.log('BackButton control not supported in this version');
+                }
+            }
             
             console.log('Telegram WebApp полностью настроен');
             
@@ -137,6 +143,13 @@ function initApp() {
         console.error('Ошибка инициализации поиска/категорий:', error);
     }
     
+    // Настройка обработчиков модальных окон
+    try {
+        // setupModalBackdropHandlers(); // Временно отключаем, перенесем в конец
+    } catch (error) {
+        console.error('Ошибка настройки модальных окон:', error);
+    }
+    
     // Скрыть загрузочный экран независимо от загрузки данных
     setTimeout(() => {
         try {
@@ -153,6 +166,15 @@ function initApp() {
             }
             
             console.log('Mini App загружен успешно');
+            
+            // Настройка модальных окон после полной загрузки
+            setTimeout(() => {
+                try {
+                    setupModalBackdropHandlers();
+                } catch (error) {
+                    console.error('Ошибка настройки модальных окон:', error);
+                }
+            }, 100);
         } catch (error) {
             console.error('Ошибка при скрытии загрузочного экрана:', error);
         }
@@ -352,6 +374,7 @@ async function loadCategories() {
         if (response.ok) {
             allCategories = await response.json();
             console.log('Загружено категорий:', allCategories.length);
+            console.log('Данные категорий:', allCategories);
             
             if (allCategories.length > 0) {
                 const categoriesContainer = document.getElementById('categoriesContainer');
@@ -414,6 +437,19 @@ function renderCategories(categories) {
             </div>
         </div>
     `).join('');
+    
+    // Переинициализируем Swiper после изменения контента с защитой
+    if (typeof window.reinitCategoriesSwiper === 'function') {
+        // Добавляем защиту от слишком частых вызовов
+        clearTimeout(window.swiperInitTimeout);
+        window.swiperInitTimeout = setTimeout(() => {
+            try {
+                window.reinitCategoriesSwiper();
+            } catch (error) {
+                console.warn('Ошибка переинициализации Swiper:', error);
+            }
+        }, 300);
+    }
 }
 
 // Поиск товаров
@@ -499,19 +535,15 @@ function performSearch(query = null) {
 function renderSearchResults(products, query) {
     const container = document.getElementById('productsContainer');
     if (!container) return;
-    
-    const title = document.getElementById('productsTitle');
-    if (title) {
-        title.textContent = `Результаты поиска: "${query}"`;
-    }
 
     if (products.length === 0) {
         container.innerHTML = `
-            <h5 id="productsTitle"><i class="fas fa-search me-2"></i>Результаты поиска: "${query}"</h5>
+            <div class="products-header">
+                <h5 id="productsTitle"><i class="fas fa-search me-2"></i>Результаты поиска: "${escapeHtml(query)}"</h5>
+            </div>
             <div class="no-results">
                 <i class="fas fa-search"></i>
                 <h6>Ничего не найдено</h6>
-                <p>Попробуйте изменить запрос или просмотреть все товары</p>
                 <button class="btn btn-primary btn-sm" onclick="showAllProducts()">
                     Показать все товары
                 </button>
@@ -521,69 +553,36 @@ function renderSearchResults(products, query) {
     }
 
     const productsHTML = products.map(product => `
-        <div class="product-flex-item">
-            <div class="card product-card h-100 ${product.quantity <= 0 ? 'out-of-stock' : ''} ${!product.isAvailable ? 'inactive' : ''}" onclick="showProductDetails(${product.id})" style="cursor: pointer; position: relative;">
-                ${product.similarity ? `<div class="badge bg-success position-absolute top-0 start-0 m-2" style="z-index: 10; font-size: 0.7em;">${Math.round(product.similarity)}%</div>` : ''}
-                <div class="product-image-container">
-                    ${product.photo_url 
-                        ? `<img src="${product.photo_url}" class="product-image" alt="${product.name}" 
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                           <div class="product-image-placeholder" style="display: none;">
-                               <i class="fas fa-image"></i>
-                               <span>Ошибка загрузки</span>
-                           </div>`
-                        : `<div class="product-image-placeholder">
-                               <i class="fas fa-cube"></i>
-                               <span>Без фото</span>
-                           </div>`
-                    }
-                    <!-- Quantity badge on image -->
-                    <span class="quantity-badge ${product.quantity > 10 ? 'quantity-success' : (product.quantity > 0 ? 'quantity-warning' : 'quantity-danger')}">
-                        ${product.quantity} шт.
-                    </span>
-                </div>
-                <div class="product-content">
-                    <div class="product-info">
-                        <h6 class="product-title">${product.name}</h6>
-                        ${product.description ? `<p class="product-description">${product.description}</p>` : ''}
-                        ${product.similarity && product.matchField ? `<small class="text-muted">Совпадение в: ${product.matchField === 'name' ? 'названии' : product.matchField === 'article' ? 'артикуле' : 'описании'}</small>` : ''}
-                    </div>
-                    <div class="product-actions">
-                        <div class="product-action-row">
-                            <div class="cart-button-wrapper">
-                                ${product.isAvailable ? `
-                                <button class="cart-btn cart-btn-primary" 
-                                        onclick="event.stopPropagation(); addToCart(${product.id})"
-                                        title="Добавить в корзину">
-                                    <i class="fas fa-shopping-cart"></i>
-                                </button>
-                                ` : `
-                                <button class="cart-btn cart-btn-disabled" disabled
-                                        title="Нет в наличии">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                `}
-                            </div>
-                            <div class="product-price-wrapper">
-                                <div class="product-price">${formatPrice(product.price)} ₽</div>
-                            </div>
-                            <div class="product-quantity-wrapper">
-                                <span class="quantity-badge quantity-success">
-                                    ${product.quantity} шт.
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+        <article class="product-card" onclick="showProductDetails(${product.id})">
+            <div class="product-image ${!product.photo_url ? 'no-image' : ''}">
+                ${product.photo_url 
+                    ? `<img src="${escapeHtml(product.photo_url)}" alt="${escapeHtml(product.name)}" 
+                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">` 
+                    : ''
+                }
+                ${getStatusBadge(product)}
+                ${product.similarity ? `<div class="product-badge" style="background: var(--color-gray); top: auto; bottom: var(--space-xs); left: var(--space-xs);">${Math.round(product.similarity)}%</div>` : ''}
+            </div>
+            <div class="product-info">
+                <h3 class="product-name">${escapeHtml(product.name)}</h3>
+                ${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ''}
+                <div class="product-footer">
+                    <span class="product-price">${product.formatted_price || formatPrice(product.price)}</span>
+                    <button class="add-to-cart ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}" 
+                            onclick="event.stopPropagation(); addToCart(${product.id})"
+                            ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}>
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
             </div>
-        </div>
+        </article>
     `).join('');
 
     container.innerHTML = `
         <div class="products-header">
-            <h5 id="productsTitle"><i class="fas fa-search me-2"></i>Результаты поиска: "${query}" (найдено: ${products.length})</h5>
+            <h5 id="productsTitle"><i class="fas fa-search me-2"></i>Результаты поиска: "${escapeHtml(query)}" (найдено: ${products.length})</h5>
         </div>
-        <div class="products-flex-container">
+        <div class="products-grid">
             ${productsHTML}
         </div>
     `;
@@ -593,6 +592,7 @@ function renderSearchResults(products, query) {
 function filterByCategory(categoryId, categoryName) {
     console.log('Фильтрация по категории:', categoryId, categoryName);
     console.log('Все товары:', allProducts);
+    console.log('Все категории:', allCategories);
     
     isSearchActive = true;
     isInCategoryView = true; // Устанавливаем флаг просмотра категории
@@ -654,68 +654,53 @@ function renderCategoryResults(products, categoryName) {
     const container = document.getElementById('productsContainer');
     if (!container) return;
 
+    // Если нет товаров в категории
+    if (products.length === 0) {
+        container.innerHTML = `
+            <div class="products-header">
+                <h5 id="productsTitle"><i class="fas fa-folder-open me-2"></i>Категория: ${escapeHtml(categoryName)}</h5>
+            </div>
+            <div class="no-results">
+                <i class="fas fa-folder-open"></i>
+                <h6>В этой категории пока нет товаров</h6>
+                <button class="btn btn-primary btn-sm" onclick="showAllProducts()">
+                    Показать все товары
+                </button>
+            </div>
+        `;
+        return;
+    }
+
     const productsHTML = products.map(product => `
-        <div class="product-flex-item">
-            <div class="card product-card h-100 ${product.quantity <= 0 ? 'out-of-stock' : ''} ${!product.isAvailable ? 'inactive' : ''}" onclick="showProductDetails(${product.id})" style="cursor: pointer; position: relative;">
-                <div class="product-image-container">
-                    ${product.photo_url 
-                        ? `<img src="${product.photo_url}" class="product-image" alt="${product.name}" 
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                           <div class="product-image-placeholder" style="display: none;">
-                               <i class="fas fa-image"></i>
-                               <span>Ошибка загрузки</span>
-                           </div>`
-                        : `<div class="product-image-placeholder">
-                               <i class="fas fa-cube"></i>
-                               <span>Без фото</span>
-                           </div>`
-                    }
-                    <!-- Quantity badge on image -->
-                    <span class="quantity-badge ${product.quantity > 10 ? 'quantity-success' : (product.quantity > 0 ? 'quantity-warning' : 'quantity-danger')}">
-                        ${product.quantity} шт.
-                    </span>
-                </div>
-                <div class="product-content">
-                    <div class="product-info">
-                        <h6 class="product-title">${product.name}</h6>
-                        ${product.description ? `<p class="product-description">${product.description}</p>` : ''}
-                    </div>
-                    <div class="product-actions">
-                        <div class="product-action-row">
-                            <div class="cart-button-wrapper">
-                                ${product.isAvailable ? `
-                                <button class="cart-btn cart-btn-primary" 
-                                        onclick="event.stopPropagation(); addToCart(${product.id})"
-                                        title="Добавить в корзину">
-                                    <i class="fas fa-shopping-cart"></i>
-                                </button>
-                                ` : `
-                                <button class="cart-btn cart-btn-disabled" disabled
-                                        title="Нет в наличии">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                `}
-                            </div>
-                            <div class="product-price-wrapper">
-                                <div class="product-price">${formatPrice(product.price)} ₽</div>
-                            </div>
-                            <div class="product-quantity-wrapper">
-                                <span class="quantity-badge quantity-success">
-                                    ${product.quantity} шт.
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+        <article class="product-card" onclick="showProductDetails(${product.id})">
+            <div class="product-image ${!product.photo_url ? 'no-image' : ''}">
+                ${product.photo_url 
+                    ? `<img src="${escapeHtml(product.photo_url)}" alt="${escapeHtml(product.name)}" 
+                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">` 
+                    : ''
+                }
+                ${getStatusBadge(product)}
+            </div>
+            <div class="product-info">
+                <h3 class="product-name">${escapeHtml(product.name)}</h3>
+                ${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ''}
+                <div class="product-footer">
+                    <span class="product-price">${product.formatted_price || formatPrice(product.price)}</span>
+                    <button class="add-to-cart ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}" 
+                            onclick="event.stopPropagation(); addToCart(${product.id})"
+                            ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}>
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
             </div>
-        </div>
+        </article>
     `).join('');
 
     container.innerHTML = `
         <div class="products-header">
-            <h5 id="productsTitle"><i class="fas fa-folder me-2"></i>Категория: ${categoryName}</h5>
+            <h5 id="productsTitle"><i class="fas fa-folder-open me-2"></i>Категория: ${escapeHtml(categoryName)}</h5>
         </div>
-        <div class="products-flex-container">
+        <div class="products-grid">
             ${productsHTML}
         </div>
     `;
@@ -885,25 +870,21 @@ async function showProductDetails(productId) {
             return;
         }
 
-        // Показываем модальное окно с loader
-        const bsModal = new bootstrap.Modal(modal, {
-            backdrop: true,
-            keyboard: false
-        });
-        bsModal.show();
+        // Показываем модальное окно без Bootstrap
+        modal.classList.add('show');
+        modal.style.display = 'block';
         
-        // Добавляем класс для фиксации body
-        document.body.classList.add('modal-open');
+        // Добавляем блокировку скролла
+        document.body.style.overflow = 'hidden';
         
         title.textContent = 'Загрузка...';
         body.innerHTML = `
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Загрузка...</span>
-                </div>
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Загрузка товара...</div>
             </div>
         `;
-        footer.classList.add('d-none');
+        footer.style.display = 'none';
 
         // Получаем короткое имя из meta тега
         const shortName = document.querySelector('meta[name="short-name"]')?.getAttribute('content');
@@ -1018,16 +999,16 @@ function displayProductInModal(product, body, title, footer) {
     `;
     
     // Настраиваем footer
-    footer.classList.remove('d-none');
+    footer.style.display = 'block';
     footer.innerHTML = `
-        <div class="d-grid gap-2">
+        <div class="full-width">
             ${product.isAvailable && product.quantity > 0 ? `
-                <button type="button" class="btn btn-primary btn-lg" onclick="addToCartFromModal(${product.id})">
-                    <i class="fas fa-shopping-cart me-2"></i>Добавить в корзину
+                <button type="button" class="btn-primary full-width" onclick="addToCartFromModal(${product.id})">
+                    <i class="fas fa-shopping-cart"></i> Добавить в корзину
                 </button>
             ` : `
-                <button type="button" class="btn btn-secondary btn-lg" disabled>
-                    <i class="fas fa-times me-2"></i>Товар недоступен
+                <button type="button" class="btn-primary full-width" disabled style="opacity: 0.5;">
+                    <i class="fas fa-times"></i> Товар недоступен
                 </button>
             `}
         </div>
@@ -1381,24 +1362,20 @@ function showCartModal() {
             return;
         }
 
-        // Показываем модальное окно с loader
-        const bsModal = new bootstrap.Modal(modal, {
-            backdrop: true,
-            keyboard: false
-        });
-        bsModal.show();
+        // Показываем модальное окно без Bootstrap
+        modal.classList.add('show');
+        modal.style.display = 'block';
         
-        // Добавляем класс для фиксации body
-        document.body.classList.add('modal-open');
+        // Добавляем блокировку скролла
+        document.body.style.overflow = 'hidden';
         
         body.innerHTML = `
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Загрузка корзины...</span>
-                </div>
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Загрузка корзины...</div>
             </div>
         `;
-        footer.classList.add('d-none');
+        footer.style.display = 'none';
 
         // Загружаем данные корзины
         fetch('/cart', {
@@ -1420,7 +1397,7 @@ function showCartModal() {
                         <p class="text-muted">Добавьте товары для оформления заказа</p>
                     </div>
                 `;
-                footer.classList.add('d-none');
+                footer.style.display = 'none';
             }
         })
         .catch(error => {
@@ -1432,7 +1409,7 @@ function showCartModal() {
                     <p class="text-muted">Попробуйте обновить страницу</p>
                 </div>
             `;
-            footer.classList.add('d-none');
+            footer.style.display = 'none';
         });
         
     } catch (error) {
@@ -1456,7 +1433,7 @@ function displayCartItems(items, totalAmount) {
                 <p class="text-muted">Добавьте товары для оформления заказа</p>
             </div>
         `;
-        footer.classList.add('d-none');
+        footer.style.display = 'none';
         return;
     }
     
@@ -1534,7 +1511,7 @@ function displayCartItems(items, totalAmount) {
             </div>
         </div>
     `;
-    footer.classList.remove('d-none');
+    footer.style.display = 'block';
 }
 
 // Функция обновления количества товара в корзине
@@ -1620,7 +1597,7 @@ function refreshCartContent() {
                     <p class="text-muted">Добавьте товары для оформления заказа</p>
                 </div>
             `;
-            footer.classList.add('d-none');
+            footer.style.display = 'none';
         }
     })
     .catch(error => {
@@ -1735,7 +1712,7 @@ function performClearCart() {
         `;
     }
     if (footer) {
-        footer.classList.add('d-none');
+        footer.style.display = 'none';
     }
     
     fetch('/cart/clear', {
@@ -1860,7 +1837,7 @@ function proceedToCheckout() {
                 
                 const footer = document.getElementById('cartModalFooter');
                 if (footer) {
-                    footer.classList.add('d-none');
+                    footer.style.display = 'none';
                 }
             }, 1000);
             
@@ -1882,20 +1859,18 @@ function closeProductModal() {
     try {
         const modal = document.getElementById('productModal');
         if (modal) {
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) {
-                bsModal.hide();
-            }
+            modal.classList.remove('show');
+            modal.style.display = 'none';
         }
         
-        // Убираем класс фиксации body
-        document.body.classList.remove('modal-open');
+        // Убираем блокировку скролла
+        document.body.style.overflow = '';
         
         triggerHapticFeedback('light');
     } catch (error) {
         console.error('Ошибка при закрытии модального окна товара:', error);
-        // Убираем класс даже при ошибке
-        document.body.classList.remove('modal-open');
+        // Убираем блокировку даже при ошибке
+        document.body.style.overflow = '';
     }
 }
 
@@ -1904,20 +1879,18 @@ function closeCartModal() {
     try {
         const modal = document.getElementById('cartModal');
         if (modal) {
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) {
-                bsModal.hide();
-            }
+            modal.classList.remove('show');
+            modal.style.display = 'none';
         }
         
-        // Убираем класс фиксации body
-        document.body.classList.remove('modal-open');
+        // Убираем блокировку скролла
+        document.body.style.overflow = '';
         
         triggerHapticFeedback('light');
     } catch (error) {
         console.error('Ошибка при закрытии модального окна корзины:', error);
-        // Убираем класс даже при ошибке
-        document.body.classList.remove('modal-open');
+        // Убираем блокировку даже при ошибке
+        document.body.style.overflow = '';
     }
 }
 
@@ -1958,8 +1931,16 @@ function setupScrollBehavior() {
             // Устанавливаем полноэкранный режим и блокируем сворачивание
             tg.expand();
             
-            // Отключаем стандартное поведение pull-to-refresh/close
-            tg.disableClosingConfirmation();
+            // Отключаем стандартное поведение pull-to-refresh/close (только для поддерживаемых версий)
+            if (tg.version && parseFloat(tg.version) >= 6.1) {
+                tg.disableClosingConfirmation();
+            } else if (tg.disableClosingConfirmation) {
+                try {
+                    tg.disableClosingConfirmation();
+                } catch (e) {
+                    console.log('Closing confirmation control not supported in this version');
+                }
+            }
             
             // Блокируем возможность закрытия через свайп вниз
             if (tg.isClosingConfirmationEnabled !== undefined) {
@@ -2269,18 +2250,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Обработчики событий для модальных окон
+// Функция для настройки обработчиков кликов по backdrop модальных окон
+function setupModalBackdropHandlers() {
     const productModal = document.getElementById('productModal');
     const cartModal = document.getElementById('cartModal');
     
+    // Обработка кликов по backdrop для productModal
     if (productModal) {
-        productModal.addEventListener('hidden.bs.modal', function () {
-            document.body.classList.remove('modal-open');
+        productModal.addEventListener('click', function(e) {
+            if (e.target === productModal) {
+                closeProductModal();
+            }
         });
     }
     
+    // Обработка кликов по backdrop для cartModal
     if (cartModal) {
-        cartModal.addEventListener('hidden.bs.modal', function () {
-            document.body.classList.remove('modal-open');
+        cartModal.addEventListener('click', function(e) {
+            if (e.target === cartModal) {
+                closeCartModal();
+            }
         });
     }
     
@@ -2289,6 +2278,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Добавляем поддержку свайпа для выхода из категории
     addCategorySwipeSupport();
+    
+    console.log('Обработчики модальных окон настроены');
+}
+
+// Экспортируем функцию в window после её определения
+window.setupModalBackdropHandlers = setupModalBackdropHandlers;
     
     // Настраиваем защиту от сворачивания через скролл
     preventPullToClose();

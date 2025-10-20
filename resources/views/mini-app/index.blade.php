@@ -14,8 +14,8 @@
     <meta name="apple-touch-fullscreen" content="yes">
     <title>{{ $bot->bot_name }} - Mini App</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
     
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,225 +27,213 @@
     <!-- Telegram WebApp JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    
     <!-- Mini App JS -->
     @vite(['resources/js/mini-app.js'])
 </head>
 <body class="mini-app-body">
     <!-- Экран загрузки -->
-    <div id="loading">
-        <div class="text-center loading-flex">
-            <div class="loading-spinner mb-3"></div>
-            <div>Загрузка Mini App...</div>
+    <div class="loading-screen" id="loading">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Загрузка магазина...</div>
         </div>
     </div>
 
-    <!-- Основное содержимое -->
-    <div id="app" class="mini-app mini-app-container" style="display: none;">
-        <!-- Область для свайпа с левого края -->
-        <div class="swipe-edge-area"></div>
-        
-        <!-- Блок поиска -->
-        <div class="search-container ">
-            <div class="search-box">
-                <div class="input-group search-box-h">
-                    <input type="text" class="form-control search-input" id="searchInput" 
+    <!-- Основное приложение -->
+    <main class="app-main" id="app" style="display: none;">
+        <!-- Шапка с поиском -->
+        <header class="app-header">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" class="search-input" id="searchInput" 
                            placeholder="Поиск товаров..." autocomplete="off">
-                    <button class="btn btn-primary search-btn" type="button" onclick="performSearch()">
+                    <button class="search-button" type="button" onclick="performSearch()">
                         <i class="fas fa-search"></i>
                     </button>
                 </div>
             </div>
-        </div>
+        </header>
 
         <!-- Слайдер категорий -->
-        <div class="categories-slider-container" id="categoriesContainer" style="display: none;">
-            <div class="categories-slider">
-                <div class="categories-track" id="categoriesTrack">
+        <section class="categories-section" id="categoriesContainer" style="display: none;">
+            <div class="swiper categories-swiper">
+                <div class="swiper-wrapper" id="categoriesTrack">
                     <!-- Категории будут загружены через JavaScript -->
                 </div>
             </div>
-        </div>
+        </section>
 
+        <!-- Товары -->
         @if($products->count() > 0)
-        <div class="products-grid" id="productsContainer">
-            <div class="products-header">
-                <h5 id="productsTitle"><i class="fas fa-store me-2"></i>Товары магазина</h5>
+        <section class="products-section" id="productsContainer">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-store"></i>
+                    <span id="productsTitle">Товары магазина</span>
+                </h2>
             </div>
             
-            <div class="products-flex-container">
+            <div class="products-grid">
                 @foreach($products as $product)
-                <div class="product-flex-item">
-                    <div class="product-card" onclick="showProductDetails({{ $product->id }})">
-                        <div class="product-image-container">
-                            @if($product->photo_url)
-                                <img src="{{ $product->photo_url }}" 
-                                     class="product-image" 
-                                     alt="{{ $product->name }}"
-                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="product-image-placeholder" style="display: none;">
-                                    <i class="fas fa-image"></i>
-                                    <span>Ошибка загрузки</span>
-                                </div>
-                            @else
-                                <div class="product-image-placeholder">
-                                    <i class="fas fa-image"></i>
-                                    <span>Нет фото</span>
-                                </div>
-                            @endif
-                            
-                            <!-- Quantity badge on image -->
-                            <span class="quantity-badge {{ $product->quantity > 10 ? 'quantity-success' : ($product->quantity > 0 ? 'quantity-warning' : 'quantity-danger') }}">
-                                {{ $product->quantity }} шт.
+                <article class="product-card" onclick="showProductDetails({{ $product->id }})">
+                    <div class="product-image">
+                        @if($product->photo_url)
+                            <img src="{{ $product->photo_url }}" 
+                                 alt="{{ $product->name }}"
+                                 loading="lazy"
+                                 onerror="this.style.display='none'; this.parentElement.classList.add('no-image');">
+                        @endif
+                        <div class="product-badge">
+                            <span class="stock-count {{ $product->quantity > 10 ? 'in-stock' : ($product->quantity > 0 ? 'low-stock' : 'out-of-stock') }}">
+                                {{ $product->quantity }} шт
                             </span>
                         </div>
+                    </div>
+                    
+                    <div class="product-info">
+                        <h3 class="product-name">{{ Str::limit($product->name, 35) }}</h3>
+                        @if($product->description)
+                            <p class="product-description">{{ Str::limit($product->description, 45) }}</p>
+                        @endif
                         
-                        <div class="product-content">
-                            <div class="product-info">
-                                <h6 class="product-title">{{ Str::limit($product->name, 40) }}</h6>
-                                @if($product->description)
-                                <p class="product-description">{{ Str::limit($product->description, 50) }}</p>
+                        <div class="product-footer">
+                            <div class="product-price">{{ $product->formatted_price_with_markup }}</div>
+                            <button class="add-to-cart {{ !$product->isAvailable() ? 'disabled' : '' }}" 
+                                    onclick="event.stopPropagation(); addToCart({{ $product->id }})"
+                                    {{ !$product->isAvailable() ? 'disabled' : '' }}>
+                                @if($product->isAvailable())
+                                    <i class="fas fa-plus"></i>
+                                @else
+                                    <i class="fas fa-times"></i>
                                 @endif
-                            </div>
-                            
-                            <div class="product-actions">
-                                <div class="product-action-row">
-                                    <div class="cart-button-wrapper">
-                                        @if($product->isAvailable())
-                                        <button class="cart-btn cart-btn-primary" 
-                                                onclick="event.stopPropagation(); addToCart({{ $product->id }})"
-                                                title="Добавить в корзину">
-                                            <i class="fas fa-shopping-cart"></i>
-                                        </button>
-                                        @else
-                                        <button class="cart-btn cart-btn-disabled" disabled
-                                                title="Нет в наличии">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                        @endif
-                                    </div>
-                                    
-                                    <div class="product-price-wrapper">
-                                        <span class="product-price">{{ $product->formatted_price_with_markup }}</span>
-                                    </div>
-                                    
-                                    <div class="product-quantity-wrapper">
-                                        <span class="quantity-badge quantity-success">
-                                            {{ $product->quantity }} шт.
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                            </button>
                         </div>
                     </div>
-                </div>
+                </article>
                 @endforeach
             </div>
             
             <!-- Пагинация -->
             @if($products->hasPages())
-            <div class="products-pagination">
-                {{ $products->links() }}
-            </div>
+            <nav class="pagination-nav">
+                <div class="pagination-wrapper">
+                    @if ($products->onFirstPage())
+                        <span class="pagination-btn disabled">
+                            <i class="fas fa-chevron-left"></i>
+                        </span>
+                    @else
+                        <a href="{{ $products->previousPageUrl() }}" class="pagination-btn">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    @endif
+                    
+                    @foreach ($products->getUrlRange(1, $products->lastPage()) as $page => $url)
+                        @if ($page == $products->currentPage())
+                            <span class="pagination-btn active">{{ $page }}</span>
+                        @else
+                            <a href="{{ $url }}" class="pagination-btn">{{ $page }}</a>
+                        @endif
+                    @endforeach
+                    
+                    @if ($products->hasMorePages())
+                        <a href="{{ $products->nextPageUrl() }}" class="pagination-btn">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    @else
+                        <span class="pagination-btn disabled">
+                            <i class="fas fa-chevron-right"></i>
+                        </span>
+                    @endif
+                </div>
+            </nav>
             @endif
-        </div>
+        </section>
         @else
-        <div class="text-center py-4">
-            <div class="text-muted">
-                <h5><i class="fas fa-store-slash me-2"></i>Магазин временно пуст</h5>
-                <p class="small">Товары скоро появятся!</p>
+        <section class="empty-state">
+            <div class="empty-content">
+                <i class="fas fa-store-slash"></i>
+                <h3>Магазин временно пуст</h3>
+                <p>Товары скоро появятся!</p>
             </div>
-        </div>
+        </section>
         @endif
 
-        <!-- Корзина (плавающая кнопка) -->
-        <div class="cart-float hidden" id="cart-float">
-            <button class="cart-float-btn" onclick="showCartModal()" type="button" aria-label="Открыть корзину">
+        <!-- Плавающая корзина -->
+        <div class="floating-cart " id="cart-float">
+            <button class="cart-button" onclick="showCartModal()" type="button">
                 <i class="fas fa-shopping-cart"></i>
-                <span class="cart-counter hidden" id="cart-counter">0</span>
+                <span class="cart-count " id="cart-counter">0</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Модальные окна и панели (остались без изменений для совместимости) -->
+    <div class="modal-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
+
+    <div class="side-panel" id="productPanel">
+        <div class="panel-header">
+            <h3 class="panel-title" id="productPanelTitle">Товар</h3>
+            <button class="panel-close" onclick="closePanel()" type="button">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="panel-body" id="productPanelBody">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+        
+        <div class="panel-footer" id="productPanelFooter" style="display: none;">
+            <button type="button" class="btn-primary full-width" id="addToCartFromPanel">
+                Добавить в корзину
             </button>
         </div>
     </div>
 
-    <!-- Бэкдроп для панельных окон -->
-    <div class="slide-panel-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
-
-    <!-- Панель товара -->
-    <div class="slide-panel" id="productPanel">
-        <div class="slide-panel-header">
-            <h5 class="slide-panel-title" id="productPanelTitle">Товар</h5>
-            <button class="slide-panel-close" onclick="closePanel()" type="button">×</button>
-        </div>
-        
-        <div class="slide-panel-body" id="productPanelBody">
-            <div class="text-center">
-                <div class="spinner-border text-primary" role="status" style="margin: 50px 0;">
-                    <span class="visually-hidden">Загрузка...</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="slide-panel-footer" id="productPanelFooter" style="display: none;">
-            <div class="d-grid gap-2">
-                <button type="button" class="btn btn-primary" id="addToCartFromPanel">Добавить в корзину</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно товара -->
-    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="productModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <div class="modal-header-left">
-                        <button type="button" class="modal-back-btn" onclick="closeProductModal()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h5 class="modal-title" id="productModalTitle">Загрузка...</h5>
-                    </div>
-                    <div class="modal-header-right">
-                        <!-- Дополнительные кнопки если нужны -->
-                    </div>
+                    <button type="button" class="modal-back" onclick="closeProductModal()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h3 class="modal-title" id="productModalTitle">Загрузка...</h3>
                 </div>
                 <div class="modal-body" id="productModalBody">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Загрузка...</span>
-                        </div>
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
                     </div>
                 </div>
-                <div class="modal-footer d-none" id="productModalFooter">
-                    <!-- Будет заполнено динамически -->
+                <div class="modal-footer " id="productModalFooter">
+                    <!-- Динамический контент -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Корзина (модальное окно) -->
-    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="cartModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <div class="modal-header-left">
-                        <button type="button" class="modal-back-btn" onclick="closeCartModal()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h5 class="modal-title" id="cartModalTitle">
-                            <i class="fas fa-shopping-cart me-2"></i>Корзина
-                        </h5>
-                    </div>
-                    <div class="modal-header-right">
-                        <!-- Дополнительные кнопки если нужны -->
-                    </div>
+                    <button type="button" class="modal-back" onclick="closeCartModal()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h3 class="modal-title" id="cartModalTitle">
+                        <i class="fas fa-shopping-cart"></i>
+                        Корзина
+                    </h3>
                 </div>
                 <div class="modal-body" id="cartModalBody">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Загрузка корзины...</span>
-                        </div>
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
                     </div>
                 </div>
-                <div class="modal-footer d-none" id="cartModalFooter">
-                    <!-- Будет заполнено динамически -->
+                <div class="modal-footer " id="cartModalFooter">
+                    <!-- Динамический контент -->
                 </div>
             </div>
         </div>
@@ -277,21 +265,314 @@
         @json($productsData)
     </script>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <!-- Initialize Mini App -->
     <script>
+        // Инициализация Swiper для категорий
+        let categoriesSwiper = null;
+        
+        // Функция проверки готовности DOM
+        function isDOMReady() {
+            return document.readyState === 'complete' || document.readyState === 'interactive';
+        }
+        
+        // Функция ожидания готовности DOM
+        function waitForDOM() {
+            return new Promise((resolve) => {
+                if (isDOMReady()) {
+                    resolve();
+                } else {
+                    document.addEventListener('DOMContentLoaded', resolve, { once: true });
+                }
+            });
+        }
+        
+        function initCategoriesSwiper() {
+            try {
+                // Проверяем готовность DOM
+                if (!isDOMReady()) {
+                    console.warn('DOM not ready, waiting...');
+                    waitForDOM().then(() => {
+                        setTimeout(initCategoriesSwiper, 100);
+                    });
+                    return false;
+                }
+                
+                // Проверяем загрузку Swiper библиотеки
+                if (typeof Swiper === 'undefined') {
+                    console.warn('Swiper library not loaded yet, retrying...');
+                    setTimeout(initCategoriesSwiper, 500);
+                    return false;
+                }
+                
+                // Уничтожаем предыдущий экземпляр если есть
+                if (categoriesSwiper) {
+                    try {
+                        categoriesSwiper.destroy(true, true);
+                    } catch (e) {
+                        console.warn('Error destroying previous Swiper instance:', e);
+                    }
+                    categoriesSwiper = null;
+                }
+                
+                // Проверяем наличие контейнера
+                const swiperContainer = document.querySelector('.categories-swiper');
+                if (!swiperContainer) {
+                    console.warn('Swiper container not found');
+                    return false;
+                }
+                
+                // Проверяем размеры контейнера
+                const containerRect = swiperContainer.getBoundingClientRect();
+                if (containerRect.width === 0 || containerRect.height === 0) {
+                    console.warn('Swiper container has zero size, retrying...');
+                    setTimeout(initCategoriesSwiper, 200);
+                    return false;
+                }
+                
+                // Убеждаемся, что контейнер видим
+                const containerStyle = getComputedStyle(swiperContainer);
+                if (containerStyle.display === 'none' || containerStyle.visibility === '') {
+                    console.warn('Swiper container is not visible, retrying...');
+                    setTimeout(initCategoriesSwiper, 200);
+                    return false;
+                }
+            
+            // Проверяем наличие категорий
+            const wrapper = swiperContainer.querySelector('.swiper-wrapper');
+            const categoryCards = wrapper ? wrapper.querySelectorAll('.category-card') : [];
+            
+            if (categoryCards.length === 0) {
+                console.warn('No category cards found for Swiper');
+                return false;
+            }
+            
+            // Оборачиваем каждую category-card в swiper-slide
+            categoryCards.forEach(card => {
+                if (!card.parentElement.classList.contains('swiper-slide')) {
+                    const slide = document.createElement('div');
+                    slide.className = 'swiper-slide';
+                    card.parentNode.insertBefore(slide, card);
+                    slide.appendChild(card);
+                }
+            });
+            
+            console.log('Swiper initialized with', categoryCards.length, 'slides');
+            
+            // Инициализируем Swiper с исправленными настройками
+            try {
+                // Дополнительная проверка перед созданием Swiper
+                if (typeof Swiper === 'undefined') {
+                    console.error('Swiper library not loaded');
+                    return false;
+                }
+                
+                categoriesSwiper = new Swiper('.categories-swiper', {
+                    slidesPerView: 'auto',
+                    spaceBetween: 12,
+                    freeMode: {
+                        enabled: true,
+                        sticky: false,
+                    },
+                    grabCursor: true,
+                    resistance: true,
+                    resistanceRatio: 0.5,
+                    speed: 300,
+                    preventClicks: false,
+                    preventClicksPropagation: false,
+                    allowTouchMove: true,
+                    touchRatio: 1,
+                    centeredSlides: false,
+                    centeredSlidesBounds: false,
+                    slidesOffsetBefore: 0,
+                    slidesOffsetAfter: 0,
+                    pagination: false,
+                    navigation: false,
+                    mousewheel: {
+                        forceToAxis: true,
+                        sensitivity: 1,
+                        releaseOnEdges: true
+                    },
+                    // Добавляем обработчики событий для отладки
+                    on: {
+                        init: function() {
+                            console.log('Swiper initialized successfully');
+                        },
+                        resize: function() {
+                            console.log('Swiper resized');
+                        }
+                    },
+                    breakpoints: {
+                        320: {
+                            spaceBetween: 8,
+                        },
+                        480: {
+                            spaceBetween: 12,
+                        }
+                    },
+                    on: {
+                        init: function() {
+                            console.log('Swiper initialized successfully');
+                            // Безопасное обновление размеров после полной инициализации
+                            setTimeout(() => {
+                                try {
+                                    if (this && this.updateSize && typeof this.updateSize === 'function') {
+                                        this.updateSize();
+                                    }
+                                    if (this && this.updateSlides && typeof this.updateSlides === 'function') {
+                                        this.updateSlides();
+                                    }
+                                    if (this && this.updateProgress && typeof this.updateProgress === 'function') {
+                                        this.updateProgress();
+                                    }
+                                    if (this && this.updateSlidesClasses && typeof this.updateSlidesClasses === 'function') {
+                                        this.updateSlidesClasses();
+                                    }
+                                } catch (updateError) {
+                                    console.warn('Error during Swiper size update:', updateError);
+                                }
+                            }, 100);
+                        },
+                        resize: function() {
+                            try {
+                                if (this && this.update && typeof this.update === 'function') {
+                                    this.update();
+                                }
+                            } catch (resizeError) {
+                                console.warn('Error during Swiper resize:', resizeError);
+                            }
+                        }
+                    }
+                });
+                
+                console.log('Swiper successfully created with', categoryCards.length, 'category cards');
+                
+            } catch (swiperError) {
+                console.error('Error creating Swiper instance:', swiperError);
+                categoriesSwiper = null;
+                return false;
+            }
+                
+            // Принудительное обновление после инициализации
+            setTimeout(() => {
+                    if (categoriesSwiper && categoriesSwiper.update) {
+                        try {
+                            categoriesSwiper.update();
+                        } catch (e) {
+                            console.warn('Error updating Swiper:', e);
+                        }
+                    }
+                }, 100);
+                
+                return true; // Успешная инициализация
+                
+            } catch (error) {
+                console.error('Error initializing Swiper:', error);
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+                
+                categoriesSwiper = null; // Очищаем переменную при ошибке
+                
+                // Ограничиваем количество попыток переинициализации
+                if (!window.swiperRetryCount) window.swiperRetryCount = 0;
+                if (window.swiperRetryCount < 3) {
+                    window.swiperRetryCount++;
+                    setTimeout(() => {
+                        console.log('Retrying Swiper initialization... Attempt:', window.swiperRetryCount);
+                        initCategoriesSwiper();
+                    }, 1000 * window.swiperRetryCount);
+                } else {
+                    console.error('Max Swiper initialization attempts reached. Giving up.');
+                }
+                
+                return false; // Неудачная инициализация
+            }
+        }
+        
+        // Функция для переинициализации при изменении контента
+        function reinitSwiper() {
+            // Очищаем предыдущий таймаут если есть
+            if (window.swiperReinitTimeout) {
+                clearTimeout(window.swiperReinitTimeout);
+            }
+            
+            window.swiperReinitTimeout = setTimeout(() => {
+                console.log('Reinitializing Swiper...');
+                const success = initCategoriesSwiper();
+                if (success) {
+                    console.log('Swiper reinitialization successful');
+                } else {
+                    console.warn('Swiper reinitialization failed');
+                }
+            }, 300);
+        }
+        
+        // Глобальная функция для использования из других скриптов
+        window.reinitCategoriesSwiper = reinitSwiper;
+        
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, preparing Swiper initialization');
+            
+            // Увеличиваем задержку для инициализации Swiper
+            setTimeout(initCategoriesSwiper, 1000);
+            
             // Ожидаем загрузки всех скриптов
             setTimeout(function() {
                 if (typeof initApp === 'function') {
                     initApp();
+                    // Переинициализируем Swiper после загрузки приложения
+                    setTimeout(initCategoriesSwiper, 500);
                 } else {
                     console.error('initApp function not found');
                 }
-            }, 100);
+            }, 800);
         });
+        
+        // Переинициализация при изменении размера окна
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (categoriesSwiper && categoriesSwiper.update) {
+                    try {
+                        categoriesSwiper.update();
+                        console.log('Swiper updated on resize');
+                    } catch (error) {
+                        console.warn('Error updating Swiper on resize:', error);
+                        // Если обновление не удалось, попробуем переинициализировать
+                        reinitSwiper();
+                    }
+                } else {
+                    console.log('Swiper not available, reinitializing...');
+                    initCategoriesSwiper();
+                }
+            }, 250);
+        });
+        
+        // Наблюдатель за изменениями в DOM для автоматической переинициализации
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' && mutation.target.id === 'categoriesTrack') {
+                        console.log('Categories content changed, reinitializing Swiper');
+                        setTimeout(reinitSwiper, 100);
+                    }
+                });
+            });
+            
+            // Начинаем наблюдение когда DOM готов
+            document.addEventListener('DOMContentLoaded', function() {
+                const categoriesTrack = document.getElementById('categoriesTrack');
+                if (categoriesTrack) {
+                    observer.observe(categoriesTrack, {
+                        childList: true,
+                        subtree: false
+                    });
+                }
+            });
+        }
     </script>
 </body>
 </html>
