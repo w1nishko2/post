@@ -14,145 +14,120 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Fonts -->
-    <link rel="dns-prefetch" href="//fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
-
-    <!-- Bootstrap для основного приложения -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/css/custom.css', 'resources/js/app.js'])
-    
-    <style>
-        /* Additional layout styles */
-        body {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            min-height: 100vh;
-        }
-        
-        .navbar {
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-        
-        main.py-4 {
-            background: transparent;
-            padding-top: 2rem !important;
-            padding-bottom: 2rem !important;
-        }
-        
-        .container {
-            max-width: 1200px;
-        }
-        
-        /* Enhanced shadow effects */
-        .navbar {
-            box-shadow: 0 2px 20px rgba(37, 99, 235, 0.08) !important;
-        }
-        
-        .card {
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.95) !important;
-        }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-light">
-    <div id="app" class="fade-in">
-        <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
-            <div class="container-xl">
-                <a class="navbar-brand" href="{{ url('/') }}">
-                    {{ config('app.name', 'Laravel') }}
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="{{ __('Toggle navigation') }}">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+<body>
+    <div id="app">
+        <nav class="admin-navbar">
+            <a class="admin-navbar-brand" href="{{ url('/') }}">
+                {{ config('app.name', 'Laravel') }}
+            </a>
 
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <!-- Left Side Of Navbar -->
-                    <ul class="navbar-nav me-auto">
-                        @auth
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('home') }}">
-                                    <i class="fas fa-home"></i> Главная
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('telegram-bots.index') }}">
-                                    <i class="fab fa-telegram"></i> Боты
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('orders.index') }}">
-                                    <i class="fas fa-shopping-cart"></i> Заказы
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('statistics.index') }}">
-                                    <i class="fas fa-chart-line"></i> Статистика
-                                </a>
-                            </li>
-                        @endauth
-                    </ul>
+            <ul class="admin-navbar-nav">
+                @auth
+                    <li class="admin-nav-item">
+                        <a class="admin-nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
+                            <i class="fas fa-home"></i> Главная
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a class="admin-nav-link {{ request()->routeIs('telegram-bots.*') ? 'active' : '' }}" href="{{ route('telegram-bots.index') }}">
+                            <i class="fab fa-telegram"></i> Боты
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a class="admin-nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}" href="{{ route('orders.index') }}">
+                            <i class="fas fa-shopping-cart"></i> Заказы
+                        </a>
+                    </li>
+                    <li class="admin-nav-item">
+                        <a class="admin-nav-link {{ request()->routeIs('statistics.*') ? 'active' : '' }}" href="{{ route('statistics.index') }}">
+                            <i class="fas fa-chart-line"></i> Статистика
+                        </a>
+                    </li>
+                @endauth
+            </ul>
 
-                    <!-- Right Side Of Navbar -->
-                    <ul class="navbar-nav ms-auto">
-                        <!-- Authentication Links -->
-                        @guest
-                            @if (Route::has('login'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                                </li>
-                            @endif
+            <div class="admin-navbar-user">
+                @guest
+                    @if (Route::has('login'))
+                        <a class="admin-btn admin-btn-sm" href="{{ route('login') }}">{{ __('Login') }}</a>
+                    @endif
+                    @if (Route::has('register'))
+                        <a class="admin-btn admin-btn-sm admin-ms-2" href="{{ route('register') }}">{{ __('Register') }}</a>
+                    @endif
+                @else
+                    <div class="admin-dropdown" id="userDropdown">
+                        <button class="admin-dropdown-toggle" onclick="toggleDropdown('userDropdown')">
+                            {{ Auth::user()->name }}
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="admin-dropdown-menu">
+                            <a class="admin-dropdown-item" href="{{ route('profile.show') }}">
+                                <i class="fas fa-user admin-me-2"></i>
+                                Мой профиль
+                            </a>
+                            <div class="admin-dropdown-divider"></div>
+                            <a class="admin-dropdown-item" href="{{ route('logout') }}"
+                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                <i class="fas fa-sign-out-alt admin-me-2"></i>
+                                {{ __('Logout') }}
+                            </a>
+                        </div>
+                    </div>
 
-                            @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                                </li>
-                            @endif
-                        @else
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ Auth::user()->name }}
-                                </a>
-
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('profile.show') }}">
-                                        <i class="fas fa-user me-2"></i>
-                                        Мой профиль
-                                    </a>
-                                    <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
-                                        <i class="fas fa-sign-out-alt me-2"></i>
-                                        {{ __('Logout') }}
-                                    </a>
-
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                        @csrf
-                                    </form>
-                                </div>
-                            </li>
-                        @endguest
-                    </ul>
-                </div>
+                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="admin-d-none">
+                        @csrf
+                    </form>
+                @endguest
             </div>
         </nav>
 
-        <main class="py-4">
+        <main class="admin-main">
             @yield('content')
         </main>
     </div>
 
     @stack('scripts')
     
-    <!-- Bootstrap JS для основного приложения -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Dropdown functionality
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            dropdown.classList.toggle('show');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdowns = document.querySelectorAll('.admin-dropdown');
+            dropdowns.forEach(dropdown => {
+                if (!dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        });
+        
+        // Alert auto-close functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.admin-alert');
+            alerts.forEach(alert => {
+                const closeBtn = alert.querySelector('.admin-alert-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        alert.style.display = 'none';
+                    });
+                    
+                    // Auto-close after 5 seconds
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 5000);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

@@ -1,65 +1,71 @@
 
 
 <?php $__env->startSection('content'); ?>
-<div class="container-xl">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-             
-                
-                <?php if($generalStats['total_visits'] == 0 && $generalStats['total_orders'] == 0): ?>
-                    <div class="alert alert-info alert-sm mb-0" role="alert">
-                        <i class="fas fa-lightbulb me-2"></i>
-                        <strong>Подсказка:</strong> Пока данных мало. Активность будет накапливаться по мере использования магазина.
-                    </div>
-                <?php endif; ?>
-            </div>
+<div class="admin-container">
+    <?php if(session('success')): ?>
+        <div class="admin-alert admin-alert-success">
+            <i class="fas fa-check-circle admin-me-2"></i>
+            <?php echo e(session('success')); ?>
 
-            <!-- Фильтры -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">
-                        <i class="fas fa-filter me-2"></i>Фильтры и период анализа
-                    </h6>
-                    <small class="text-muted">
-                        Период: 
-                        <?php switch($period):
-                            case ('today'): ?> Сегодня <?php break; ?>
-                            <?php case ('yesterday'): ?> Вчера <?php break; ?>
-                            <?php case ('last_7_days'): ?> Последние 7 дней <?php break; ?>
-                            <?php case ('last_30_days'): ?> Последние 30 дней <?php break; ?>
-                            <?php case ('this_month'): ?> Этот месяц <?php break; ?>
-                            <?php case ('last_month'): ?> Прошлый месяц <?php break; ?>
-                            <?php case ('custom'): ?> 
-                                Произвольный период
-                                <?php if($startDate && $endDate): ?>
-                                    (<?php echo e(\Carbon\Carbon::parse($startDate)->format('d.m.Y')); ?> - <?php echo e(\Carbon\Carbon::parse($endDate)->format('d.m.Y')); ?>)
-                                <?php endif; ?>
-                                <?php break; ?>
-                            <?php default: ?> Последние 30 дней
-                        <?php endswitch; ?>
-                        <?php if($botId && $userBots->where('id', $botId)->first()): ?>
-                            • Бот: <?php echo e($userBots->where('id', $botId)->first()->bot_name); ?>
+            <button class="admin-alert-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    <?php endif; ?>
 
-                        <?php elseif(!$botId): ?>
-                            • Все боты
-                        <?php endif; ?>
-                    </small>
+    <?php if(session('error')): ?>
+        <div class="admin-alert admin-alert-danger">
+            <i class="fas fa-exclamation-triangle admin-me-2"></i>
+            <?php echo e(session('error')); ?>
+
+            <button class="admin-alert-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    <?php endif; ?>
+
+    <!-- Навигационные табы -->
+    <div class="admin-nav-pills admin-mb-4">
+        <a class="admin-nav-pill" href="<?php echo e(route('home')); ?>">
+            <i class="fas fa-robot"></i> Мои боты
+        </a>
+        <a class="admin-nav-pill" href="<?php echo e(route('products.select-bot')); ?>">
+            <i class="fas fa-boxes"></i> Мои магазины
+        </a>
+        <a class="admin-nav-pill" href="<?php echo e(route('orders.index')); ?>">
+            <i class="fas fa-shopping-cart"></i> Заказы
+        </a>
+        <a class="admin-nav-pill active" href="<?php echo e(route('statistics.index')); ?>">
+            <i class="fas fa-chart-line"></i> Статистика
+        </a>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="admin-card admin-mb-4">
+        <div class="admin-card-header">
+            <h5 class="admin-mb-0">
+                <i class="fas fa-filter admin-me-2"></i>
+                Фильтры и период анализа
+            </h5>
+        </div>
+        <div class="admin-card-body">
+            <?php if($errors->any()): ?>
+                <div class="admin-alert admin-alert-danger admin-mb-3">
+                    <strong>Ошибки:</strong>
+                    <ul class="admin-mb-0 admin-mt-2">
+                        <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <li><?php echo e($error); ?></li>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </ul>
                 </div>
-                <div class="card-body">
-                    <?php if($errors->any()): ?>
-                        <div class="alert alert-danger mb-3">
-                            <ul class="mb-0">
-                                <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <li><?php echo e($error); ?></li>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                            </ul>
-                        </div>
-                    <?php endif; ?>
-                    <form method="GET" action="<?php echo e(route('statistics.index')); ?>" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="bot_id" class="form-label">Телеграм бот</label>
-                            <select class="form-select" id="bot_id" name="bot_id">
+            <?php endif; ?>
+            
+            <form method="GET" action="<?php echo e(route('statistics.index')); ?>">
+                <div class="admin-row">
+                    <div class="admin-col admin-col-3">
+                        <div class="admin-form-group">
+                            <label for="bot_id" class="admin-form-label">Телеграм бот</label>
+                            <select class="admin-form-control admin-select" id="bot_id" name="bot_id">
                                 <option value="">Все боты</option>
                                 <?php $__currentLoopData = $userBots; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bot): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <option value="<?php echo e($bot->id); ?>" <?php echo e($botId == $bot->id ? 'selected' : ''); ?>>
@@ -68,18 +74,13 @@
                                     </option>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </select>
-                            <?php if(config('app.debug') && auth()->user()->email === 'admin@example.com'): ?>
-                                <small class="text-muted">
-                                    Debug: Найдено <?php echo e($userBots->count()); ?> ботов. 
-                                    Выбран ID: <?php echo e($botId ?? 'null'); ?>
-
-                                </small>
-                            <?php endif; ?>
                         </div>
-                        
-                        <div class="col-md-3">
-                            <label for="period" class="form-label">Период</label>
-                            <select class="form-select" id="period" name="period">
+                    </div>
+                    
+                    <div class="admin-col admin-col-3">
+                        <div class="admin-form-group">
+                            <label for="period" class="admin-form-label">Период</label>
+                            <select class="admin-form-control admin-select" id="period" name="period">
                                 <option value="today" <?php echo e($period == 'today' ? 'selected' : ''); ?>>Сегодня</option>
                                 <option value="yesterday" <?php echo e($period == 'yesterday' ? 'selected' : ''); ?>>Вчера</option>
                                 <option value="last_7_days" <?php echo e($period == 'last_7_days' ? 'selected' : ''); ?>>Последние 7 дней</option>
@@ -89,406 +90,316 @@
                                 <option value="custom" <?php echo e($period == 'custom' ? 'selected' : ''); ?>>Произвольный период</option>
                             </select>
                         </div>
-                        
-                        <div class="col-md-2" id="start-date-col" style="<?php echo e($period != 'custom' ? 'display: none;' : ''); ?>">
-                            <label for="start_date" class="form-label">Дата начала <span class="text-danger">*</span></label>
+                    </div>
+                    
+                    <div class="admin-col admin-col-2" id="start-date-col" style="<?php echo e($period != 'custom' ? 'display: none;' : ''); ?>">
+                        <div class="admin-form-group">
+                            <label for="start_date" class="admin-form-label required">Дата начала</label>
                             <input type="date" 
-                                   class="form-control <?php $__errorArgs = ['start_date'];
+                                   class="admin-form-control <?php $__errorArgs = ['start_date'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+$message = $__bag->first($__errorArgs[0]); ?> admin-border-danger <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>" 
                                    id="start_date" 
                                    name="start_date" 
                                    value="<?php echo e(old('start_date', $startDate)); ?>"
-                                   max="<?php echo e(date('Y-m-d')); ?>"
-                                   <?php echo e($period == 'custom' ? 'required' : ''); ?>>
+                                   max="<?php echo e(date('Y-m-d')); ?>">
                             <?php $__errorArgs = ['start_date'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?>
-                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                <div class="admin-form-error"><?php echo e($message); ?></div>
                             <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
                         </div>
-                        
-                        <div class="col-md-2" id="end-date-col" style="<?php echo e($period != 'custom' ? 'display: none;' : ''); ?>">
-                            <label for="end_date" class="form-label">Дата окончания <span class="text-danger">*</span></label>
+                    </div>
+                    
+                    <div class="admin-col admin-col-2" id="end-date-col" style="<?php echo e($period != 'custom' ? 'display: none;' : ''); ?>">
+                        <div class="admin-form-group">
+                            <label for="end_date" class="admin-form-label required">Дата окончания</label>
                             <input type="date" 
-                                   class="form-control <?php $__errorArgs = ['end_date'];
+                                   class="admin-form-control <?php $__errorArgs = ['end_date'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+$message = $__bag->first($__errorArgs[0]); ?> admin-border-danger <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>" 
                                    id="end_date" 
                                    name="end_date" 
                                    value="<?php echo e(old('end_date', $endDate)); ?>"
-                                   max="<?php echo e(date('Y-m-d')); ?>"
-                                   <?php echo e($period == 'custom' ? 'required' : ''); ?>>
+                                   max="<?php echo e(date('Y-m-d')); ?>">
                             <?php $__errorArgs = ['end_date'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?>
-                                <div class="invalid-feedback"><?php echo e($message); ?></div>
+                                <div class="admin-form-error"><?php echo e($message); ?></div>
                             <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
-                            <small class="form-text text-muted" id="date-help" style="<?php echo e($period != 'custom' ? 'display: none;' : ''); ?>">
-                                Выберите период для анализа статистики
-                            </small>
                         </div>
-                        
-                        <div class="col-md-2">
-                            <label class="form-label">&nbsp;</label>
-                            <div class="d-grid gap-2 d-md-flex">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-filter me-1"></i>
+                    </div>
+                    
+                    <div class="admin-col admin-col-2">
+                        <div class="admin-form-group">
+                            <label class="admin-form-label">&nbsp;</label>
+                            <div class="admin-d-flex admin-gap-sm">
+                                <button type="submit" class="admin-btn admin-btn-primary admin-btn-sm">
+                                    <i class="fas fa-filter admin-me-1"></i>
                                     Применить
                                 </button>
-                                <button type="button" class="btn btn-success" id="generateReportBtn">
-                                    <i class="fas fa-file-pdf me-1"></i>
+                                <button type="button" class="admin-btn admin-btn-success admin-btn-sm" id="generateReportBtn">
+                                    <i class="fas fa-file-pdf admin-me-1"></i>
                                     Отчет
                                 </button>
                             </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+            </form>
+        </div>
+    </div>
 
-            <!-- Общая статистика -->
-            <div class="row mb-4">
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card  bg-primary h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h5 class="card-title">Всего посещений</h5>
-                                    <h2 class="mb-0"><?php echo e(number_format($generalStats['total_visits'] ?? 0)); ?></h2>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-eye fa-2x opacity-75"></i>
-                                </div>
-                            </div>
+    <!-- Общая статистика -->
+    <div class="admin-row admin-mb-4">
+        <div class="admin-col admin-col-3">
+            <div class="admin-card admin-stats-card admin-stats-primary">
+                <div class="admin-card-body">
+                    <div class="admin-stats-content">
+                        <div class="admin-stats-info">
+                            <h3 class="admin-stats-number"><?php echo e(number_format($generalStats['total_visits'] ?? 0)); ?></h3>
+                            <div class="admin-stats-label">Всего посещений</div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card  bg-success h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h5 class="card-title">Уникальные посетители</h5>
-                                    <h2 class="mb-0"><?php echo e(number_format($generalStats['unique_visitors'] ?? 0)); ?></h2>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-users fa-2x opacity-75"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card  bg-info h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h5 class="card-title">Заказы</h5>
-                                    <h2 class="mb-0"><?php echo e(number_format($generalStats['completed_orders'] ?? 0)); ?></h2>
-                                    <small>из <?php echo e(number_format($generalStats['total_orders'] ?? 0)); ?> всего</small>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card  bg-warning h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h5 class="card-title">Выручка</h5>
-                                    <h2 class="mb-0"><?php echo e(number_format($generalStats['total_revenue'] ?? 0, 0, ',', ' ')); ?> ₽</h2>
-                                    <?php if(($generalStats['completed_orders'] ?? 0) > 0): ?>
-                                        <small>Средний чек: <?php echo e(number_format($generalStats['average_order_value'] ?? 0, 0, ',', ' ')); ?> ₽</small>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-ruble-sign fa-2x opacity-75"></i>
-                                </div>
-                            </div>
+                        <div class="admin-stats-icon">
+                            <i class="fas fa-eye"></i>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Дополнительные метрики -->
-            <div class="row mb-4">
-                <div class="col-lg-6 col-md-6 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="fas fa-percentage me-2"></i>
-                                Конверсия
-                            </h5>
-                            <div class="d-flex align-items-center">
-                                <h3 class="mb-0 me-3"><?php echo e($generalStats['conversion_rate'] ?? 0); ?>%</h3>
-                                <div class="progress flex-grow-1" style="height: 10px;">
-                                    <div class="progress-bar" role="progressbar" style="width: <?php echo e(min($generalStats['conversion_rate'] ?? 0, 100)); ?>%"></div>
-                                </div>
-                            </div>
-                            <small class="text-muted">Из <?php echo e(number_format($generalStats['unique_visitors'] ?? 0)); ?> посетителей <?php echo e(number_format($generalStats['completed_orders'] ?? 0)); ?> совершили покупку</small>
+        </div>
+        
+        <div class="admin-col admin-col-3">
+            <div class="admin-card admin-stats-card admin-stats-success">
+                <div class="admin-card-body">
+                    <div class="admin-stats-content">
+                        <div class="admin-stats-info">
+                            <h3 class="admin-stats-number"><?php echo e(number_format($generalStats['unique_visitors'] ?? 0)); ?></h3>
+                            <div class="admin-stats-label">Уникальные посетители</div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-6 col-md-6 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="fas fa-clock me-2"></i>
-                                Время обработки заказов
-                            </h5>
-                            <h3 class="mb-0"><?php echo e($orderStats['average_processing_time'] ?? 0); ?> ч</h3>
-                            <small class="text-muted">Среднее время от создания до выполнения заказа</small>
+                        <div class="admin-stats-icon">
+                            <i class="fas fa-users"></i>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Графики -->
-            <div class="row mb-4">
-                <div class="col-lg-8 mb-3">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <ul class="nav nav-tabs card-header-tabs" id="chartsTab" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="visits-tab" data-bs-toggle="tab" data-bs-target="#visits" type="button" role="tab">Посещения</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab">Заказы</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="revenue-tab" data-bs-toggle="tab" data-bs-target="#revenue" type="button" role="tab">Выручка</button>
-                                </li>
-                            </ul>
+        </div>
+        
+        <div class="admin-col admin-col-3">
+            <div class="admin-card admin-stats-card admin-stats-info">
+                <div class="admin-card-body">
+                    <div class="admin-stats-content">
+                        <div class="admin-stats-info">
+                            <h3 class="admin-stats-number"><?php echo e(number_format($generalStats['completed_orders'] ?? 0)); ?></h3>
+                            <div class="admin-stats-label">Заказы</div>
+                            <div class="admin-stats-sub">из <?php echo e(number_format($generalStats['total_orders'] ?? 0)); ?> всего</div>
                         </div>
-                        <div class="card-body">
-                            <div class="tab-content">
-                                <div class="tab-pane fade show active" id="visits" role="tabpanel">
-                                    <canvas id="visitsChart" height="300"></canvas>
-                                </div>
-                                <div class="tab-pane fade" id="orders" role="tabpanel">
-                                    <canvas id="ordersChart" height="300"></canvas>
-                                </div>
-                                <div class="tab-pane fade" id="revenue" role="tabpanel">
-                                    <canvas id="revenueChart" height="300"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5 class="mb-0">Источники трафика</h5>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="trafficSourcesChart" height="300"></canvas>
+                        <div class="admin-stats-icon">
+                            <i class="fas fa-shopping-cart"></i>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Детальная статистика -->
-            <div class="row">
-                <div class="col-lg-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-fire me-2"></i>
-                                Популярные товары (по просмотрам)
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <?php if(isset($productStats['popular_products']) && $productStats['popular_products']->count() > 0): ?>
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                        <tr>
-                                            <th>Товар</th>
-                                            <th>Просмотры</th>
-                                            <th>Уникальные</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <?php $__currentLoopData = $productStats['popular_products']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <?php if(isset($item['product']) && $item['product']->photo_url): ?>
-                                                            <img src="<?php echo e($item['product']->photo_url); ?>" alt="<?php echo e($item['product']->name); ?>" class="me-2" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px;">
-                                                        <?php endif; ?>
-                                                        <span><?php echo e(isset($item['product']) ? Str::limit($item['product']->name, 30) : 'Неизвестный товар'); ?></span>
-                                                    </div>
-                                                </td>
-                                                <td><strong><?php echo e($item['views'] ?? 0); ?></strong></td>
-                                                <td><?php echo e($item['unique_views'] ?? 0); ?></td>
-                                            </tr>
-                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php else: ?>
-                                <p class="text-muted text-center py-4">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Нет данных о просмотрах товаров за выбранный период.
-                                    <?php if(!$botId): ?>
-                                        <br><small>Попробуйте выбрать конкретного бота или расширить период.</small>
-                                    <?php endif; ?>
-                                </p>
+        </div>
+        
+        <div class="admin-col admin-col-3">
+            <div class="admin-card admin-stats-card admin-stats-warning">
+                <div class="admin-card-body">
+                    <div class="admin-stats-content">
+                        <div class="admin-stats-info">
+                            <h3 class="admin-stats-number"><?php echo e(number_format($generalStats['total_revenue'] ?? 0, 0, ',', ' ')); ?> ₽</h3>
+                            <div class="admin-stats-label">Выручка</div>
+                            <?php if(($generalStats['completed_orders'] ?? 0) > 0): ?>
+                                <div class="admin-stats-sub">Средний чек: <?php echo e(number_format($generalStats['average_order_value'] ?? 0, 0, ',', ' ')); ?> ₽</div>
                             <?php endif; ?>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-trophy me-2"></i>
-                                Самые покупаемые товары
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <?php if(isset($productStats['best_selling_products']) && $productStats['best_selling_products']->count() > 0): ?>
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                        <tr>
-                                            <th>Товар</th>
-                                            <th>Продано</th>
-                                            <th>Выручка</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <?php $__currentLoopData = $productStats['best_selling_products']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                            <tr>
-                                                <td><?php echo e(Str::limit($product->name, 30)); ?></td>
-                                                <td><strong><?php echo e($product->total_sold); ?></strong></td>
-                                                <td><?php echo e(number_format($product->total_revenue, 0, ',', ' ')); ?> ₽</td>
-                                            </tr>
-                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php else: ?>
-                                <p class="text-muted text-center py-4">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Нет данных о продажах за выбранный период.
-                                    <?php if(!$botId): ?>
-                                        <br><small>Продажи учитываются только по завершенным заказам.</small>
-                                    <?php endif; ?>
-                                </p>
-                            <?php endif; ?>
+                        <div class="admin-stats-icon">
+                            <i class="fas fa-ruble-sign"></i>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Популярные страницы -->
-            <div class="row">
-                <div class="col-12 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-bar me-2"></i>
-                                Популярные страницы
-                            </h5>
+    <!-- Дополнительные метрики -->
+    <div class="admin-row admin-mb-4">
+        <div class="admin-col admin-col-6">
+            <div class="admin-card">
+                <div class="admin-card-body">
+                    <h6 class="admin-mb-3">
+                        <i class="fas fa-percentage admin-me-2"></i>
+                        Конверсия
+                    </h6>
+                    <div class="admin-d-flex admin-align-items-center admin-mb-2">
+                        <h3 class="admin-mb-0 admin-me-3"><?php echo e($generalStats['conversion_rate'] ?? 0); ?>%</h3>
+                        <div class="admin-progress admin-flex-1">
+                            <div class="admin-progress-bar" style="width: <?php echo e(min($generalStats['conversion_rate'] ?? 0, 100)); ?>%"></div>
                         </div>
-                        <div class="card-body">
-                            <?php if(isset($visitStats['top_pages']) && $visitStats['top_pages']->count() > 0): ?>
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                        <tr>
-                                            <th>Страница</th>
-                                            <th>Посещения</th>
-                                            <th>Уникальные посетители</th>
-                                            <th>Популярность</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <?php $__currentLoopData = $visitStats['top_pages']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $page): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                            <tr>
-                                                <td>
-                                                    <code><?php echo e(Str::limit($page->page_url, 60)); ?></code>
-                                                </td>
-                                                <td><strong><?php echo e($page->visits); ?></strong></td>
-                                                <td><?php echo e($page->unique_visitors); ?></td>
-                                                <td>
-                                                    <div class="progress" style="height: 6px;">
-                                                        <div class="progress-bar" role="progressbar" style="width: <?php echo e($visitStats['top_pages']->first() ? (($page->visits / $visitStats['top_pages']->first()->visits) * 100) : 0); ?>%"></div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php else: ?>
-                                <p class="text-muted text-center py-4">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Нет данных о посещениях страниц за выбранный период.
-                                    <?php if(!$botId): ?>
-                                        <br><small>Данные собираются только с активных посещений сайта.</small>
-                                    <?php endif; ?>
-                                </p>
-                            <?php endif; ?>
-                        </div>
+                    </div>
+                    <div class="admin-text-muted admin-small">
+                        Из <?php echo e(number_format($generalStats['unique_visitors'] ?? 0)); ?> посетителей <?php echo e(number_format($generalStats['completed_orders'] ?? 0)); ?> совершили покупку
                     </div>
                 </div>
             </div>
-            
-            <!-- Информация о данных -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card border-info">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <i class="fas fa-shield-alt fa-2x text-info"></i>
-                                </div>
-                                <div>
-                                    <h6 class="card-title mb-1">
-                                        <i class="fas fa-check-circle text-success me-2"></i>
-                                        100% реальные данные
-                                    </h6>
-                                    <p class="card-text mb-0 text-muted">
-                                        Вся статистика формируется исключительно из реальных данных вашего магазина: 
-                                        посещения отслеживаются автоматически, заказы берутся из базы данных, товары — из вашего каталога.
-                                        Никаких демо-данных или заглушек.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+        </div>
+        
+        <div class="admin-col admin-col-6">
+            <div class="admin-card">
+                <div class="admin-card-body">
+                    <h6 class="admin-mb-3">
+                        <i class="fas fa-clock admin-me-2"></i>
+                        Время обработки заказов
+                    </h6>
+                    <h3 class="admin-mb-2"><?php echo e($orderStats['average_processing_time'] ?? 0); ?> ч</h3>
+                    <div class="admin-text-muted admin-small">Среднее время от создания до выполнения заказа</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="admin-row admin-mb-4">
+        <div class="admin-col admin-col-8">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <div class="admin-nav-pills admin-nav-pills-sm">
+                        <button class="admin-nav-pill admin-nav-pill-sm active" data-chart="visits">Посещения</button>
+                        <button class="admin-nav-pill admin-nav-pill-sm" data-chart="orders">Заказы</button>
+                        <button class="admin-nav-pill admin-nav-pill-sm" data-chart="revenue">Выручка</button>
                     </div>
+                </div>
+                <div class="admin-card-body">
+                    <div class="admin-chart-container">
+                        <canvas id="mainChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="admin-col admin-col-4">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h6 class="admin-mb-0">Источники трафика</h6>
+                </div>
+                <div class="admin-card-body">
+                    <div class="admin-chart-container">
+                        <canvas id="trafficChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Детальная статистика -->
+    <div class="admin-row">
+        <div class="admin-col admin-col-6 admin-mb-4">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h6 class="admin-mb-0">
+                        <i class="fas fa-fire admin-me-2"></i>
+                        Популярные товары
+                    </h6>
+                </div>
+                <div class="admin-card-body">
+                    <?php if(isset($productStats['popular_products']) && $productStats['popular_products']->count() > 0): ?>
+                        <div class="admin-table-responsive">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Товар</th>
+                                        <th>Просмотры</th>
+                                        <th>Уникальные</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $__currentLoopData = $productStats['popular_products']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <tr>
+                                            <td>
+                                                <div class="admin-d-flex admin-align-items-center">
+                                                    <?php if(isset($item['product']) && $item['product']->photo_url): ?>
+                                                        <img src="<?php echo e($item['product']->photo_url); ?>" alt="<?php echo e($item['product']->name); ?>" 
+                                                             class="admin-me-2" style="width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius-sm);">
+                                                    <?php endif; ?>
+                                                    <span><?php echo e(isset($item['product']) ? Str::limit($item['product']->name, 25) : 'Неизвестный товар'); ?></span>
+                                                </div>
+                                            </td>
+                                            <td><strong><?php echo e($item['views'] ?? 0); ?></strong></td>
+                                            <td><?php echo e($item['unique_views'] ?? 0); ?></td>
+                                        </tr>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="admin-empty-state">
+                            <div class="admin-empty-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <p class="admin-text-muted">Нет данных о просмотрах товаров</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        
+        <div class="admin-col admin-col-6 admin-mb-4">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h6 class="admin-mb-0">
+                        <i class="fas fa-trophy admin-me-2"></i>
+                        Самые покупаемые товары
+                    </h6>
+                </div>
+                <div class="admin-card-body">
+                    <?php if(isset($productStats['best_selling_products']) && $productStats['best_selling_products']->count() > 0): ?>
+                        <div class="admin-table-responsive">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Товар</th>
+                                        <th>Продано</th>
+                                        <th>Выручка</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $__currentLoopData = $productStats['best_selling_products']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <tr>
+                                            <td><?php echo e(Str::limit($product->name, 25)); ?></td>
+                                            <td><strong><?php echo e($product->total_sold); ?></strong></td>
+                                            <td><?php echo e(number_format($product->total_revenue, 0, ',', ' ')); ?> ₽</td>
+                                        </tr>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="admin-empty-state">
+                            <div class="admin-empty-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <p class="admin-text-muted">Нет данных о продажах</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -500,258 +411,131 @@ unset($__errorArgs, $__bag); ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Показать/скрыть поля для произвольного периода
+    // Переключение периода
     const periodSelect = document.getElementById('period');
     const startDateCol = document.getElementById('start-date-col');
     const endDateCol = document.getElementById('end-date-col');
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
-    const dateHelp = document.getElementById('date-help');
     
     function toggleCustomDateFields() {
         if (periodSelect.value === 'custom') {
             startDateCol.style.display = 'block';
             endDateCol.style.display = 'block';
-            if (dateHelp) dateHelp.style.display = 'block';
             startDateInput.required = true;
             endDateInput.required = true;
-            
-            // Если поля пустые, устанавливаем дефолтные значения
-            if (!startDateInput.value) {
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
-            }
-            if (!endDateInput.value) {
-                const today = new Date();
-                endDateInput.value = today.toISOString().split('T')[0];
-            }
         } else {
             startDateCol.style.display = 'none';
             endDateCol.style.display = 'none';
-            if (dateHelp) dateHelp.style.display = 'none';
             startDateInput.required = false;
             endDateInput.required = false;
         }
     }
     
-    // Инициализация при загрузке страницы
     toggleCustomDateFields();
-    
     periodSelect.addEventListener('change', toggleCustomDateFields);
-    
-    // Валидация дат
-    startDateInput.addEventListener('change', function() {
-        if (endDateInput.value && this.value > endDateInput.value) {
-            endDateInput.value = this.value;
-        }
-        endDateInput.min = this.value;
-    });
-    
-    endDateInput.addEventListener('change', function() {
-        if (startDateInput.value && this.value < startDateInput.value) {
-            startDateInput.value = this.value;
-        }
-        startDateInput.max = this.value;
-    });
 
-    // Обработчик для кнопки генерации отчета
-    document.getElementById('generateReportBtn').addEventListener('click', function() {
-        const form = this.closest('form');
-        const formData = new FormData(form);
-        
-        // Создаем URL для генерации отчета
-        const params = new URLSearchParams();
-        for (let [key, value] of formData.entries()) {
-            if (value) {
-                params.append(key, value);
-            }
-        }
-        
-        // Показываем индикатор загрузки
-        const originalText = this.innerHTML;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Генерация...';
-        this.disabled = true;
-        
-        // Открываем новое окно для скачивания отчета
-        const reportUrl = `<?php echo e(route('statistics.generate-report')); ?>?${params.toString()}`;
-        
-        // Используем fetch для проверки статуса ответа
-        fetch(reportUrl)
-            .then(response => {
-                if (response.ok) {
-                    // Если успешно, открываем ссылку для скачивания
-                    window.location.href = reportUrl;
-                } else {
-                    throw new Error('Ошибка генерации отчета');
-                }
-            })
-            .catch(error => {
-                alert('Произошла ошибка при генерации отчета. Попробуйте еще раз.');
-                console.error('Error:', error);
-            })
-            .finally(() => {
-                // Восстанавливаем кнопку
-                this.innerHTML = originalText;
-                this.disabled = false;
-            });
-    });
+    // Переключение графиков
+    const chartButtons = document.querySelectorAll('[data-chart]');
+    const mainChart = document.getElementById('mainChart').getContext('2d');
+    let currentChart = null;
 
-    // Конфигурация графиков
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return Number.isInteger(value) ? value : '';
-                    }
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                display: true
-            }
+    function loadChart(type) {
+        if (currentChart) {
+            currentChart.destroy();
         }
-    };
 
-    // График посещений
-    const visitsCtx = document.getElementById('visitsChart').getContext('2d');
-    fetch(`<?php echo e(route('statistics.chart-data')); ?>?bot_id=<?php echo e($botId); ?>&period=<?php echo e($period); ?>&start_date=<?php echo e($startDate); ?>&end_date=<?php echo e($endDate); ?>&chart_type=visits`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.labels && data.labels.length > 0) {
-                new Chart(visitsCtx, {
-                    type: 'line',
+        // Обновляем активную кнопку
+        chartButtons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-chart="${type}"]`).classList.add('active');
+
+        // Загружаем данные
+        fetch(`<?php echo e(route('statistics.chart-data')); ?>?bot_id=<?php echo e($botId); ?>&period=<?php echo e($period); ?>&start_date=<?php echo e($startDate); ?>&end_date=<?php echo e($endDate); ?>&chart_type=${type}`)
+            .then(response => response.json())
+            .then(data => {
+                const config = {
+                    type: type === 'orders' ? 'bar' : 'line',
                     data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: 'Посещения',
-                            data: data.visits,
-                            borderColor: 'rgb(54, 162, 235)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                            tension: 0.4
-                        }, {
-                            label: 'Уникальные посетители',
-                            data: data.unique_visitors,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                            tension: 0.4
-                        }]
-                    },
-                    options: chartOptions
-                });
-            } else {
-                // Показываем сообщение об отсутствии данных
-                visitsCtx.font = '16px Arial';
-                visitsCtx.fillStyle = '#6c757d';
-                visitsCtx.textAlign = 'center';
-                visitsCtx.fillText('Нет данных о посещениях за выбранный период', visitsCtx.canvas.width / 2, visitsCtx.canvas.height / 2);
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки данных посещений:', error);
-        });
-
-    // График заказов
-    const ordersCtx = document.getElementById('ordersChart').getContext('2d');
-    fetch(`<?php echo e(route('statistics.chart-data')); ?>?bot_id=<?php echo e($botId); ?>&period=<?php echo e($period); ?>&start_date=<?php echo e($startDate); ?>&end_date=<?php echo e($endDate); ?>&chart_type=orders`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.labels && data.labels.length > 0) {
-                new Chart(ordersCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: 'Заказы',
-                            data: data.orders,
-                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                            borderColor: 'rgb(75, 192, 192)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: chartOptions
-                });
-            } else {
-                ordersCtx.font = '16px Arial';
-                ordersCtx.fillStyle = '#6c757d';
-                ordersCtx.textAlign = 'center';
-                ordersCtx.fillText('Нет данных о заказах за выбранный период', ordersCtx.canvas.width / 2, ordersCtx.canvas.height / 2);
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки данных заказов:', error);
-        });
-
-    // График выручки
-    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    fetch(`<?php echo e(route('statistics.chart-data')); ?>?bot_id=<?php echo e($botId); ?>&period=<?php echo e($period); ?>&start_date=<?php echo e($startDate); ?>&end_date=<?php echo e($endDate); ?>&chart_type=revenue`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.labels && data.labels.length > 0) {
-                new Chart(revenueCtx, {
-                    type: 'line',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: 'Выручка (₽)',
-                            data: data.revenue,
-                            borderColor: 'rgb(255, 193, 7)',
-                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }]
+                        labels: data.labels || [],
+                        datasets: []
                     },
                     options: {
-                        ...chartOptions,
+                        responsive: true,
+                        maintainAspectRatio: false,
                         scales: {
                             y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return new Intl.NumberFormat('ru-RU', {
-                                            style: 'currency',
-                                            currency: 'RUB',
-                                            maximumFractionDigits: 0
-                                        }).format(value);
-                                    }
-                                }
+                                beginAtZero: true
                             }
                         }
                     }
-                });
-            } else {
-                revenueCtx.font = '16px Arial';
-                revenueCtx.fillStyle = '#6c757d';
-                revenueCtx.textAlign = 'center';
-                revenueCtx.fillText('Нет данных о выручке за выбранный период', revenueCtx.canvas.width / 2, revenueCtx.canvas.height / 2);
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки данных выручки:', error);
+                };
+
+                if (type === 'visits') {
+                    config.data.datasets = [
+                        {
+                            label: 'Посещения',
+                            data: data.visits || [],
+                            borderColor: 'var(--color-primary)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Уникальные',
+                            data: data.unique_visitors || [],
+                            borderColor: 'var(--color-success)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.4
+                        }
+                    ];
+                } else if (type === 'orders') {
+                    config.data.datasets = [{
+                        label: 'Заказы',
+                        data: data.orders || [],
+                        backgroundColor: 'var(--color-info)',
+                        borderColor: 'var(--color-info)'
+                    }];
+                } else if (type === 'revenue') {
+                    config.data.datasets = [{
+                        label: 'Выручка (₽)',
+                        data: data.revenue || [],
+                        borderColor: 'var(--color-warning)',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }];
+                }
+
+                currentChart = new Chart(mainChart, config);
+            })
+            .catch(error => console.error('Ошибка загрузки графика:', error));
+    }
+
+    // Инициализация графиков
+    loadChart('visits');
+
+    chartButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            loadChart(this.dataset.chart);
         });
+    });
 
     // График источников трафика
-    const trafficSourcesCtx = document.getElementById('trafficSourcesChart').getContext('2d');
+    const trafficCtx = document.getElementById('trafficChart').getContext('2d');
     const trafficSources = <?php echo json_encode($visitStats['traffic_sources'] ?? [], 15, 512) ?>;
     
     if (trafficSources && trafficSources.length > 0) {
-        new Chart(trafficSourcesCtx, {
+        new Chart(trafficCtx, {
             type: 'doughnut',
             data: {
                 labels: trafficSources.map(source => source.source),
                 datasets: [{
                     data: trafficSources.map(source => source.visits),
                     backgroundColor: [
-                        '#FF6384',
-                        '#36A2EB', 
-                        '#FFCE56',
-                        '#4BC0C0',
-                        '#9966FF',
+                        'var(--color-primary)',
+                        'var(--color-success)', 
+                        'var(--color-warning)',
+                        'var(--color-info)',
+                        'var(--color-danger)',
                         '#FF9F40',
                         '#FF6B6B',
                         '#C9CBCF'
@@ -768,15 +552,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-    } else {
-        // Показываем сообщение, если нет данных
-        const canvas = document.getElementById('trafficSourcesChart');
-        const ctx = canvas.getContext('2d');
-        ctx.font = '16px Arial';
-        ctx.fillStyle = '#6c757d';
-        ctx.textAlign = 'center';
-        ctx.fillText('Нет данных о источниках трафика', canvas.width / 2, canvas.height / 2);
     }
+
+    // Генерация отчета
+    document.getElementById('generateReportBtn').addEventListener('click', function() {
+        const form = this.closest('form');
+        const formData = new FormData(form);
+        
+        const params = new URLSearchParams();
+        for (let [key, value] of formData.entries()) {
+            if (value) params.append(key, value);
+        }
+        
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin admin-me-1"></i>Генерация...';
+        this.disabled = true;
+        
+        const reportUrl = `<?php echo e(route('statistics.generate-report')); ?>?${params.toString()}`;
+        
+        fetch(reportUrl)
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = reportUrl;
+                } else {
+                    throw new Error('Ошибка генерации отчета');
+                }
+            })
+            .catch(error => {
+                alert('Произошла ошибка при генерации отчета');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            });
+    });
 });
 </script>
 <?php $__env->stopSection(); ?>

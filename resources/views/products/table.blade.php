@@ -1,303 +1,419 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-xl">
-    <div class="row justify-content-center">
-        <div class="col-md-12">
-       
-            <div class="card mb-3 shadow-sm" style="border-radius: 12px;">
-                <div class="card-header bg-light py-2">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h6 class="mb-0 fw-semibold">{{ $telegramBot->bot_name }} - Товары</h6>
+<div class="admin-container">
+    <!-- Навигационные табы -->
+    <div class="admin-nav-pills admin-mb-4">
+        <a class="admin-nav-pill" href="{{ route('home') }}">
+            <i class="fas fa-robot"></i> Мои боты
+        </a>
+        <a class="admin-nav-pill active" href="{{ route('products.select-bot') }}">
+            <i class="fas fa-boxes"></i> Мои магазины
+        </a>
+    </div>
+
+    @if(isset($telegramBot))
+    <!-- Информация о боте -->
+    <div class="admin-card admin-mb-4">
+        <div class="admin-card-body">
+            <div class="admin-d-flex admin-align-items-center admin-justify-content-between">
+                <div class="admin-d-flex admin-align-items-center">
+                    <div class="admin-me-3">
+                        <div class="admin-bot-avatar {{ $telegramBot->is_active ? '' : 'inactive' }}">
+                            <i class="fas fa-robot"></i>
                         </div>
-                        <div class="col-auto">
-                            <span class="badge bg-primary">{{ $products->total() }} товаров</span>
+                    </div>
+                    <div>
+                        <h6 class="admin-mb-1">{{ $telegramBot->bot_name }}</h6>
+                        <div class="admin-text-muted">@{{ $telegramBot->bot_username }}</div>
+                    </div>
+                </div>
+                <div class="admin-d-flex admin-gap-sm">
+                    <a href="{{ route('bot.products.index', $telegramBot) }}" class="admin-btn admin-btn-sm">
+                        <i class="fas fa-th-large admin-me-2"></i>
+                        Плитки
+                    </a>
+                    <span class="admin-btn admin-btn-sm admin-btn-primary">
+                        <i class="fas fa-table admin-me-2"></i>
+                        Таблица
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Действия и поиск -->
+    <div class="admin-card admin-mb-4">
+        <div class="admin-card-body">
+            <div class="admin-row admin-align-items-end admin-gap-md">
+                <div class="admin-col admin-col-4">
+                    <div class="admin-form-group admin-mb-0">
+                        <label for="search" class="admin-form-label">Поиск товаров</label>
+                        <div class="admin-input-group">
+                            <input type="text" class="admin-form-control" id="search" placeholder="Поиск по названию или артикулу">
+                            <button class="admin-btn admin-btn-sm">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Панель управления и фильтрации -->
-                <div class="card-body p-0">
-                    <!-- Строка быстрых действий -->
-                    <div class="d-flex align-items-center justify-content-between p-3 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <div class="d-flex align-items-center ">
-                            <div class="me-4">
-                                <h6 class="mb-0 fw-bold">Управление товарами</h6>
-                                <small class="opacity-75">{{ $products->total() }} товаров найдено</small>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-light btn-sm" onclick="toggleFilters()" id="filterToggle">
-                                    <i class="fas fa-filter"></i> Фильтры
-                                </button>
-                                <button type="button" class="btn btn-outline-light btn-sm" onclick="toggleBulkActions()" id="bulkToggle">
-                                    <i class="fas fa-tools"></i> Массовые действия
-                                </button>
-                            </div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-warning btn-sm" onclick="window.location.href='{{ route('bot.products.create', $telegramBot) }}'">
-                                <i class="fas fa-plus"></i> Добавить товар
-                            </button>
-                            <button type="button" class="btn btn-success btn-sm" onclick="window.location.href='{{ route('bot.products.export-data', $telegramBot) }}'">
-                                <i class="fas fa-download"></i> Экспорт
-                            </button>
-                        </div>
+                <div class="admin-col admin-col-3">
+                    <div class="admin-form-group admin-mb-0">
+                        <label for="category-filter" class="admin-form-label">Категория</label>
+                        <select class="admin-form-control admin-select" id="category-filter">
+                            <option value="">Все категории</option>
+                            @foreach($categories ?? [] as $category)
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-
-                    <!-- Компактные фильтры -->
-                    <div id="filtersPanel" class="filters-panel" style="display: none;">
-                        <form method="GET" action="{{ route('bot.products.table', $telegramBot) }}" id="filtersForm" class="filters-form">
-                            <!-- Поиск -->
-                            <div class="search-box">
-                                <input type="text" 
-                                       id="search" 
-                                       name="search" 
-                                       value="{{ request('search') }}" 
-                                       placeholder="🔍 Поиск..."
-                                       class="search-input">
-                                <button type="button" class="clear-btn" style="display: none;">×</button>
-                            </div>
-
-                            <!-- Категории -->
-                            <div class="categories-section">
-                                <input type="hidden" name="category_id" id="category_id" value="{{ request('category_id') }}">
-                                <div class="chips">
-                                    <span class="chip {{ !request('category_id') ? 'active' : '' }}" onclick="selectCategory('', this)">Все</span>
-                                    @foreach($categories as $category)
-                                        <span class="chip {{ request('category_id') == $category->id ? 'active' : '' }}" 
-                                              onclick="selectCategory('{{ $category->id }}', this)">{{ $category->name }}</span>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <!-- Статус и сортировка -->
-                            <div class="controls-section">
-                                <select name="status" id="status" class="mini-select">
-                                    <option value="">Все</option>
-                                    <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>✅ Активные</option>
-                                    <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>❌ Неактивные</option>
-                                </select>
-                                
-                                <select name="sort_by" id="sort_by" class="mini-select">
-                                    <option value="id" {{ request('sort_by', 'id') == 'id' ? 'selected' : '' }}>ID</option>
-                                    <option value="name" {{ request('sort_by') == 'name' ? 'selected' : '' }}>Название</option>
-                                    <option value="price" {{ request('sort_by') == 'price' ? 'selected' : '' }}>Цена</option>
-                                    <option value="quantity" {{ request('sort_by') == 'quantity' ? 'selected' : '' }}>Кол-во</option>
-                                </select>
-                                
-                                <button type="button" onclick="toggleSortDirection()" class="sort-btn">
-                                    <i class="fas fa-arrow-{{ request('sort_direction', 'desc') == 'desc' ? 'down' : 'up' }}"></i>
-                                </button>
-                                <input type="hidden" name="sort_direction" value="{{ request('sort_direction', 'desc') }}" id="sort_direction">
-                                
-                                <button type="submit" class="apply-btn">Применить</button>
-                                <button type="button" onclick="resetFilters()" class="reset-btn">Сброс</button>
-                            </div>
-                        </form>
+                </div>
+                <div class="admin-col admin-col-2">
+                    <div class="admin-form-group admin-mb-0">
+                        <label for="status-filter" class="admin-form-label">Статус</label>
+                        <select class="admin-form-control admin-select" id="status-filter">
+                            <option value="">Все</option>
+                            <option value="1">Активные</option>
+                            <option value="0">Неактивные</option>
+                        </select>
                     </div>
-
-                    <!-- Компактные массовые действия -->
-                    <div id="bulk-panel" class="bulk-panel" style="display: none;">
-                        <div class="bulk-content">
-                            <div class="bulk-title">⚡ Массовые операции (<span id="selected-count">0</span> выбрано)</div>
-                            <div class="bulk-controls">
-                                <div class="markup-group">
-                                    <input type="number" id="markup-value" step="0.01" min="0" max="1000" placeholder="10%" class="markup-input">
-                                    <button onclick="applyMarkup()" class="markup-btn">Наценка</button>
-                                </div>
-                                
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="markup-percentage" checked>
-                                    <span>%</span>
-                                </label>
-                                
-                                <button onclick="bulkChangeStatus('active')" class="action-btn activate">ON</button>
-                                <button onclick="bulkChangeStatus('inactive')" class="action-btn deactivate">OFF</button>
-                            </div>
-                        </div>
+                </div>
+                <div class="admin-col admin-col-3">
+                    <div class="admin-d-flex admin-gap-sm">
+                        <a href="{{ route('bot.products.create', $telegramBot) }}" class="admin-btn admin-btn-primary admin-btn-sm">
+                            <i class="fas fa-plus admin-me-1"></i>
+                            Добавить товар
+                        </a>
+                        <button class="admin-btn admin-btn-sm" onclick="openImportModal()">
+                            <i class="fas fa-upload admin-me-1"></i>
+                            Импорт
+                        </button>
+                        <button class="admin-btn admin-btn-sm">
+                            <i class="fas fa-download admin-me-1"></i>
+                            Экспорт
+                        </button>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Таблица товаров -->
-            <div class="card shadow-sm" style="border-radius: 12px;">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0">
-                        <thead class="table-dark">
+    <!-- Таблица товаров -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
+                <h5 class="admin-mb-0">
+                    <i class="fas fa-table admin-me-2"></i>
+                    Товары ({{ $products->total() ?? 0 }})
+                </h5>
+                <div class="admin-d-flex admin-align-items-center admin-gap-sm">
+                    <span class="admin-text-muted">Показать по:</span>
+                    <select class="admin-form-control admin-form-control-sm" id="per-page" style="width: auto;">
+                        <option value="10" {{ request('per_page', 15) == 10 ? 'selected' : '' }}>10</option>
+                        <option value="15" {{ request('per_page', 15) == 15 ? 'selected' : '' }}>15</option>
+                        <option value="25" {{ request('per_page', 15) == 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ request('per_page', 15) == 50 ? 'selected' : '' }}>50</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="admin-card-body admin-p-0">
+            @if($products->count() > 0)
+                <div class="admin-table-responsive">
+                    <table class="admin-table">
+                        <thead>
                             <tr>
                                 <th style="width: 40px;">
-                                    <input type="checkbox" id="select-all" class="form-check-input">
+                                    <input type="checkbox" class="admin-form-check-input" id="select-all">
                                 </th>
-                                <th style="width: 60px;">ID</th>
-                                <th style="width: 80px;">Фото</th>
-                                <th>Название</th>
-                                <th style="width: 120px;">Артикул</th>
-                                <th style="width: 150px;">Категория</th>
+                                <th style="width: 60px;">Фото</th>
+                                <th>Товар</th>
+                                <th style="width: 100px;">Артикул</th>
+                                <th style="width: 120px;">Категория</th>
                                 <th style="width: 100px;">Цена</th>
-                                <th style="width: 80px;">Наценка</th>
-                                <th style="width: 100px;">Итого</th>
-                                <th style="width: 80px;">Количество</th>
-                                <th style="width: 100px;">Статус</th>
+                                <th style="width: 80px;">Кол-во</th>
+                                <th style="width: 80px;">Статус</th>
                                 <th style="width: 120px;">Действия</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($products as $product)
-                                <tr>
+                            @foreach($products as $product)
+                                <tr data-product-id="{{ $product->id }}">
                                     <td>
-                                        <input type="checkbox" name="selected_products[]" value="{{ $product->id }}" class="form-check-input">
+                                        <input type="checkbox" class="admin-form-check-input product-checkbox" 
+                                               value="{{ $product->id }}">
                                     </td>
-                                    <td class="fw-bold text-primary">{{ $product->id }}</td>
                                     <td>
                                         @if($product->photo_url)
-                                            <img src="{{ $product->photo_url }}" alt="{{ $product->name }}" 
-                                                 class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                                            <div class="admin-product-photo">
+                                                <img src="{{ $product->photo_url }}" alt="{{ $product->name }}">
+                                            </div>
                                         @else
-                                            <div class="bg-light rounded d-flex align-items-center justify-content-center" 
-                                                 style="width: 50px; height: 50px;">
-                                                <i class="fas fa-image text-muted"></i>
+                                            <div class="admin-product-photo admin-no-photo">
+                                                <i class="fas fa-image"></i>
                                             </div>
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="editable-field" data-field="name" data-id="{{ $product->id }}">
-                                            {{ $product->name }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="editable-field" data-field="article" data-id="{{ $product->id }}">
-                                            {{ $product->article ?? '-' }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info">{{ $product->category->name ?? 'Без категории' }}</span>
-                                    </td>
-                                    <td>
-                                        <div class="editable-field" data-field="price" data-id="{{ $product->id }}">
-                                            {{ number_format($product->price, 2) }} ₽
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="editable-field" data-field="markup_percentage" data-id="{{ $product->id }}">
-                                            {{ $product->markup_percentage ?? 0 }}%
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <strong class="text-success" id="total-price-{{ $product->id }}">
-                                            {{ number_format($product->price * (1 + ($product->markup_percentage ?? 0) / 100), 2) }} ₽
-                                        </strong>
-                                    </td>
-                                    <td>
-                                        <div class="editable-field" data-field="quantity" data-id="{{ $product->id }}">
-                                            {{ $product->quantity }}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="editable-field" data-field="is_active" data-id="{{ $product->id }}">
-                                            @if($product->is_active)
-                                                <span class="badge bg-success">Активен</span>
-                                            @else
-                                                <span class="badge bg-secondary">Неактивен</span>
+                                        <div class="admin-product-info">
+                                            <div class="admin-product-name">
+                                                <span class="editable-field" 
+                                                      data-field="name" 
+                                                      data-type="text" 
+                                                      data-value="{{ $product->name }}"
+                                                      title="Нажмите для редактирования">
+                                                    {{ $product->name }}
+                                                </span>
+                                                <input type="text" class="admin-form-control edit-input" 
+                                                       value="{{ $product->name }}" 
+                                                       style="display: none; font-size: 14px; padding: 4px 8px;">
+                                            </div>
+                                            @if($product->description)
+                                                <div class="admin-product-desc">
+                                                    {{ Str::limit($product->description, 50) }}
+                                                </div>
                                             @endif
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm" role="group">
+                                        @if($product->article)
+                                            <span class="admin-text-mono">{{ $product->article }}</span>
+                                        @else
+                                            <span class="admin-text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="editable-field" 
+                                              data-field="category_id" 
+                                              data-type="select" 
+                                              data-value="{{ $product->category_id }}"
+                                              title="Нажмите для изменения категории">
+                                            @if($product->category)
+                                                <span class="admin-badge">{{ $product->category->name }}</span>
+                                            @else
+                                                <span class="admin-text-muted">Без категории</span>
+                                            @endif
+                                        </span>
+                                        <select class="admin-form-control edit-input" style="display: none; font-size: 12px; padding: 4px;">
+                                            <option value="">Без категории</option>
+                                            @foreach($categories ?? [] as $category)
+                                                <option value="{{ $category->id }}" 
+                                                        {{ $product->category_id == $category->id ? 'selected' : '' }}>
+                                                    {{ $category->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <div class="admin-product-price">
+                                            <span class="editable-field" 
+                                                  data-field="price" 
+                                                  data-type="number" 
+                                                  data-value="{{ $product->price }}"
+                                                  title="Нажмите для изменения цены">
+                                                {{ number_format($product->price, 0, ',', ' ') }} ₽
+                                            </span>
+                                            <input type="number" class="admin-form-control edit-input" 
+                                                   value="{{ $product->price }}" 
+                                                   min="0" step="1"
+                                                   style="display: none; font-size: 12px; padding: 4px; width: 80px;">
+                                            @if($product->markup_percentage > 0)
+                                                <div class="admin-text-muted admin-small">
+                                                    +{{ $product->markup_percentage }}%
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="admin-text-center">
+                                            <span class="editable-field" 
+                                                  data-field="quantity" 
+                                                  data-type="number" 
+                                                  data-value="{{ $product->quantity }}"
+                                                  title="Нажмите для изменения количества">
+                                                <span class="admin-badge {{ $product->quantity > 0 ? 'admin-badge-success' : 'admin-badge-danger' }}">
+                                                    {{ $product->quantity }}
+                                                </span>
+                                            </span>
+                                            <input type="number" class="admin-form-control edit-input" 
+                                                   value="{{ $product->quantity }}" 
+                                                   min="0" step="1"
+                                                   style="display: none; font-size: 12px; padding: 4px; width: 60px;">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="admin-text-center">
+                                            <span class="editable-field status-toggle" 
+                                                  data-field="is_active" 
+                                                  data-type="boolean" 
+                                                  data-value="{{ $product->is_active ? 1 : 0 }}"
+                                                  title="Нажмите для изменения статуса"
+                                                  style="cursor: pointer;">
+                                                @if($product->is_active)
+                                                    <span class="admin-status-active">
+                                                        <i class="fas fa-check-circle"></i>
+                                                    </span>
+                                                @else
+                                                    <span class="admin-status-inactive">
+                                                        <i class="fas fa-times-circle"></i>
+                                                    </span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="admin-table-actions">
                                             <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" 
-                                               class="btn btn-outline-info btn-sm" title="Просмотр">
+                                               class="admin-btn admin-btn-xs" title="Просмотр">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" 
-                                               class="btn btn-outline-primary btn-sm" title="Редактировать">
+                                               class="admin-btn admin-btn-xs admin-btn-primary" title="Полное редактирование">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            <button class="admin-btn admin-btn-xs admin-btn-danger" 
+                                                    onclick="deleteProduct({{ $product->id }}, '{{ $product->name }}')" 
+                                                    title="Удалить">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="12" class="text-center py-4">
-                                        <div class="text-muted">
-                                            <i class="fas fa-box-open fa-3x mb-3"></i>
-                                            <p>Товары не найдены</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
                 
+                <!-- Пагинация -->
                 @if($products->hasPages())
-                    <div class="card-footer bg-light">
-                        <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center justify-center">
-                            <span class="relative z-0 inline-flex rtl:flex-row-reverse shadow-sm rounded-md">
-                                @if ($products->onFirstPage())
-                                    <span aria-disabled="true" aria-label="&laquo; Previous">
-                                        <span class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-l-md leading-5 dark:bg-gray-800 dark:border-gray-600" aria-hidden="true">
-                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                            </svg>
-                                        </span>
+                    <div class="admin-card-footer">
+                        <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
+                            <div class="admin-text-muted">
+                                Показаны записи {{ $products->firstItem() }}-{{ $products->lastItem() }} 
+                                из {{ $products->total() }}
+                            </div>
+                            <div class="admin-pagination">
+                                @if($products->onFirstPage())
+                                    <span class="admin-page-link disabled">
+                                        <i class="fas fa-chevron-left"></i>
                                     </span>
                                 @else
-                                    <a href="{{ $products->previousPageUrl() }}" rel="prev" class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150 dark:bg-gray-800 dark:border-gray-600 dark:active:bg-gray-700 dark:focus:border-blue-800" aria-label="&laquo; Previous">
-                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                        </svg>
+                                    <a href="{{ $products->previousPageUrl() }}" class="admin-page-link">
+                                        <i class="fas fa-chevron-left"></i>
                                     </a>
                                 @endif
-                                
-                                @foreach ($products->getUrlRange(1, $products->lastPage()) as $page => $url)
-                                    @if ($page == $products->currentPage())
-                                        <span aria-current="page">
-                                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default leading-5 dark:bg-gray-800 dark:border-gray-600">{{ $page }}</span>
-                                        </span>
+
+                                @foreach($products->getUrlRange(1, $products->lastPage()) as $page => $url)
+                                    @if($page == $products->currentPage())
+                                        <span class="admin-page-link active">{{ $page }}</span>
                                     @else
-                                        <a href="{{ $url }}" class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 leading-5 hover:text-gray-500 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-700 transition ease-in-out duration-150 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:text-gray-300 dark:active:bg-gray-700 dark:focus:border-blue-800" aria-label="Go to page {{ $page }}">
-                                            {{ $page }}
-                                        </a>
+                                        <a href="{{ $url }}" class="admin-page-link">{{ $page }}</a>
                                     @endif
                                 @endforeach
-                                
-                                @if ($products->hasMorePages())
-                                    <a href="{{ $products->nextPageUrl() }}" rel="next" class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md leading-5 hover:text-gray-400 focus:z-10 focus:outline-none focus:ring ring-gray-300 focus:border-blue-300 active:bg-gray-100 active:text-gray-500 transition ease-in-out duration-150 dark:bg-gray-800 dark:border-gray-600 dark:active:bg-gray-700 dark:focus:border-blue-800" aria-label="Next &raquo;">
-                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                                        </svg>
+
+                                @if($products->hasMorePages())
+                                    <a href="{{ $products->nextPageUrl() }}" class="admin-page-link">
+                                        <i class="fas fa-chevron-right"></i>
                                     </a>
                                 @else
-                                    <span aria-disabled="true" aria-label="Next &raquo;">
-                                        <span class="relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-300 cursor-default rounded-r-md leading-5 dark:bg-gray-800 dark:border-gray-600" aria-hidden="true">
-                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                                            </svg>
-                                        </span>
+                                    <span class="admin-page-link disabled">
+                                        <i class="fas fa-chevron-right"></i>
                                     </span>
                                 @endif
-                            </span>
-                        </nav>
+                            </div>
+                        </div>
                     </div>
                 @endif
+            @else
+                <div class="admin-empty-state">
+                    <div class="admin-empty-icon">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <h6>Товары не найдены</h6>
+                    <p class="admin-text-muted">У вас пока нет товаров в этом боте</p>
+                    <a href="{{ route('bot.products.create', $telegramBot) }}" class="admin-btn admin-btn-primary">
+                        <i class="fas fa-plus admin-me-2"></i>
+                        Добавить первый товар
+                    </a>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Массовые действия -->
+    <div class="admin-card admin-mt-4" id="bulk-actions" style="display: none;">
+        <div class="admin-card-body">
+            <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
+                <div>
+                    <span id="selected-count">0</span> товаров выбрано
+                </div>
+                <div class="admin-d-flex admin-gap-sm">
+                    <button class="admin-btn admin-btn-sm" onclick="bulkActivate()">
+                        <i class="fas fa-check admin-me-1"></i>
+                        Активировать
+                    </button>
+                    <button class="admin-btn admin-btn-sm" onclick="bulkDeactivate()">
+                        <i class="fas fa-times admin-me-1"></i>
+                        Деактивировать
+                    </button>
+                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="bulkDelete()">
+                        <i class="fas fa-trash admin-me-1"></i>
+                        Удалить
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно для редактирования -->
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Редактирование товара</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Модальное окно импорта -->
+<div class="admin-modal" id="importModal">
+    <div class="admin-modal-dialog">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h5 class="admin-modal-title">
+                    <i class="fas fa-upload admin-me-2"></i>
+                    Импорт товаров
+                </h5>
+                <button class="admin-modal-close" onclick="closeImportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="modal-body">
-                <form id="editForm">
-                    <div class="mb-3">
-                        <label for="editName" class="form-label">Название</label>
-                        <input type="text" class="form-control" id="editName">
+            <div class="admin-modal-body">
+                <form method="POST" action="{{ route('bot.products.import', $telegramBot) }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="admin-form-group">
+                        <label for="import_file" class="admin-form-label">Выберите файл для импорта</label>
+                        <input type="file" class="admin-form-control" id="import_file" name="import_file" 
+                               accept=".csv,.xlsx,.xls" required>
+                        <div class="admin-form-help">Поддерживаемые форматы: CSV, Excel (.xlsx, .xls)</div>
+                    </div>
+                    
+                    <div class="admin-form-group">
+                        <div class="admin-form-check">
+                            <input type="checkbox" class="admin-form-check-input" id="update_existing" 
+                                   name="update_existing" value="1">
+                            <label for="update_existing" class="admin-form-check-label">
+                                Обновлять существующие товары
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-d-flex admin-justify-content-between">
+                        <a href="{{ route('bot.products.download-template', $telegramBot) }}" class="admin-btn">
+                            <i class="fas fa-download admin-me-2"></i>
+                            Скачать шаблон
+                        </a>
+                        <div class="admin-d-flex admin-gap-sm">
+                            <button type="button" class="admin-btn" onclick="closeImportModal()">
+                                Отмена
+                            </button>
+                            <button type="submit" class="admin-btn admin-btn-primary">
+                                <i class="fas fa-upload admin-me-2"></i>
+                                Импортировать
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -305,388 +421,349 @@
     </div>
 </div>
 
-@endsection
-
-
-@push('scripts')
 <script>
-// Компактный скрипт для нового интерфейса
 document.addEventListener('DOMContentLoaded', function() {
-    // Поиск с автоматической очисткой
-    const searchInput = document.getElementById('search');
-    const clearBtn = document.querySelector('.clear-btn');
-    
-    if (searchInput && clearBtn) {
-        searchInput.addEventListener('input', function() {
-            clearBtn.style.display = this.value ? 'flex' : 'none';
-        });
-        
-        clearBtn.addEventListener('click', function() {
-            searchInput.value = '';
-            searchInput.focus();
-            this.style.display = 'none';
-        });
-        
-        // Показать кнопку очистки если есть значение
-        if (searchInput.value) {
-            clearBtn.style.display = 'flex';
-        }
-    }
-    
-    // Выбор категорий через чипы
-    window.selectCategory = function(id, element) {
-        const input = document.getElementById('category_id');
-        const chips = document.querySelectorAll('.chip');
-        
-        if (input.value === id.toString()) {
-            input.value = '';
-            element.classList.remove('active');
-        } else {
-            input.value = id;
-            chips.forEach(chip => chip.classList.remove('active'));
-            element.classList.add('active');
-        }
-    };
-    
-    // Переключение направления сортировки
-    window.toggleSortDirection = function() {
-        const dirSelect = document.getElementById('sort_direction');
-        const btn = document.querySelector('.sort-btn');
-        
-        if (dirSelect.value === 'asc') {
-            dirSelect.value = 'desc';
-            btn.innerHTML = '<i class="fas fa-arrow-down"></i>';
-        } else {
-            dirSelect.value = 'asc';
-            btn.innerHTML = '<i class="fas fa-arrow-up"></i>';
-        }
-    };
-    
-    // Сброс фильтров
-    window.resetFilters = function() {
-        document.getElementById('search').value = '';
-        document.getElementById('category_id').value = '';
-        document.getElementById('status').value = '';
-        document.getElementById('sort_by').value = 'id';
-        document.getElementById('sort_direction').value = 'desc';
-        
-        document.querySelectorAll('.chip').forEach(chip => chip.classList.remove('active'));
-        if (clearBtn) clearBtn.style.display = 'none';
-        
-        document.getElementById('filtersForm').submit();
-    };
-    
-    // Управление массовыми операциями
+    // Выбор всех товаров
     const selectAllCheckbox = document.getElementById('select-all');
-    const productCheckboxes = document.querySelectorAll('input[name="selected_products[]"]');
-    const bulkPanel = document.getElementById('bulk-panel');
+    const productCheckboxes = document.querySelectorAll('.product-checkbox');
+    const bulkActionsCard = document.getElementById('bulk-actions');
     const selectedCountSpan = document.getElementById('selected-count');
-    
-    function updateBulkPanel() {
-        const selectedCount = document.querySelectorAll('input[name="selected_products[]"]:checked').length;
-        if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
-        
-        if (bulkPanel) {
-            if (selectedCount > 0) {
-                bulkPanel.style.display = 'block';
-                bulkPanel.classList.add('animate-fade-in');
-            } else {
-                bulkPanel.style.display = 'none';
-            }
-        }
-    }
-    
+
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
             productCheckboxes.forEach(checkbox => {
                 checkbox.checked = this.checked;
             });
-            updateBulkPanel();
+            updateBulkActions();
         });
     }
-    
+
     productCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const checkedCount = document.querySelectorAll('input[name="selected_products[]"]:checked').length;
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = checkedCount === productCheckboxes.length;
-                selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < productCheckboxes.length;
-            }
-            updateBulkPanel();
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.product-checkbox:checked');
+        const count = checkedBoxes.length;
+        
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = count;
+        }
+        
+        if (bulkActionsCard) {
+            bulkActionsCard.style.display = count > 0 ? 'block' : 'none';
+        }
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = count === productCheckboxes.length;
+            selectAllCheckbox.indeterminate = count > 0 && count < productCheckboxes.length;
+        }
+    }
+
+    // Поиск товаров
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                // Реализация поиска
+                console.log('Поиск:', this.value);
+            }, 300);
+        });
+    }
+
+    // Фильтры
+    const categoryFilter = document.getElementById('category-filter');
+    const statusFilter = document.getElementById('status-filter');
+    const perPageSelect = document.getElementById('per-page');
+
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            // Реализация фильтрации по категории
+            console.log('Фильтр категории:', this.value);
+        });
+    }
+
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            // Реализация фильтрации по статусу
+            console.log('Фильтр статуса:', this.value);
+        });
+    }
+
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function() {
+            // Изменение количества записей на странице
+            const url = new URL(window.location);
+            url.searchParams.set('per_page', this.value);
+            window.location.href = url.toString();
+        });
+    }
+
+    // ===== INLINE РЕДАКТИРОВАНИЕ =====
+    
+    // Обработка кликов по редактируемым полям
+    document.querySelectorAll('.editable-field').forEach(field => {
+        field.addEventListener('click', function(e) {
+            e.preventDefault();
+            startEditing(this);
         });
     });
-    
-    // Применение наценки
-    window.applyMarkup = function() {
-        const markup = document.getElementById('markup-value').value;
-        const isPercentage = document.getElementById('markup-percentage').checked;
-        const selected = Array.from(document.querySelectorAll('input[name="selected_products[]"]:checked')).map(cb => cb.value);
-        
-        if (!markup || selected.length === 0) {
-            alert('Введите наценку и выберите товары');
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-        formData.append('markup', markup);
-        formData.append('is_percentage', isPercentage ? '1' : '0');
-        selected.forEach(id => formData.append('product_ids[]', id));
-        
-        fetch(`{{ route('bot.products.bulk-markup', $telegramBot) }}`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server returned non-JSON response');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Ошибка при выполнении запроса: ' + error.message);
-        });
-    };
-    
-    // Массовое изменение статуса
-    window.bulkChangeStatus = function(status) {
-        const selected = Array.from(document.querySelectorAll('input[name="selected_products[]"]:checked')).map(cb => cb.value);
-        
-        if (selected.length === 0) {
-            alert('Выберите товары');
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-        formData.append('status', status);
-        selected.forEach(id => formData.append('product_ids[]', id));
-        
-        fetch(`{{ route('bot.products.bulk-status', $telegramBot) }}`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server returned non-JSON response');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Ошибка при выполнении запроса: ' + error.message);
-        });
-    };
 
-    // Функция для пересчета итоговой цены
-    function updateTotalPrice(productId) {
-        const priceElement = document.querySelector(`[data-field="price"][data-id="${productId}"]`);
-        const markupElement = document.querySelector(`[data-field="markup_percentage"][data-id="${productId}"]`);
-        const totalElement = document.getElementById(`total-price-${productId}`);
+    function startEditing(element) {
+        const type = element.dataset.type;
+        const currentValue = element.dataset.value;
         
-        if (priceElement && markupElement && totalElement) {
-            const price = parseFloat(priceElement.textContent.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-            const markup = parseFloat(markupElement.textContent.replace('%', '')) || 0;
-            const total = price * (1 + markup / 100);
-            totalElement.textContent = total.toFixed(2) + ' ₽';
-        }
-    }
-
-    // Редактирование полей
-    document.querySelectorAll('.editable-field').forEach(cell => {
-        cell.addEventListener('click', function() {
-            if (this.classList.contains('editing')) return;
+        // Скрываем текст и показываем поле ввода
+        element.style.display = 'none';
+        const input = element.parentElement.querySelector('.edit-input');
+        
+        if (input) {
+            input.style.display = 'inline-block';
             
-            const fieldName = this.dataset.field;
-            const productId = this.dataset.id;
-            const originalContent = this.innerHTML;
-            
-            this.classList.add('editing');
-            
-            let input;
-            if (fieldName === 'is_active') {
-                input = document.createElement('select');
-                input.innerHTML = '<option value="1">Активен</option><option value="0">Неактивен</option>';
-                input.value = this.textContent.includes('Активен') ? '1' : '0';
+            if (type === 'select') {
+                input.value = currentValue;
+            } else if (type === 'number') {
+                input.value = currentValue;
             } else {
-                input = document.createElement('input');
-                input.type = fieldName === 'price' || fieldName === 'markup_percentage' ? 'number' : 'text';
-                if (fieldName === 'price') input.step = '0.01';
-                input.value = this.textContent.replace(/[^\d.-]/g, '');
+                input.value = currentValue;
             }
             
-            input.style.width = '100%';
-            this.innerHTML = '';
-            this.appendChild(input);
             input.focus();
             
-            const saveValue = () => {
+            // Обработчики для сохранения/отмены
+            const saveEdit = () => {
                 const newValue = input.value;
-                this.classList.add('saving');
+                const productId = element.closest('tr').dataset.productId;
+                const field = element.dataset.field;
                 
-                fetch(`{{ route('bot.products.update-field', $telegramBot) }}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        id: this.dataset.id,
-                        field: this.dataset.field,
-                        value: newValue
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        throw new Error('Server returned non-JSON response');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        if (fieldName === 'is_active') {
-                            this.innerHTML = newValue == '1' ? 
-                                '<span class="badge bg-success">Активен</span>' : 
-                                '<span class="badge bg-secondary">Неактивен</span>';
-                        } else if (fieldName === 'markup_percentage') {
-                            this.innerHTML = newValue + '%';
-                            updateTotalPrice(productId);
-                        } else if (fieldName === 'price') {
-                            this.innerHTML = parseFloat(newValue).toFixed(2) + ' ₽';
-                            updateTotalPrice(productId);
-                        } else {
-                            this.innerHTML = newValue;
-                        }
-                    } else {
-                        this.innerHTML = originalContent;
-                        alert('Ошибка сохранения: ' + (data.message || 'Неизвестная ошибка'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    this.innerHTML = originalContent;
-                    alert('Произошла ошибка при сохранении: ' + error.message);
-                })
-                .finally(() => {
-                    this.classList.remove('editing', 'saving');
-                });
+                if (newValue !== currentValue) {
+                    updateProductField(productId, field, newValue, element, input);
+                } else {
+                    cancelEdit(element, input);
+                }
             };
             
-            const cancelEdit = () => {
-                this.innerHTML = originalContent;
-                this.classList.remove('editing');
+            const cancelEdit = (element, input) => {
+                input.style.display = 'none';
+                element.style.display = 'inline';
             };
             
-            input.addEventListener('blur', saveValue);
+            // Сохранение при Enter или потере фокуса
+            input.addEventListener('blur', saveEdit, { once: true });
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    saveValue();
+                    saveEdit();
                 } else if (e.key === 'Escape') {
                     e.preventDefault();
-                    cancelEdit();
+                    cancelEdit(element, input);
                 }
-            });
+            }, { once: true });
+        }
+    }
+
+    // Специальная обработка для статусов (toggle)
+    document.querySelectorAll('.status-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const productId = this.closest('tr').dataset.productId;
+            const currentValue = this.dataset.value;
+            const newValue = currentValue === '1' ? '0' : '1';
+            
+            updateProductField(productId, 'is_active', newValue, this);
         });
     });
-    
-    // Инициализация
-    updateBulkPanel();
-    
-    // Функции переключения панелей
-    window.toggleFilters = function() {
-        const panel = document.getElementById('filtersPanel');
-        const btn = document.getElementById('filterToggle');
+
+    function updateProductField(productId, field, value, element, input = null) {
+        // Показываем индикатор загрузки
+        const originalHtml = element.innerHTML;
+        element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
-        if (!panel || !btn) {
-            console.error('Elements filtersPanel or filterToggle not found');
-            return;
+        // AJAX запрос для обновления
+        fetch('{{ route("bot.products.update-field", $telegramBot) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                id: productId,
+                field: field,
+                value: value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Обновляем отображение
+                updateFieldDisplay(element, field, value, data.formatted_value);
+                element.dataset.value = value;
+                
+                // Скрываем поле ввода если есть
+                if (input) {
+                    input.style.display = 'none';
+                    element.style.display = 'inline';
+                }
+                
+                // Показываем уведомление об успехе
+                showNotification('Поле успешно обновлено', 'success');
+            } else {
+                // Восстанавливаем оригинальное значение
+                element.innerHTML = originalHtml;
+                if (input) {
+                    input.style.display = 'none';
+                    element.style.display = 'inline';
+                }
+                showNotification(data.message || 'Ошибка при обновлении', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            element.innerHTML = originalHtml;
+            if (input) {
+                input.style.display = 'none';
+                element.style.display = 'inline';
+            }
+            showNotification('Произошла ошибка при обновлении', 'error');
+        });
+    }
+
+    function updateFieldDisplay(element, field, value, formattedValue) {
+        switch (field) {
+            case 'name':
+                element.textContent = value;
+                break;
+                
+            case 'price':
+                element.innerHTML = formattedValue || (new Intl.NumberFormat('ru-RU').format(value) + ' ₽');
+                break;
+                
+            case 'quantity':
+                const badgeClass = parseInt(value) > 0 ? 'admin-badge-success' : 'admin-badge-danger';
+                element.innerHTML = `<span class="admin-badge ${badgeClass}">${value}</span>`;
+                break;
+                
+            case 'is_active':
+                const isActive = value === '1' || value === 1;
+                if (isActive) {
+                    element.innerHTML = '<span class="admin-status-active"><i class="fas fa-check-circle"></i></span>';
+                } else {
+                    element.innerHTML = '<span class="admin-status-inactive"><i class="fas fa-times-circle"></i></span>';
+                }
+                break;
+                
+            case 'category_id':
+                if (formattedValue) {
+                    element.innerHTML = `<span class="admin-badge">${formattedValue}</span>`;
+                } else {
+                    element.innerHTML = '<span class="admin-text-muted">Без категории</span>';
+                }
+                break;
         }
+    }
+
+    function showNotification(message, type = 'info') {
+        // Создаем уведомление
+        const notification = document.createElement('div');
+        notification.className = `admin-alert admin-alert-${type}`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        `;
         
-        if (panel.style.display === 'none' || !panel.style.display) {
-            panel.style.display = 'block';
-            panel.classList.add('animate-fade-in');
-            btn.innerHTML = '<i class="fas fa-filter"></i> Скрыть фильтры';
-        } else {
-            panel.style.display = 'none';
-            btn.innerHTML = '<i class="fas fa-filter"></i> Фильтры';
-        }
-    };
-
-    window.toggleBulkActions = function() {
-        const panel = document.getElementById('bulk-panel');
-        const btn = document.getElementById('bulkToggle');
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : 'exclamation-triangle'} admin-me-2"></i>
+            ${message}
+            <button class="admin-alert-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
         
-        if (!panel || !btn) {
-            console.error('Elements bulk-panel or bulkToggle not found');
-            return;
-        }
+        document.body.appendChild(notification);
         
-        if (panel.style.display === 'none' || !panel.style.display) {
-            panel.style.display = 'block';
-            panel.classList.add('animate-fade-in');
-            btn.innerHTML = '<i class="fas fa-tools"></i> Скрыть действия';
-        } else {
-            panel.style.display = 'none';
-            btn.innerHTML = '<i class="fas fa-tools"></i> Массовые действия';
-        }
-    };
-
-    // Инициализация при загрузке
-    document.addEventListener('DOMContentLoaded', function() {
-        // Показываем фильтры, если есть активные фильтры
-        const searchEl = document.getElementById('search');
-        const selectedCategoryEl = document.getElementById('selectedCategory');
-        const isActiveEl = document.querySelector('[name="is_active"]');
-
-        const hasActiveFilters = (searchEl && searchEl.value) ||
-                                (selectedCategoryEl && selectedCategoryEl.value) ||
-                                (isActiveEl && isActiveEl.value);
-
-        if (hasActiveFilters) {
-            toggleFilters();
-        }
-
-        // Автодополнение поиска с задержкой
-        if (searchEl) {
-            let searchTimeout;
-            searchEl.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    if (this.value.length >= 3 || this.value.length === 0) {
-                        updateFilters();
-                    }
-                }, 500);
-            });
-        }
-    });
+        // Автоматически удаляем через 3 секунды
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 3000);
+    }
 });
+
+// Функции для работы с товарами
+function deleteProduct(productId, productName) {
+    if (confirm(`Вы уверены, что хотите удалить товар "${productName}"?\n\nЭто действие нельзя отменить!`)) {
+        // Создаем скрытую форму для удаления
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route("bot.products.destroy", [$telegramBot, ":id"]) }}'.replace(':id', productId);
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'DELETE';
+        
+        form.appendChild(csrfToken);
+        form.appendChild(methodField);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Массовые действия
+function bulkActivate() {
+    const selectedIds = getSelectedProductIds();
+    if (selectedIds.length === 0) return;
+    
+    if (confirm(`Активировать ${selectedIds.length} товаров?`)) {
+        // Реализация массовой активации
+        console.log('Активировать товары:', selectedIds);
+    }
+}
+
+function bulkDeactivate() {
+    const selectedIds = getSelectedProductIds();
+    if (selectedIds.length === 0) return;
+    
+    if (confirm(`Деактивировать ${selectedIds.length} товаров?`)) {
+        // Реализация массовой деактивации
+        console.log('Деактивировать товары:', selectedIds);
+    }
+}
+
+function bulkDelete() {
+    const selectedIds = getSelectedProductIds();
+    if (selectedIds.length === 0) return;
+    
+    if (confirm(`Удалить ${selectedIds.length} товаров?\n\nЭто действие нельзя отменить!`)) {
+        // Реализация массового удаления
+        console.log('Удалить товары:', selectedIds);
+    }
+}
+
+function getSelectedProductIds() {
+    const checkboxes = document.querySelectorAll('.product-checkbox:checked');
+    return Array.from(checkboxes).map(checkbox => checkbox.value);
+}
+
+// Модальное окно импорта
+function openImportModal() {
+    document.getElementById('importModal').style.display = 'flex';
+}
+
+function closeImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+}
 </script>
-@endpush
+@endsection

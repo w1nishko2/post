@@ -1,39 +1,41 @@
-@extends('layouts.app')
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 <div class="admin-container">
-    @if (session('success'))
+    <?php if(session('success')): ?>
         <div class="admin-alert admin-alert-success">
             <i class="fas fa-check-circle admin-me-2"></i>
-            {{ session('success') }}
+            <?php echo e(session('success')); ?>
+
             <button class="admin-alert-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-    @endif
+    <?php endif; ?>
 
-    @if (session('error'))
+    <?php if(session('error')): ?>
         <div class="admin-alert admin-alert-danger">
             <i class="fas fa-exclamation-triangle admin-me-2"></i>
-            {{ session('error') }}
+            <?php echo e(session('error')); ?>
+
             <button class="admin-alert-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-    @endif
+    <?php endif; ?>
 
     <!-- Навигационные табы -->
     <div class="admin-nav-pills admin-mb-4">
-        <a class="admin-nav-pill" href="{{ route('home') }}">
+        <a class="admin-nav-pill" href="<?php echo e(route('home')); ?>">
             <i class="fas fa-robot"></i> Мои боты
         </a>
-        <a class="admin-nav-pill" href="{{ route('products.select-bot') }}">
+        <a class="admin-nav-pill" href="<?php echo e(route('products.select-bot')); ?>">
             <i class="fas fa-boxes"></i> Мои магазины
         </a>
-        <a class="admin-nav-pill active" href="{{ route('orders.index') }}">
+        <a class="admin-nav-pill active" href="<?php echo e(route('orders.index')); ?>">
             <i class="fas fa-shopping-cart"></i> Заказы
         </a>
-        <a class="admin-nav-pill" href="{{ route('statistics.index') }}">
+        <a class="admin-nav-pill" href="<?php echo e(route('statistics.index')); ?>">
             <i class="fas fa-chart-line"></i> Статистика
         </a>
     </div>
@@ -43,14 +45,14 @@
         <div class="admin-card-body">
             <div class="admin-d-flex admin-align-items-center admin-justify-content-between">
                 <nav class="admin-breadcrumb">
-                    <a href="{{ route('orders.index') }}" class="admin-breadcrumb-link">
+                    <a href="<?php echo e(route('orders.index')); ?>" class="admin-breadcrumb-link">
                         <i class="fas fa-list admin-me-1"></i>
                         Заказы
                     </a>
                     <span class="admin-breadcrumb-separator">/</span>
-                    <span class="admin-breadcrumb-current">{{ $order->order_number }}</span>
+                    <span class="admin-breadcrumb-current"><?php echo e($order->order_number); ?></span>
                 </nav>
-                <a href="{{ route('orders.index') }}" class="admin-btn admin-btn-sm">
+                <a href="<?php echo e(route('orders.index')); ?>" class="admin-btn admin-btn-sm">
                     <i class="fas fa-arrow-left admin-me-2"></i>
                     К списку заказов
                 </a>
@@ -63,39 +65,40 @@
         <div class="admin-card-header admin-d-flex admin-justify-content-between admin-align-items-center">
             <h5 class="admin-mb-0">
                 <i class="fas fa-shopping-cart admin-me-2"></i>
-                Заказ {{ $order->order_number }}
+                Заказ <?php echo e($order->order_number); ?>
+
             </h5>
             <div class="admin-d-flex admin-align-items-center admin-gap-sm">
-                @switch($order->status)
-                    @case('pending')
+                <?php switch($order->status):
+                    case ('pending'): ?>
                         <span class="admin-badge admin-badge-warning">Ожидает обработки</span>
-                        @break
-                    @case('processing')
+                        <?php break; ?>
+                    <?php case ('processing'): ?>
                         <span class="admin-badge admin-badge-info">В обработке</span>
-                        @break
-                    @case('completed')
+                        <?php break; ?>
+                    <?php case ('completed'): ?>
                         <span class="admin-badge admin-badge-success">Выполнен</span>
-                        @break
-                    @case('cancelled')
+                        <?php break; ?>
+                    <?php case ('cancelled'): ?>
                         <span class="admin-badge admin-badge-danger">Отменен</span>
-                        @break
-                    @default
-                        <span class="admin-badge">{{ $order->status }}</span>
-                @endswitch
+                        <?php break; ?>
+                    <?php default: ?>
+                        <span class="admin-badge"><?php echo e($order->status); ?></span>
+                <?php endswitch; ?>
 
-                @if($order->canBeCancelled())
+                <?php if($order->canBeCancelled()): ?>
                     <button class="admin-btn admin-btn-sm admin-btn-outline-danger" onclick="cancelOrder()">
                         <i class="fas fa-times admin-me-1"></i>
                         Отменить
                     </button>
-                @endif
+                <?php endif; ?>
                 
-                @if($order->status === 'pending')
+                <?php if($order->status === 'pending'): ?>
                     <button class="admin-btn admin-btn-sm admin-btn-success" onclick="completeOrder()">
                         <i class="fas fa-check admin-me-1"></i>
                         Выполнить
                     </button>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
         
@@ -111,24 +114,24 @@
                         
                         <div class="admin-info-group admin-mb-3">
                             <div class="admin-info-label">Дата создания:</div>
-                            <div class="admin-info-value">{{ $order->created_at->format('d.m.Y H:i:s') }}</div>
+                            <div class="admin-info-value"><?php echo e($order->created_at->format('d.m.Y H:i:s')); ?></div>
                         </div>
                         
-                        @if($order->updated_at != $order->created_at)
+                        <?php if($order->updated_at != $order->created_at): ?>
                             <div class="admin-info-group admin-mb-3">
                                 <div class="admin-info-label">Последнее обновление:</div>
-                                <div class="admin-info-value">{{ $order->updated_at->format('d.m.Y H:i:s') }}</div>
+                                <div class="admin-info-value"><?php echo e($order->updated_at->format('d.m.Y H:i:s')); ?></div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                         
                         <div class="admin-info-group admin-mb-3">
                             <div class="admin-info-label">Общая стоимость:</div>
-                            <div class="admin-info-value admin-order-total-big">{{ $order->formatted_total }}</div>
+                            <div class="admin-info-value admin-order-total-big"><?php echo e($order->formatted_total); ?></div>
                         </div>
                         
                         <div class="admin-info-group admin-mb-3">
                             <div class="admin-info-label">Общее количество товаров:</div>
-                            <div class="admin-info-value">{{ $order->total_items }} шт.</div>
+                            <div class="admin-info-value"><?php echo e($order->total_items); ?> шт.</div>
                         </div>
                     </div>
                 </div>
@@ -141,52 +144,52 @@
                             Информация о клиенте
                         </h6>
                         
-                        @if($order->customer_name)
+                        <?php if($order->customer_name): ?>
                             <div class="admin-info-group admin-mb-3">
                                 <div class="admin-info-label">Имя:</div>
-                                <div class="admin-info-value">{{ $order->customer_name }}</div>
+                                <div class="admin-info-value"><?php echo e($order->customer_name); ?></div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                         
-                        @if($order->customer_phone)
+                        <?php if($order->customer_phone): ?>
                             <div class="admin-info-group admin-mb-3">
                                 <div class="admin-info-label">Телефон:</div>
                                 <div class="admin-info-value">
-                                    <a href="tel:{{ $order->customer_phone }}">{{ $order->customer_phone }}</a>
+                                    <a href="tel:<?php echo e($order->customer_phone); ?>"><?php echo e($order->customer_phone); ?></a>
                                 </div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                         
-                        @if($order->customer_telegram_id)
+                        <?php if($order->customer_telegram_id): ?>
                             <div class="admin-info-group admin-mb-3">
                                 <div class="admin-info-label">Telegram ID:</div>
-                                <div class="admin-info-value admin-text-mono">{{ $order->customer_telegram_id }}</div>
+                                <div class="admin-info-value admin-text-mono"><?php echo e($order->customer_telegram_id); ?></div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                         
-                        @if($order->telegramBot)
+                        <?php if($order->telegramBot): ?>
                             <div class="admin-info-group admin-mb-3">
                                 <div class="admin-info-label">Бот:</div>
                                 <div class="admin-info-value">
                                     <div class="admin-bot-info-inline">
-                                        <div class="admin-bot-avatar-sm {{ $order->telegramBot->is_active ? '' : 'inactive' }}">
+                                        <div class="admin-bot-avatar-sm <?php echo e($order->telegramBot->is_active ? '' : 'inactive'); ?>">
                                             <i class="fas fa-robot"></i>
                                         </div>
                                         <div class="admin-bot-details">
-                                            <div class="admin-bot-name">{{ $order->telegramBot->bot_name }}</div>
-                                            <div class="admin-text-muted admin-small">@{{ $order->telegramBot->bot_username }}</div>
+                                            <div class="admin-bot-name"><?php echo e($order->telegramBot->bot_name); ?></div>
+                                            <div class="admin-text-muted admin-small">{{ $order->telegramBot->bot_username }}</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                         
-                        @if($order->delivery_address)
+                        <?php if($order->delivery_address): ?>
                             <div class="admin-info-group admin-mb-3">
                                 <div class="admin-info-label">Адрес доставки:</div>
-                                <div class="admin-info-value">{{ $order->delivery_address }}</div>
+                                <div class="admin-info-value"><?php echo e($order->delivery_address); ?></div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -198,11 +201,11 @@
         <div class="admin-card-header">
             <h5 class="admin-mb-0">
                 <i class="fas fa-box admin-me-2"></i>
-                Товары в заказе ({{ $order->items->count() }})
+                Товары в заказе (<?php echo e($order->items->count()); ?>)
             </h5>
         </div>
         <div class="admin-card-body admin-p-0">
-            @if($order->items->count() > 0)
+            <?php if($order->items->count() > 0): ?>
                 <div class="admin-table-responsive">
                     <table class="admin-table">
                         <thead>
@@ -214,63 +217,64 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($order->items as $item)
+                            <?php $__currentLoopData = $order->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <tr>
                                     <td>
                                         <div class="admin-d-flex admin-align-items-center">
-                                            @if($item->product && $item->product->photo_url)
-                                                <img src="{{ $item->product->photo_url }}" alt="{{ $item->product_name }}" 
+                                            <?php if($item->product && $item->product->photo_url): ?>
+                                                <img src="<?php echo e($item->product->photo_url); ?>" alt="<?php echo e($item->product_name); ?>" 
                                                      class="admin-me-3" style="width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-sm);">
-                                            @else
+                                            <?php else: ?>
                                                 <div class="admin-product-placeholder admin-me-3">
                                                     <i class="fas fa-image"></i>
                                                 </div>
-                                            @endif
+                                            <?php endif; ?>
                                             <div>
-                                                <div class="admin-product-name">{{ $item->product_name }}</div>
-                                                @if($item->product)
+                                                <div class="admin-product-name"><?php echo e($item->product_name); ?></div>
+                                                <?php if($item->product): ?>
                                                     <div class="admin-text-muted admin-small">
-                                                        Артикул: {{ $item->product->article ?? 'Не указан' }}
+                                                        Артикул: <?php echo e($item->product->article ?? 'Не указан'); ?>
+
                                                     </div>
-                                                @endif
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>{{ number_format($item->price, 0, ',', ' ') }} ₽</strong>
+                                        <strong><?php echo e(number_format($item->price, 0, ',', ' ')); ?> ₽</strong>
                                     </td>
                                     <td class="admin-text-center">
-                                        <span class="admin-badge">{{ $item->quantity }} шт.</span>
+                                        <span class="admin-badge"><?php echo e($item->quantity); ?> шт.</span>
                                     </td>
                                     <td>
-                                        <strong>{{ number_format($item->total_price, 0, ',', ' ') }} ₽</strong>
+                                        <strong><?php echo e(number_format($item->total_price, 0, ',', ' ')); ?> ₽</strong>
                                     </td>
                                 </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
                         <tfoot>
                             <tr>
                                 <th colspan="3" class="admin-text-right">Итого:</th>
                                 <th>
-                                    <strong class="admin-order-total-big">{{ $order->formatted_total }}</strong>
+                                    <strong class="admin-order-total-big"><?php echo e($order->formatted_total); ?></strong>
                                 </th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-            @else
+            <?php else: ?>
                 <div class="admin-empty-state">
                     <div class="admin-empty-icon">
                         <i class="fas fa-box-open"></i>
                     </div>
                     <p class="admin-text-muted">В заказе нет товаров</p>
                 </div>
-            @endif
+            <?php endif; ?>
         </div>
     </div>
 
     <!-- История изменений заказа -->
-    @if($order->status_history && $order->status_history->count() > 0)
+    <?php if($order->status_history && $order->status_history->count() > 0): ?>
         <div class="admin-card">
             <div class="admin-card-header">
                 <h5 class="admin-mb-0">
@@ -280,28 +284,28 @@
             </div>
             <div class="admin-card-body">
                 <div class="admin-timeline">
-                    @foreach($order->status_history as $history)
+                    <?php $__currentLoopData = $order->status_history; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $history): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <div class="admin-timeline-item">
                             <div class="admin-timeline-marker"></div>
                             <div class="admin-timeline-content">
-                                <div class="admin-timeline-title">{{ $history->status_label }}</div>
-                                <div class="admin-timeline-time">{{ $history->created_at->format('d.m.Y H:i:s') }}</div>
-                                @if($history->comment)
-                                    <div class="admin-timeline-comment">{{ $history->comment }}</div>
-                                @endif
+                                <div class="admin-timeline-title"><?php echo e($history->status_label); ?></div>
+                                <div class="admin-timeline-time"><?php echo e($history->created_at->format('d.m.Y H:i:s')); ?></div>
+                                <?php if($history->comment): ?>
+                                    <div class="admin-timeline-comment"><?php echo e($history->comment); ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?>
 </div>
 
 <script>
 function cancelOrder() {
     if (confirm('Вы уверены, что хотите отменить этот заказ?\n\nТовары будут возвращены на склад.')) {
-        fetch(`/orders/{{ $order->id }}/cancel`, {
+        fetch(`/orders/<?php echo e($order->id); ?>/cancel`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -326,7 +330,7 @@ function cancelOrder() {
 
 function completeOrder() {
     if (confirm('Отметить заказ как выполненный?')) {
-        fetch(`/orders/{{ $order->id }}/complete`, {
+        fetch(`/orders/<?php echo e($order->id); ?>/complete`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -375,4 +379,5 @@ function showAlert(type, message) {
     }, 5000);
 }
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\OSPanel\domains\post\resources\views/orders/show.blade.php ENDPATH**/ ?>

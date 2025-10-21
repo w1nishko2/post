@@ -405,11 +405,26 @@ class ProductController extends Controller
         }
 
         $product->update([$request->field => $fieldValidator['value']]);
+        
+        // Получаем обновленный продукт с отношениями
+        $product = $product->fresh(['category']);
+        
+        // Форматируем значение для UI
+        $formattedValue = null;
+        switch ($request->field) {
+            case 'price':
+                $formattedValue = number_format((float)$product->price, 0, ',', ' ') . ' ₽';
+                break;
+            case 'category_id':
+                $formattedValue = $product->category ? $product->category->name : null;
+                break;
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Поле обновлено',
-            'product' => $product->fresh(['category'])
+            'product' => $product,
+            'formatted_value' => $formattedValue
         ]);
     }
 
