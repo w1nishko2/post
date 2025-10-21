@@ -1,39 +1,12 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="short-name" content="{{ $shortName }}">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="msapplication-navbutton-color" content="#ffffff">
-    <meta name="apple-mobile-web-app-status-bar-style" content="light-content">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="apple-touch-fullscreen" content="yes">
-    <title>{{ $bot->bot_name }} - Mini App</title>
-    
-    <!-- Swiper CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
-    
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    
-    <!-- App Styles -->
-    @vite(['resources/css/app.css', 'resources/css/mini-app.css'])
-    
-    <!-- Telegram WebApp JS -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Swiper JS -->
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    
-    <!-- Mini App JS -->
-    @vite(['resources/js/mini-app.js'])
-</head>
-<body class="mini-app-body">
+@extends('layouts.mini-app')
+
+@section('title', $bot->bot_name . ' - Mini App')
+
+@push('styles')
+<meta name="short-name" content="{{ $shortName }}">
+@endpush
+
+@section('content')
     <!-- Экран загрузки -->
     <div class="loading-screen" id="loading">
         <div class="loading-content">
@@ -266,9 +239,10 @@
         @endphp
         @json($productsData)
     </script>
+@endsection
 
-    <!-- Initialize Mini App -->
-    <script>
+@push('scripts')
+<script>
         // Инициализация Swiper для категорий
         let categoriesSwiper = null;
         
@@ -576,5 +550,4 @@
             });
         }
     </script>
-</body>
-</html>
+@endpush

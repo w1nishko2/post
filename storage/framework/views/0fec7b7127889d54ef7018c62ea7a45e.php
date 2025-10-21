@@ -248,7 +248,7 @@ unset($__errorArgs, $__bag); ?>
 
             <!-- Опасная зона -->
             <div class="card mt-4 border-danger">
-                <div class="card-header bg-danger text-white">
+                <div class="card-header bg-danger ">
                     <h6 class="mb-0">Опасная зона</h6>
                 </div>
                 <div class="card-body">

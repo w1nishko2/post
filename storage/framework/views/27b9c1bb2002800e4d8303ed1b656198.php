@@ -1,39 +1,10 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
-    <meta name="short-name" content="<?php echo e($shortName); ?>">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="msapplication-navbutton-color" content="#ffffff">
-    <meta name="apple-mobile-web-app-status-bar-style" content="light-content">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="apple-touch-fullscreen" content="yes">
-    <title><?php echo e($bot->bot_name); ?> - Mini App</title>
-    
-    <!-- Swiper CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
-    
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    
-    <!-- App Styles -->
-    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/css/mini-app.css']); ?>
-    
-    <!-- Telegram WebApp JS -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Swiper JS -->
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    
-    <!-- Mini App JS -->
-    <?php echo app('Illuminate\Foundation\Vite')(['resources/js/mini-app.js']); ?>
-</head>
-<body class="mini-app-body">
+<?php $__env->startSection('title', $bot->bot_name . ' - Mini App'); ?>
+
+<?php $__env->startPush('styles'); ?>
+<meta name="short-name" content="<?php echo e($shortName); ?>">
+<?php $__env->stopPush(); ?>
+
+<?php $__env->startSection('content'); ?>
     <!-- Экран загрузки -->
     <div class="loading-screen" id="loading">
         <div class="loading-content">
@@ -266,9 +237,10 @@
         ?>
         <?php echo json_encode($productsData, 15, 512) ?>
     </script>
+<?php $__env->stopSection(); ?>
 
-    <!-- Initialize Mini App -->
-    <script>
+<?php $__env->startPush('scripts'); ?>
+<script>
         // Инициализация Swiper для категорий
         let categoriesSwiper = null;
         
@@ -576,5 +548,5 @@
             });
         }
     </script>
-</body>
-</html><?php /**PATH C:\OSPanel\domains\post\resources\views/mini-app/index.blade.php ENDPATH**/ ?>
+<?php $__env->stopPush(); ?>
+<?php echo $__env->make('layouts.mini-app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\OSPanel\domains\post\resources\views/mini-app/index.blade.php ENDPATH**/ ?>

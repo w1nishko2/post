@@ -33,7 +33,7 @@
                 <!-- Основная информация -->
                 <div class="col-md-4">
                     <div class="card shadow-sm mb-4" style="border-radius: 16px;">
-                        <div class="card-header bg-primary text-white">
+                        <div class="card-header bg-primary ">
                             <h5 class="mb-0">
                                 <i class="fas fa-user me-2"></i>
                                 Основная информация

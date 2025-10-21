@@ -37,7 +37,7 @@
                         <div class="d-flex align-items-center">
                             <div class="me-3">
                                 <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                    <i class="fas fa-robot text-white"></i>
+                                    <i class="fas fa-robot "></i>
                                 </div>
                             </div>
                             <div>
@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-secondary">${index + 1}</span>
                         ${index === mainPhotoIndex ? '<span class="badge bg-primary ms-1">Главная</span>' : ''}
                     </div>
-                    <div class="position-absolute bottom-0 start-0 end-0 p-2 bg-dark bg-opacity-50 text-white text-center" style="font-size: 0.75rem;">
+                    <div class="position-absolute bottom-0 start-0 end-0 p-2 bg-dark bg-opacity-50  text-center" style="font-size: 0.75rem;">
                         Нажмите для выбора главной
                     </div>
                 </div>

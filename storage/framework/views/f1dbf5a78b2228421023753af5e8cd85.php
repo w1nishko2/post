@@ -36,11 +36,11 @@
                                                 <div class="me-3">
                                                     <?php if($bot->is_active): ?>
                                                         <div class="rounded-circle bg-success d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                                            <i class="fas fa-robot text-white"></i>
+                                                            <i class="fas fa-robot "></i>
                                                         </div>
                                                     <?php else: ?>
                                                         <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                                            <i class="fas fa-robot text-white"></i>
+                                                            <i class="fas fa-robot "></i>
                                                         </div>
                                                     <?php endif; ?>
                                                 </div>

@@ -54,12 +54,12 @@
                                          style="width: 120px; height: 120px; object-fit: cover;"
                                          alt="<?php echo e($category->name); ?>"
                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="rounded me-4 bg-warning d-none align-items-center justify-content-center text-white" 
+                                    <div class="rounded me-4 bg-warning d-none align-items-center justify-content-center " 
                                          style="width: 120px; height: 120px; font-size: 40px;">
                                         <i class="fas fa-folder"></i>
                                     </div>
                                 <?php else: ?>
-                                    <div class="rounded me-4 bg-warning d-flex align-items-center justify-content-center text-white" 
+                                    <div class="rounded me-4 bg-warning d-flex align-items-center justify-content-center " 
                                          style="width: 120px; height: 120px; font-size: 40px;">
                                         <i class="fas fa-folder"></i>
                                     </div>
@@ -161,12 +161,12 @@
                                                      style="width: 60px; height: 50px; object-fit: cover;"
                                                      alt="<?php echo e($product->name); ?>"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="rounded me-3 bg-primary d-none align-items-center justify-content-center text-white" 
+                                                <div class="rounded me-3 bg-primary d-none align-items-center justify-content-center " 
                                                      style="width: 60px; height: 50px; font-size: 20px;">
                                                     <i class="fas fa-cube"></i>
                                                 </div>
                                             <?php else: ?>
-                                                <div class="rounded me-3 bg-primary d-flex align-items-center justify-content-center text-white" 
+                                                <div class="rounded me-3 bg-primary d-flex align-items-center justify-content-center " 
                                                      style="width: 60px; height: 50px; font-size: 20px;">
                                                     <i class="fas fa-cube"></i>
                                                 </div>

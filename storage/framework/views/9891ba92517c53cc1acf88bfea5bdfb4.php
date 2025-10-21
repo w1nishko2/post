@@ -35,7 +35,7 @@
                         <div class="d-flex align-items-center">
                             <div class="me-3">
                                 <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                    <i class="fas fa-robot text-white"></i>
+                                    <i class="fas fa-robot "></i>
                                 </div>
                             </div>
                             <div>
@@ -221,8 +221,13 @@ unset($__errorArgs, $__bag); ?>"
                                    id="yandex_disk_folder_url" name="yandex_disk_folder_url" value="<?php echo e(old('yandex_disk_folder_url')); ?>" 
                                    placeholder="https://disk.yandex.ru/d/hV4dQv-tEeXN_A">
                             <div class="form-text">
-                                Если указать ссылку на папку, будут использованы все фотографии из неё. 
-                                Поле "Ссылка на фотографию" будет игнорироваться.
+                                <i class="fas fa-info-circle text-primary"></i>
+                                <strong>Как работает галерея фотографий из Яндекс.Диска:</strong><br>
+                                1. Укажите ссылку на публичную папку в Яндекс.Диске<br>
+                                2. Нажмите кнопку "Загрузить фотографии из папки"<br>
+                                3. Все изображения из папки будут автоматически добавлены в галерею<br>
+                                4. Выберите главную фотографию, нажав на неё<br>
+                                5. При указании ссылки на папку поле "Ссылка на фотографию" игнорируется
                             </div>
                             <?php $__errorArgs = ['yandex_disk_folder_url'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -537,7 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция валидации URL Яндекс.Диска
     async function validateYandexUrl(url) {
         try {
-            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Проверка ссылки...';
+            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i> Проверка ссылки...';
             loadPhotosBtn.disabled = true;
 
             const response = await fetch('/api/yandex-disk/validate-folder', {
@@ -555,12 +560,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 yandexStatus.innerHTML = '<i class="fas fa-check text-success"></i> Ссылка действительна';
                 loadPhotosBtn.disabled = false;
             } else {
-                yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> ' + (result.message || 'Ошибка проверки ссылки');
+                yandexStatus.innerHTML = `<i class="fas fa-times text-danger"></i> ${result.message || 'Ошибка проверки ссылки'}`;
                 loadPhotosBtn.disabled = true;
             }
         } catch (error) {
             console.error('Ошибка валидации:', error);
-            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка проверки ссылки';
+            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка проверки ссылки. Проверьте подключение к интернету.';
             loadPhotosBtn.disabled = true;
         }
     }
@@ -568,8 +573,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функция загрузки фотографий из Яндекс.Диска
     async function loadYandexPhotos(folderUrl) {
         try {
-            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка фотографий...';
+            yandexStatus.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i> Загрузка фотографий...';
             loadPhotosBtn.disabled = true;
+            loadPhotosBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
 
             const response = await fetch('/api/yandex-disk/get-images', {
                 method: 'POST',
@@ -583,26 +589,38 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success && result.data.images.length > 0) {
-                photosGallery = result.data.images.map(img => img.url);
+                // Сохраняем оригинальные URL (display_url) для сохранения в базу
+                photosGallery = result.data.images.map(img => img.display_url);
                 mainPhotoIndex = 0;
                 
                 yandexStatus.innerHTML = `<i class="fas fa-check text-success"></i> Загружено ${result.data.images.length} фотографий`;
                 loadPhotosBtn.disabled = false;
+                loadPhotosBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить фотографии из папки';
                 
                 // Сохраняем данные о изображениях для отображения
                 window.yandexImages = result.data.images;
+                
+                console.log('Photos loaded:', photosGallery); // Для отладки
+                console.log('Yandex images:', window.yandexImages); // Для отладки
+                
                 renderPhotosPreview();
                 showPhotosPreview();
                 updateHiddenFields();
+                
+                // Очищаем поле single photo URL, так как теперь используется галерея
+                photoUrlInput.value = '';
             } else {
-                yandexStatus.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> ' + (result.message || 'Фотографии не найдены');
+                const message = result.message || 'Фотографии не найдены или папка пуста';
+                yandexStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${message}`;
                 loadPhotosBtn.disabled = false;
+                loadPhotosBtn.innerHTML = '<i class="fas fa-download"></i> Загрузить фотографии из папки';
                 hidePhotosPreview();
             }
         } catch (error) {
             console.error('Ошибка загрузки фотографий:', error);
-            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка загрузки фотографий';
+            yandexStatus.innerHTML = '<i class="fas fa-times text-danger"></i> Ошибка загрузки. Проверьте подключение к интернету.';
             loadPhotosBtn.disabled = false;
+            loadPhotosBtn.innerHTML = '<i class="fas fa-download"></i> Загрузить фотографии из папки';
         }
     }
 
@@ -614,10 +632,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const col = document.createElement('div');
             col.className = 'col-md-3 col-sm-4 col-6 mb-3';
             
-            // Используем preview URL если доступен, иначе основной URL
-            const displayUrl = window.yandexImages && window.yandexImages[index] 
-                ? (window.yandexImages[index].display_url || window.yandexImages[index].preview || photoUrl)
-                : photoUrl;
+            // Используем прокси для изображений Яндекс.Диска
+            let displayUrl = photoUrl;
+            if (photoUrl && photoUrl.includes('downloader.disk.yandex.ru') && !photoUrl.includes('/api/yandex-image-proxy')) {
+                displayUrl = `/api/yandex-image-proxy?url=${encodeURIComponent(photoUrl)}`;
+            } else if (window.yandexImages && window.yandexImages[index]) {
+                // Fallback к preview URL если доступен
+                displayUrl = window.yandexImages[index].display_url || window.yandexImages[index].preview || photoUrl;
+                if (displayUrl && displayUrl.includes('downloader.disk.yandex.ru') && !displayUrl.includes('/api/yandex-image-proxy')) {
+                    displayUrl = `/api/yandex-image-proxy?url=${encodeURIComponent(displayUrl)}`;
+                }
+            }
             
             col.innerHTML = `
                 <div class="position-relative photo-item" data-index="${index}">
@@ -627,7 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-secondary">${index + 1}</span>
                         ${index === mainPhotoIndex ? '<span class="badge bg-primary ms-1">Главная</span>' : ''}
                     </div>
-                    <div class="position-absolute bottom-0 start-0 end-0 p-2 bg-dark bg-opacity-50 text-white text-center" style="font-size: 0.75rem;">
+                    <div class="position-absolute bottom-0 start-0 end-0 p-2 bg-dark bg-opacity-50  text-center" style="font-size: 0.75rem;">
                         Нажмите для выбора главной
                     </div>
                 </div>
@@ -658,8 +683,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Обновление скрытых полей
     function updateHiddenFields() {
-        document.getElementById('photos_gallery').value = JSON.stringify(photosGallery);
+        const galleryJson = JSON.stringify(photosGallery);
+        document.getElementById('photos_gallery').value = galleryJson;
         document.getElementById('main_photo_index').value = mainPhotoIndex;
+        
+        console.log('Updating hidden fields:'); // Для отладки
+        console.log('- photosGallery array:', photosGallery);
+        console.log('- galleryJson string:', galleryJson);
+        console.log('- mainPhotoIndex:', mainPhotoIndex);
     }
 
     // Автоматическое форматирование цены

@@ -42,7 +42,7 @@
                             <div class="d-flex align-items-center">
                                 <div class="me-3">
                                     <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                        <i class="fas fa-robot text-white"></i>
+                                        <i class="fas fa-robot "></i>
                                     </div>
                                 </div>
                                 <div>

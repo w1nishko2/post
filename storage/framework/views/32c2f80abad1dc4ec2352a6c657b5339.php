@@ -35,7 +35,7 @@
                         <div class="d-flex align-items-center">
                             <div class="me-3">
                                 <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                    <i class="fas fa-robot text-white"></i>
+                                    <i class="fas fa-robot "></i>
                                 </div>
                             </div>
                             <div>
@@ -677,12 +677,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Используем прокси для изображений Яндекс.Диска
             let displayUrl = photoUrl;
-            if (photoUrl && photoUrl.includes('downloader.disk.yandex.ru')) {
+            if (photoUrl && photoUrl.includes('downloader.disk.yandex.ru') && !photoUrl.includes('/api/yandex-image-proxy')) {
                 displayUrl = `/api/yandex-image-proxy?url=${encodeURIComponent(photoUrl)}`;
             } else if (window.yandexImages && window.yandexImages[index]) {
                 // Fallback к preview URL если доступен
                 displayUrl = window.yandexImages[index].display_url || window.yandexImages[index].preview || photoUrl;
-                if (displayUrl && displayUrl.includes('downloader.disk.yandex.ru')) {
+                if (displayUrl && displayUrl.includes('downloader.disk.yandex.ru') && !displayUrl.includes('/api/yandex-image-proxy')) {
                     displayUrl = `/api/yandex-image-proxy?url=${encodeURIComponent(displayUrl)}`;
                 }
             }
@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-secondary">${index + 1}</span>
                         ${index === mainPhotoIndex ? '<span class="badge bg-primary ms-1">Главная</span>' : ''}
                     </div>
-                    <div class="position-absolute bottom-0 start-0 end-0 p-2 bg-dark bg-opacity-50 text-white text-center" style="font-size: 0.75rem;">
+                    <div class="position-absolute bottom-0 start-0 end-0 p-2 bg-dark bg-opacity-50  text-center" style="font-size: 0.75rem;">
                         Нажмите для выбора главной
                     </div>
                 </div>
