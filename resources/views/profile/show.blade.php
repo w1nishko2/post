@@ -35,12 +35,13 @@
 
     <div class="admin-row">
         <!-- Основная информация -->
-        <div class="admin-col admin-col-4">
-            <div class="admin-card admin-mb-4">
+        <div class="admin-col admin-col-12 admin-col-md-4 admin-mb-4">
+            <div class="admin-card">
                 <div class="admin-card-header">
                     <h5 class="admin-mb-0">
                         <i class="fas fa-user admin-me-2"></i>
-                        Основная информация
+                        <span class="admin-d-none-xs">Основная информация</span>
+                        <span class="admin-d-block-xs">Профиль</span>
                     </h5>
                 </div>
                 <div class="admin-card-body">
@@ -57,7 +58,7 @@
                     
                     <div class="admin-mb-3">
                         <div class="admin-form-label">Email:</div>
-                        <div class="admin-fw-bold">{{ Auth::user()->email }}</div>
+                        <div class="admin-fw-bold admin-text-break">{{ Auth::user()->email }}</div>
                     </div>
                     
                     <div class="admin-mb-3">
@@ -67,14 +68,17 @@
                     
                     <div class="admin-mb-0">
                         <div class="admin-form-label">Последняя активность:</div>
-                        <div class="admin-fw-bold">{{ Auth::user()->updated_at->format('d.m.Y H:i') }}</div>
+                        <div class="admin-fw-bold">
+                            <span class="admin-d-none-xs">{{ Auth::user()->updated_at->format('d.m.Y H:i') }}</span>
+                            <span class="admin-d-block-xs">{{ Auth::user()->updated_at->format('d.m.Y') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Формы редактирования -->
-        <div class="admin-col admin-col-8">
+        <div class="admin-col admin-col-12 admin-col-md-8">
             <!-- Редактирование имени -->
             <div class="admin-card admin-mb-4">
                 <div class="admin-card-header">
@@ -98,9 +102,10 @@
                         </div>
 
                         <div class="admin-d-flex admin-justify-content-end">
-                            <button type="submit" class="admin-btn admin-btn-primary">
+                            <button type="submit" class="admin-btn admin-btn-primary admin-w-100-xs">
                                 <i class="fas fa-save admin-me-2"></i>
-                                Сохранить имя
+                                <span class="admin-d-none-xs">Сохранить имя</span>
+                                <span class="admin-d-block-xs">Сохранить</span>
                             </button>
                         </div>
                     </form>
@@ -130,9 +135,10 @@
                         </div>
 
                         <div class="admin-d-flex admin-justify-content-end">
-                            <button type="submit" class="admin-btn admin-btn-primary">
+                            <button type="submit" class="admin-btn admin-btn-primary admin-w-100-xs">
                                 <i class="fas fa-save admin-me-2"></i>
-                                Сохранить email
+                                <span class="admin-d-none-xs">Сохранить email</span>
+                                <span class="admin-d-block-xs">Сохранить</span>
                             </button>
                         </div>
                     </form>
@@ -198,9 +204,10 @@
                         </div>
 
                         <div class="admin-d-flex admin-justify-content-end">
-                            <button type="submit" class="admin-btn admin-btn-primary">
+                            <button type="submit" class="admin-btn admin-btn-primary admin-w-100-xs">
                                 <i class="fas fa-key admin-me-2"></i>
-                                Изменить пароль
+                                <span class="admin-d-none-xs">Изменить пароль</span>
+                                <span class="admin-d-block-xs">Изменить</span>
                             </button>
                         </div>
                     </form>
@@ -211,9 +218,10 @@
 
     <!-- Кнопка возврата -->
     <div class="admin-text-center">
-        <a href="{{ route('home') }}" class="admin-btn">
+        <a href="{{ route('home') }}" class="admin-btn admin-w-100-xs">
             <i class="fas fa-arrow-left admin-me-2"></i>
-            Вернуться на главную
+            <span class="admin-d-none-xs">Вернуться на главную</span>
+            <span class="admin-d-block-xs">На главную</span>
         </a>
     </div>
 </div>

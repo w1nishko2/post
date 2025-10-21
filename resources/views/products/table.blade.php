@@ -16,26 +16,27 @@
     <!-- Информация о боте -->
     <div class="admin-card admin-mb-4">
         <div class="admin-card-body">
-            <div class="admin-d-flex admin-align-items-center admin-justify-content-between">
-                <div class="admin-d-flex admin-align-items-center">
+            <!-- Адаптивная компоновка для мобильных -->
+            <div class="admin-d-flex admin-align-items-center admin-justify-content-between admin-flex-wrap admin-gap-sm">
+                <div class="admin-d-flex admin-align-items-center admin-flex-1">
                     <div class="admin-me-3">
                         <div class="admin-bot-avatar {{ $telegramBot->is_active ? '' : 'inactive' }}">
                             <i class="fas fa-robot"></i>
                         </div>
                     </div>
-                    <div>
+                    <div class="admin-flex-1">
                         <h6 class="admin-mb-1">{{ $telegramBot->bot_name }}</h6>
                         <div class="admin-text-muted">@{{ $telegramBot->bot_username }}</div>
                     </div>
                 </div>
-                <div class="admin-d-flex admin-gap-sm">
+                <div class="admin-d-flex admin-gap-sm admin-flex-wrap">
                     <a href="{{ route('bot.products.index', $telegramBot) }}" class="admin-btn admin-btn-sm">
-                        <i class="fas fa-th-large admin-me-2"></i>
-                        Плитки
+                        <i class="fas fa-th-large admin-me-1"></i>
+                        <span class="admin-d-none-xs">Плитки</span>
                     </a>
                     <span class="admin-btn admin-btn-sm admin-btn-primary">
-                        <i class="fas fa-table admin-me-2"></i>
-                        Таблица
+                        <i class="fas fa-table admin-me-1"></i>
+                        <span class="admin-d-none-xs">Таблица</span>
                     </span>
                 </div>
             </div>
@@ -46,52 +47,58 @@
     <!-- Действия и поиск -->
     <div class="admin-card admin-mb-4">
         <div class="admin-card-body">
-            <div class="admin-row admin-align-items-end admin-gap-md">
-                <div class="admin-col admin-col-4">
-                    <div class="admin-form-group admin-mb-0">
-                        <label for="search" class="admin-form-label">Поиск товаров</label>
-                        <div class="admin-input-group">
-                            <input type="text" class="admin-form-control" id="search" placeholder="Поиск по названию или артикулу">
-                            <button class="admin-btn admin-btn-sm">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
+            <!-- Фильтры в адаптивной сетке -->
+            <div class="admin-filters-row">
+                <!-- Поиск -->
+                <div class="admin-filter-group">
+                    <label for="search" class="admin-form-label">
+                        <span class="admin-d-none-xs">Поиск товаров</span>
+                        <span class="admin-d-block-xs">Поиск</span>
+                    </label>
+                    <div class="admin-input-group">
+                        <input type="text" class="admin-form-control" id="search" placeholder="Название или артикул">
+                        <button class="admin-btn admin-btn-sm">
+                            <i class="fas fa-search"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="admin-col admin-col-3">
-                    <div class="admin-form-group admin-mb-0">
-                        <label for="category-filter" class="admin-form-label">Категория</label>
-                        <select class="admin-form-control admin-select" id="category-filter">
-                            <option value="">Все категории</option>
-                            @foreach($categories ?? [] as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                
+                <!-- Категория -->
+                <div class="admin-filter-group">
+                    <label for="category-filter" class="admin-form-label">Категория</label>
+                    <select class="admin-form-control admin-select" id="category-filter">
+                        <option value="">Все</option>
+                        @foreach($categories ?? [] as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
-                <div class="admin-col admin-col-2">
-                    <div class="admin-form-group admin-mb-0">
-                        <label for="status-filter" class="admin-form-label">Статус</label>
-                        <select class="admin-form-control admin-select" id="status-filter">
-                            <option value="">Все</option>
-                            <option value="1">Активные</option>
-                            <option value="0">Неактивные</option>
-                        </select>
-                    </div>
+                
+                <!-- Статус -->
+                <div class="admin-filter-group">
+                    <label for="status-filter" class="admin-form-label">Статус</label>
+                    <select class="admin-form-control admin-select" id="status-filter">
+                        <option value="">Все</option>
+                        <option value="1">Активные</option>
+                        <option value="0">Неактивные</option>
+                    </select>
                 </div>
-                <div class="admin-col admin-col-3">
-                    <div class="admin-d-flex admin-gap-sm">
-                        <a href="{{ route('bot.products.create', $telegramBot) }}" class="admin-btn admin-btn-primary admin-btn-sm">
+                
+                <!-- Действия -->
+                <div class="admin-filter-actions">
+                    <div class="admin-d-flex admin-gap-sm admin-flex-wrap">
+                        <a href="{{ route('bot.products.create', $telegramBot) }}" 
+                           class="admin-btn admin-btn-primary admin-btn-sm">
                             <i class="fas fa-plus admin-me-1"></i>
-                            Добавить товар
+                            <span class="admin-d-none-xs">Добавить</span>
                         </a>
                         <button class="admin-btn admin-btn-sm" onclick="openImportModal()">
                             <i class="fas fa-upload admin-me-1"></i>
-                            Импорт
+                            <span class="admin-d-none-xs">Импорт</span>
                         </button>
                         <button class="admin-btn admin-btn-sm">
                             <i class="fas fa-download admin-me-1"></i>
-                            Экспорт
+                            <span class="admin-d-none-xs">Экспорт</span>
                         </button>
                     </div>
                 </div>
@@ -102,14 +109,16 @@
     <!-- Таблица товаров -->
     <div class="admin-card">
         <div class="admin-card-header">
-            <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
-                <h5 class="admin-mb-0">
+            <div class="admin-d-flex admin-justify-content-between admin-align-items-center admin-flex-wrap admin-gap-sm">
+                <h5 class="admin-mb-0 admin-flex-1">
                     <i class="fas fa-table admin-me-2"></i>
-                    Товары ({{ $products->total() ?? 0 }})
+                    <span class="admin-d-none-xs">Товары </span>
+                    <span>({{ $products->total() ?? 0 }})</span>
                 </h5>
                 <div class="admin-d-flex admin-align-items-center admin-gap-sm">
-                    <span class="admin-text-muted">Показать по:</span>
-                    <select class="admin-form-control admin-form-control-sm" id="per-page" style="width: auto;">
+                    <span class="admin-text-muted admin-d-none-xs">Показать:</span>
+                    <select class="admin-form-control admin-select" id="per-page" 
+                            style="width: auto; min-width: 60px; padding: 4px 8px;">
                         <option value="10" {{ request('per_page', 15) == 10 ? 'selected' : '' }}>10</option>
                         <option value="15" {{ request('per_page', 15) == 15 ? 'selected' : '' }}>15</option>
                         <option value="25" {{ request('per_page', 15) == 25 ? 'selected' : '' }}>25</option>
@@ -130,10 +139,10 @@
                                 <th style="width: 60px;">Фото</th>
                                 <th>Товар</th>
                                 <th style="width: 100px;">Артикул</th>
-                                <th style="width: 120px;">Категория</th>
-                                <th style="width: 100px;">Цена</th>
-                                <th style="width: 80px;">Кол-во</th>
-                                <th style="width: 80px;">Статус</th>
+                                <th style="width: 170px;">Категория</th>
+                                <th style="width: 150px;">Цена</th>
+                                <th style="width: 120px;">Кол-во</th>
+                                <th style="width: 120px;">Статус</th>
                                 <th style="width: 120px;">Действия</th>
                             </tr>
                         </thead>
@@ -344,22 +353,22 @@
     <!-- Массовые действия -->
     <div class="admin-card admin-mt-4" id="bulk-actions" style="display: none;">
         <div class="admin-card-body">
-            <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
-                <div>
+            <div class="admin-d-flex admin-justify-content-between admin-align-items-center admin-flex-wrap admin-gap-sm">
+                <div class="admin-flex-1">
                     <span id="selected-count">0</span> товаров выбрано
                 </div>
-                <div class="admin-d-flex admin-gap-sm">
+                <div class="admin-d-flex admin-gap-sm admin-flex-wrap">
                     <button class="admin-btn admin-btn-sm" onclick="bulkActivate()">
                         <i class="fas fa-check admin-me-1"></i>
-                        Активировать
+                        <span class="admin-d-none-xs">Активировать</span>
                     </button>
                     <button class="admin-btn admin-btn-sm" onclick="bulkDeactivate()">
                         <i class="fas fa-times admin-me-1"></i>
-                        Деактивировать
+                        <span class="admin-d-none-xs">Деактивировать</span>
                     </button>
                     <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="bulkDelete()">
                         <i class="fas fa-trash admin-me-1"></i>
-                        Удалить
+                        <span class="admin-d-none-xs">Удалить</span>
                     </button>
                 </div>
             </div>

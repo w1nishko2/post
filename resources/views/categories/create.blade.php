@@ -1,154 +1,161 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-xl">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <!-- Навигационная панель -->
-            <div class="card mb-4">
-                <div class="card-body p-0">
-                    <nav class="nav nav-pills nav-fill">
-                        <a class="nav-link" href="{{ route('home') }}">
-                            Мои боты
-                        </a>
-                        <a class="nav-link" href="{{ route('bot.products.index', $telegramBot) }}">
-                            Товары
-                        </a>
-                        <a class="nav-link active" href="{{ route('bot.categories.index', $telegramBot) }}">
-                            Категории
-                        </a>
-                    </nav>
-                </div>
-            </div>
+<div class="admin-container">
+    <!-- Навигационные табы -->
+    <div class="admin-nav-pills admin-mb-4">
+        <a class="admin-nav-pill" href="{{ route('home') }}">
+            <i class="fas fa-robot"></i> Мои боты
+        </a>
+        <a class="admin-nav-pill" href="{{ route('bot.products.index', $telegramBot) }}">
+            <i class="fas fa-boxes"></i> Товары
+        </a>
+        <a class="admin-nav-pill active" href="{{ route('bot.categories.index', $telegramBot) }}">
+            <i class="fas fa-folder"></i> Категории
+        </a>
+    </div>
 
-            <!-- Хлебные крошки -->
-            <nav aria-label="breadcrumb" class="mb-4">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a href="{{ route('bot.categories.index', $telegramBot) }}">
-                            Категории
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        Создание категории
-                    </li>
-                </ol>
-            </nav>
+    <!-- Хлебные крошки -->
+    <div class="admin-breadcrumb admin-mb-4">
+        <a href="{{ route('bot.categories.index', $telegramBot) }}" class="admin-breadcrumb-link">
+            <i class="fas fa-folder admin-me-1"></i> Категории
+        </a>
+        <span class="admin-breadcrumb-separator">></span>
+        <span class="admin-breadcrumb-current">Создание категории</span>
+    </div>
 
+    <!-- Контент в адаптивной сетке -->
+    <div class="admin-row">
+        <div class="admin-col admin-col-12">
             <!-- Форма создания категории -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Создание новой категории</h5>
-                    <small class="text-muted">Создайте категорию для группировки товаров в вашем магазине</small>
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h5 class="admin-mb-0">
+                        <i class="fas fa-plus admin-me-2"></i>
+                        Создание новой категории
+                    </h5>
+                    <p class="admin-text-muted admin-mb-0 admin-mt-2">
+                        Создайте категорию для группировки товаров в вашем магазине
+                    </p>
                 </div>
 
-                <div class="card-body">
+                <div class="admin-card-body">
                     <form action="{{ route('bot.categories.store', $telegramBot) }}" method="POST" id="categoryForm">
                         @csrf
 
-                        <!-- Название категории -->
-                        <div class="mb-4">
-                            <label for="name" class="form-label">
-                                Название категории <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" 
-                                   class="form-control @error('name') is-invalid @enderror" 
-                                   id="name" 
-                                   name="name" 
-                                   value="{{ old('name') }}" 
-                                   placeholder="Например: Электроника, Одежда, Книги..."
-                                   maxlength="100"
-                                   required>
-                            @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">
-                                Краткое и понятное название для ваших покупателей
+                        <!-- Основная информация в адаптивной сетке -->
+                        <div class="admin-row">
+                            <div class="admin-col admin-col-12 admin-col-md-6">
+                                <!-- Название категории -->
+                                <div class="admin-form-group">
+                                    <label for="name" class="admin-form-label required">
+                                        Название категории
+                                    </label>
+                                    <input type="text" 
+                                           class="admin-form-control @error('name') admin-form-error @enderror" 
+                                           id="name" 
+                                           name="name" 
+                                           value="{{ old('name') }}" 
+                                           placeholder="Например: Электроника, Одежда, Книги..."
+                                           maxlength="100"
+                                           required>
+                                    @error('name')
+                                        <div class="admin-form-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="admin-form-text">
+                                        Краткое и понятное название для ваших покупателей
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="admin-col admin-col-12 admin-col-md-6">
+                                <!-- Фотография категории -->
+                                <div class="admin-form-group">
+                                    <label for="photo_url" class="admin-form-label">
+                                        Ссылка на фотографию
+                                    </label>
+                                    <input type="url" 
+                                           class="admin-form-control @error('photo_url') admin-form-error @enderror" 
+                                           id="photo_url" 
+                                           name="photo_url" 
+                                           value="{{ old('photo_url') }}" 
+                                           placeholder="https://example.com/category-image.jpg">
+                                    @error('photo_url')
+                                        <div class="admin-form-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="admin-form-text">
+                                        Рекомендуемый размер: 300x300px. JPG, PNG
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Описание категории -->
-                        <div class="mb-4">
-                            <label for="description" class="form-label">
+                        <div class="admin-form-group">
+                            <label for="description" class="admin-form-label">
                                 Описание категории
                             </label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" 
+                            <textarea class="admin-form-control admin-textarea @error('description') admin-form-error @enderror" 
                                       id="description" 
                                       name="description" 
-                                      rows="3"
                                       placeholder="Краткое описание категории (необязательно)"
                                       maxlength="500">{{ old('description') }}</textarea>
                             @error('description')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="admin-form-error">{{ $message }}</div>
                             @enderror
-                            <div class="form-text">
+                            <div class="admin-form-text">
                                 Дополнительная информация о товарах в этой категории
                             </div>
                         </div>
 
-                        <!-- Фотография категории -->
-                        <div class="mb-4">
-                            <label for="photo_url" class="form-label">
-                                Ссылка на фотографию
-                            </label>
-                            <input type="url" 
-                                   class="form-control @error('photo_url') is-invalid @enderror" 
-                                   id="photo_url" 
-                                   name="photo_url" 
-                                   value="{{ old('photo_url') }}" 
-                                   placeholder="https://example.com/category-image.jpg">
-                            @error('photo_url')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">
-                                Рекомендуемый размер: 300x300px. Поддерживаются форматы: JPG, PNG
-                            </div>
-                        </div>
-
                         <!-- Предварительный просмотр фото -->
-                        <div class="mb-4" id="photoPreview" style="display: none;">
-                            <label class="form-label">
+                        <div class="admin-form-group" id="photoPreview" style="display: none;">
+                            <label class="admin-form-label">
                                 Предварительный просмотр
                             </label>
-                            <div class="border rounded p-3 bg-light">
-                                <div class="d-flex align-items-center">
-                                    <img id="previewImage" 
-                                         src="" 
-                                         alt="Предварительный просмотр" 
-                                         class="rounded me-3"
-                                         style="width: 80px; height: 80px; object-fit: cover;">
-                                    <div>
-                                        <h6 class="mb-1" id="previewName">Название категории</h6>
-                                        <p class="text-muted small mb-0" id="previewDescription">Описание категории</p>
+                            <div class="admin-card admin-bg-light">
+                                <div class="admin-card-body">
+                                    <div class="admin-d-flex admin-align-items-center admin-gap-md">
+                                        <img id="previewImage" 
+                                             src="" 
+                                             alt="Предварительный просмотр" 
+                                             style="width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-md);">
+                                        <div class="admin-flex-1">
+                                            <h6 class="admin-mb-1" id="previewName">Название категории</h6>
+                                            <p class="admin-text-muted admin-mb-0" id="previewDescription">Описание категории</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Статус активности -->
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" 
+                        <div class="admin-form-group">
+                            <div class="admin-form-check">
+                                <input class="admin-form-check-input" 
                                        type="checkbox" 
                                        id="is_active" 
                                        name="is_active" 
                                        value="1" 
                                        {{ old('is_active', true) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="is_active">
-                                    <i class="fas fa-toggle-on text-success"></i> Категория активна
+                                <label class="admin-form-check-label" for="is_active">
+                                    <i class="fas fa-toggle-on admin-text-success admin-me-1"></i> 
+                                    Категория активна
                                 </label>
                             </div>
-                            <div class="form-text">
+                            <div class="admin-form-text">
                                 Неактивные категории не отображаются в мини-приложении
                             </div>
                         </div>
 
                         <!-- Кнопки управления -->
-                        <div class="d-flex gap-3">
-                            <button type="submit" class="btn btn-primary">
+                        <div class="admin-d-flex admin-gap-md admin-flex-wrap">
+                            <button type="submit" class="admin-btn admin-btn-primary">
+                                <i class="fas fa-plus admin-me-2"></i>
                                 Создать категорию
                             </button>
-                            <a href="{{ route('bot.categories.index', $telegramBot) }}" class="btn btn-outline-secondary">
+                            <a href="{{ route('bot.categories.index', $telegramBot) }}" class="admin-btn">
+                                <i class="fas fa-arrow-left admin-me-2"></i>
                                 Отмена
                             </a>
                         </div>
@@ -157,24 +164,32 @@
             </div>
 
             <!-- Подсказки -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0">Полезные советы</h6>
+            <div class="admin-card admin-mt-4">
+                <div class="admin-card-header">
+                    <h6 class="admin-mb-0">
+                        <i class="fas fa-lightbulb admin-me-2"></i>
+                        Полезные советы
+                    </h6>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-primary">Названия категорий</h6>
-                            <ul class="small text-muted mb-3">
+                <div class="admin-card-body">
+                    <div class="admin-row">
+                        <div class="admin-col admin-col-12 admin-col-md-6">
+                            <h6 class="admin-text-info admin-mb-2">
+                                <i class="fas fa-tag admin-me-1"></i>
+                                Названия категорий
+                            </h6>
+                            <ul class="admin-text-muted admin-mb-3" style="padding-left: 20px;">
                                 <li>Используйте простые и понятные названия</li>
                                 <li>Избегайте слишком длинных названий</li>
                                 <li>Думайте о том, как клиент будет искать товар</li>
                             </ul>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="text-info">Изображения категорий</h6>
+                        <div class="admin-col admin-col-12 admin-col-md-6">
+                            <h6 class="admin-text-success admin-mb-2">
+                                <i class="fas fa-image admin-me-1"></i>
+                                Изображения категорий
                             </h6>
-                            <ul class="small text-muted mb-0">
+                            <ul class="admin-text-muted admin-mb-0" style="padding-left: 20px;">
                                 <li>Рекомендуемый размер: 300x300 пикселей</li>
                                 <li>Используйте качественные изображения</li>
                                 <li>Изображение должно отражать суть категории</li>
