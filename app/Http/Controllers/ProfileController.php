@@ -105,4 +105,37 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Имя успешно обновлено!');
     }
+
+    /**
+     * Обновить цветовую схему пользователя.
+     */
+    public function updateColorScheme(Request $request)
+    {
+        $availableSchemes = array_keys(config('color-schemes.available', []));
+        
+        $request->validate([
+            'color_scheme' => ['required', 'string', Rule::in($availableSchemes)],
+        ], [
+            'color_scheme.required' => 'Выберите цветовую схему.',
+            'color_scheme.in' => 'Выбранная цветовая схема недоступна.',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
+        if ($user->setColorScheme($request->color_scheme)) {
+            $schemeInfo = $user->getColorSchemeInfo();
+            return back()->with('success', "Цветовая схема изменена на \"{$schemeInfo['name']}\"!");
+        }
+
+        return back()->with('error', 'Не удалось изменить цветовую схему.');
+    }
+
+    /**
+     * Получить информацию о доступных цветовых схемах (для AJAX).
+     */
+    public function getColorSchemes()
+    {
+        return response()->json(config('color-schemes.available', []));
+    }
 }

@@ -213,9 +213,42 @@
                     </form>
                 </div>
             </div>
+
+          
         </div>
     </div>
+  <!-- Цветовая схема -->
+            <div class="admin-card admin-mb-4">
+                <div class="admin-card-header">
+                    <h5 class="admin-mb-0">
+                        <i class="fas fa-palette admin-me-2"></i>
+                        Цветовая схема интерфейса
+                    </h5>
+                </div>
+                <div class="admin-card-body">
+                    @php
+                        $currentScheme = Auth::user()->getColorScheme();
+                        $schemeInfo = Auth::user()->getColorSchemeInfo();
+                    @endphp
+                    
+                    <div class="admin-mb-3">
+                        <div class="admin-form-label">Текущая схема:</div>
+                        <div class="admin-fw-bold" style="color: {{ $schemeInfo['preview_color'] ?? 'var(--color-gray)' }};">
+                            {{ $schemeInfo['name'] ?? 'Серая' }}
+                        </div>
+                        <div class="admin-text-muted admin-mb-3">{{ $schemeInfo['description'] ?? '' }}</div>
+                    </div>
 
+                    @if($errors->has('color_scheme'))
+                        <div class="admin-alert admin-alert-danger admin-mb-3">
+                            <i class="fas fa-exclamation-triangle admin-me-2"></i>
+                            {{ $errors->first('color_scheme') }}
+                        </div>
+                    @endif
+
+                    <x-color-scheme-selector :currentScheme="$currentScheme" />
+                </div>
+            </div>
     <!-- Кнопка возврата -->
     <div class="admin-text-center">
         <a href="{{ route('home') }}" class="admin-btn admin-w-100-xs">

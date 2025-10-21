@@ -1,39 +1,39 @@
+/*
+ * Mini App - ÃÂ¡ÃÂ°ÃÂ¼ÃÂ¾ÃÂ¿ÃÂ¸Ã‘ÂÃÂ½Ã‘â€¹ÃÂ¹ ÃÂ´ÃÂ¸ÃÂ·ÃÂ°ÃÂ¹ÃÂ½ Ã‘Â ÃÂ¿Ã‘â‚¬ÃÂ°ÃÂ²ÃÂ¸ÃÂ»Ã‘Å’ÃÂ½Ã‘â€¹ÃÂ¼ÃÂ¸ ÃÂ¿Ã‘â‚¬ÃÂ¾ÃÂ¿ÃÂ¾Ã‘â‚¬Ã‘â€ ÃÂ¸Ã‘ÂÃÂ¼ÃÂ¸
+ * ÃÂ¦ÃÂ²ÃÂµÃ‘â€šÃÂ°: Ã‘â€šÃÂ¾ÃÂ»Ã‘Å’ÃÂºÃÂ¾ ÃÂ±ÃÂµÃÂ»Ã‘â€¹ÃÂ¹ (#ffffff) ÃÂ¸ Ã‘ÂÃÂµÃ‘â‚¬Ã‘â€¹ÃÂ¹ (#808080)
+ * Ãâ€˜ÃÂµÃÂ· Ã‘â€šÃÂµÃÂ½ÃÂµÃÂ¹, Ã‘â€šÃÂ¾ÃÂ»Ã‘Å’ÃÂºÃÂ¾ ÃÂ¾ÃÂ±ÃÂ²ÃÂ¾ÃÂ´ÃÂºÃÂ¸
+ * ÃÅ¸Ã‘â‚¬ÃÂ¾ÃÂ´Ã‘Æ’ÃÂ¼ÃÂ°ÃÂ½ÃÂ½ÃÂ°Ã‘Â Ã‘ÂÃ‘â€šÃ‘â‚¬Ã‘Æ’ÃÂºÃ‘â€šÃ‘Æ’Ã‘â‚¬ÃÂ° ÃÂ¸ ÃÂ°ÃÂ´ÃÂ°ÃÂ¿Ã‘â€šÃÂ¸ÃÂ²ÃÂ½ÃÂ¾Ã‘ÂÃ‘â€šÃ‘Å’
+ */
+
+/* ===== CSS VARIABLES ===== */
 :root {
-    /* Основные цвета элементов интерфейса - могут быть переопределены пользовательской схемой */
-    --color-primary: #808080;
-    --color-accent: var(--color-primary, #808080);
-    --color-accent-dark: var(--color-accent-dark, #666666);
-    --color-accent-light: var(--color-accent-light, #f8f9fa);
-    --color-accent-border: var(--color-accent-border, #e5e5e5);
-    
-    /* Цвета, которые НЕ меняются в зависимости от схемы */
+    /* ÃÂ¦ÃÂ²ÃÂµÃ‘â€šÃÂ° */
     --color-white: #ffffff;
-    --color-text: #333333;
-    --color-text-light: #666666;
-    --color-text-muted: #888888;
+    --color-gray: #808080;
     --color-light-gray: #f8f9fa;
     --color-border: #e5e5e5;
+    --color-dark-gray: #666666;
     
-    /* Для совместимости - используем accent вместо gray */
-    --color-gray: var(--color-accent);
-    --color-dark-gray: var(--color-accent-dark);
-
+    /* ÃÂ ÃÂ°ÃÂ·ÃÂ¼ÃÂµÃ‘â‚¬Ã‘â€¹ */
     --header-height: 70px;
     --search-height: 48px;
     --categories-height: 60px;
     --card-aspect-ratio: 4/5;
     --image-aspect-ratio: 1/1;
-
+    
+    /* ÃÅ¾Ã‘â€šÃ‘ÂÃ‘â€šÃ‘Æ’ÃÂ¿Ã‘â€¹ */
     --space-xs: 6px;
     --space-sm: 12px;
     --space-md: 16px;
     --space-lg: 24px;
     --space-xl: 32px;
-
+    
+    /* ÃÂ ÃÂ°ÃÂ´ÃÂ¸Ã‘Æ’Ã‘ÂÃ‘â€¹ */
     --radius-sm: 6px;
     --radius-md: 12px;
     --radius-lg: 16px;
-
+    
+    /* ÃÂ¨Ã‘â‚¬ÃÂ¸Ã‘â€žÃ‘â€šÃ‘â€¹ */
     --font-size-xs: 12px;
     --font-size-sm: 14px;
     --font-size-md: 16px;
@@ -41,6 +41,7 @@
     --font-size-xl: 20px;
 }
 
+/* ===== RESET & BASE ===== */
 * {
     margin: 0;
     padding: 0;
@@ -50,7 +51,7 @@
 .mini-app-body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     background-color: var(--color-white);
-    color: var(--color-text);
+    color: var(--color-gray);
     line-height: 1.5;
     font-size: var(--font-size-sm);
     overflow-x: hidden;
@@ -150,7 +151,7 @@
 .search-button {
     width: var(--search-height);
     height: var(--search-height);
-    background-color: var(--color-accent);
+    background-color: var(--color-gray);
     color: var(--color-white);
     border: none;
     cursor: pointer;
@@ -161,7 +162,7 @@
 }
 
 .search-button:hover {
-    background-color: var(--color-accent-dark);
+    background-color: var(--color-dark-gray);
 }
 
 /* ===== CATEGORIES SECTION ===== */
@@ -290,7 +291,7 @@
 .category-name {
     font-size: 11px;
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--color-gray);
     margin-bottom: 2px;
     line-height: 1.2;
 }
@@ -517,12 +518,13 @@
 .product-name {
     font-size: var(--font-size-sm);
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--color-gray);
     margin-bottom: var(--space-xs);
     line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    line-clamp: 2;
     overflow: hidden;
     height: 36px;
 }
@@ -557,7 +559,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: var(--color-accent);
+    background-color: var(--color-gray);
     color: var(--color-white);
     border: none;
     cursor: pointer;
@@ -569,7 +571,7 @@
 }
 
 .add-to-cart:hover:not(.disabled) {
-    background-color: var(--color-accent-dark);
+    background-color: var(--color-dark-gray);
     transform: scale(1.1);
 }
 

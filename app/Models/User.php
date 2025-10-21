@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'color_scheme',
     ];
 
     /**
@@ -105,5 +106,71 @@ class User extends Authenticatable
     public function recentOrders()
     {
         return $this->hasMany(\App\Models\Order::class)->latest()->limit(10);
+    }
+
+    /**
+     * Получить цветовую схему пользователя
+     *
+     * @return string
+     */
+    public function getColorScheme()
+    {
+        return $this->color_scheme ?? 'gray';
+    }
+
+    /**
+     * Установить цветовую схему пользователя
+     *
+     * @param string $scheme
+     * @return bool
+     */
+    public function setColorScheme(string $scheme)
+    {
+        $availableSchemes = config('color-schemes.available', ['gray']);
+        
+        if (!in_array($scheme, array_keys($availableSchemes))) {
+            return false;
+        }
+
+        $this->color_scheme = $scheme;
+        return $this->save();
+    }
+
+    /**
+     * Получить CSS переменные для текущей цветовой схемы
+     *
+     * @return array
+     */
+    public function getColorSchemeCss()
+    {
+        $schemes = config('color-schemes.available', []);
+        $currentScheme = $this->getColorScheme();
+        
+        if (!isset($schemes[$currentScheme])) {
+            $currentScheme = 'gray';
+        }
+
+        return $schemes[$currentScheme]['colors'] ?? [];
+    }
+
+    /**
+     * Получить информацию о текущей цветовой схеме
+     *
+     * @return array
+     */
+    public function getColorSchemeInfo()
+    {
+        $schemes = config('color-schemes.available', []);
+        $currentScheme = $this->getColorScheme();
+        
+        if (!isset($schemes[$currentScheme])) {
+            $currentScheme = 'gray';
+        }
+
+        return $schemes[$currentScheme] ?? [
+            'name' => 'Серая',
+            'description' => 'Стандартная серая схема',
+            'colors' => []
+        ];
     }
 }

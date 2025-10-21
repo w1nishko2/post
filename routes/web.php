@@ -108,6 +108,8 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/email', [App\Http\Controllers\ProfileController::class, 'updateEmail'])->name('update.email');
         Route::patch('/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('update.password');
         Route::patch('/name', [App\Http\Controllers\ProfileController::class, 'updateName'])->name('update.name');
+        Route::patch('/color-scheme', [App\Http\Controllers\ProfileController::class, 'updateColorScheme'])->name('update.color-scheme');
+        Route::get('/color-schemes', [App\Http\Controllers\ProfileController::class, 'getColorSchemes'])->name('color-schemes');
     });
 
     // Роуты для статистики

@@ -269,9 +269,63 @@ unset($__errorArgs, $__bag); ?>
                     </form>
                 </div>
             </div>
+
+          
         </div>
     </div>
+  <!-- Цветовая схема -->
+            <div class="admin-card admin-mb-4">
+                <div class="admin-card-header">
+                    <h5 class="admin-mb-0">
+                        <i class="fas fa-palette admin-me-2"></i>
+                        Цветовая схема интерфейса
+                    </h5>
+                </div>
+                <div class="admin-card-body">
+                    <?php
+                        $currentScheme = Auth::user()->getColorScheme();
+                        $schemeInfo = Auth::user()->getColorSchemeInfo();
+                    ?>
+                    
+                    <div class="admin-mb-3">
+                        <div class="admin-form-label">Текущая схема:</div>
+                        <div class="admin-fw-bold" style="color: <?php echo e($schemeInfo['preview_color'] ?? 'var(--color-gray)'); ?>;">
+                            <?php echo e($schemeInfo['name'] ?? 'Серая'); ?>
 
+                        </div>
+                        <div class="admin-text-muted admin-mb-3"><?php echo e($schemeInfo['description'] ?? ''); ?></div>
+                    </div>
+
+                    <?php if($errors->has('color_scheme')): ?>
+                        <div class="admin-alert admin-alert-danger admin-mb-3">
+                            <i class="fas fa-exclamation-triangle admin-me-2"></i>
+                            <?php echo e($errors->first('color_scheme')); ?>
+
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (isset($component)) { $__componentOriginalf129be064fbeea8196de6b26ff094843 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf129be064fbeea8196de6b26ff094843 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.color-scheme-selector','data' => ['currentScheme' => $currentScheme]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>
+<?php $component->withName('color-scheme-selector'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag && $constructor = (new ReflectionClass(Illuminate\View\AnonymousComponent::class))->getConstructor()): ?>
+<?php $attributes = $attributes->except(collect($constructor->getParameters())->map->getName()->all()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['currentScheme' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($currentScheme)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf129be064fbeea8196de6b26ff094843)): ?>
+<?php $attributes = $__attributesOriginalf129be064fbeea8196de6b26ff094843; ?>
+<?php unset($__attributesOriginalf129be064fbeea8196de6b26ff094843); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf129be064fbeea8196de6b26ff094843)): ?>
+<?php $component = $__componentOriginalf129be064fbeea8196de6b26ff094843; ?>
+<?php unset($__componentOriginalf129be064fbeea8196de6b26ff094843); ?>
+<?php endif; ?>
+                </div>
+            </div>
     <!-- Кнопка возврата -->
     <div class="admin-text-center">
         <a href="<?php echo e(route('home')); ?>" class="admin-btn admin-w-100-xs">
