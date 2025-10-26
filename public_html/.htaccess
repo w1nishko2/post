@@ -19,3 +19,35 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# PHP настройки - УБИРАЕМ ВСЕ ОГРАНИЧЕНИЯ ВРЕМЕНИ
+<IfModule mod_php.c>
+    # Время выполнения скриптов - БЕЗ ОГРАНИЧЕНИЙ
+    php_value max_execution_time 0
+    php_value max_input_time 0
+    
+    # Память - БЕЗ ОГРАНИЧЕНИЙ
+    php_value memory_limit -1
+    
+    # Размер POST данных
+    php_value post_max_size 256M
+    
+    # Размер загружаемых файлов
+    php_value upload_max_filesize 256M
+    
+    # Количество переменных
+    php_value max_input_vars 5000
+    
+    # Логирование
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>
+
+# Для PHP-FPM (FastCGI) - убираем таймауты
+<IfModule mod_fcgid.c>
+    FcgidConnectTimeout 0
+    FcgidIOTimeout 0
+    FcgidBusyTimeout 0
+    FcgidIdleTimeout 0
+    FcgidProcessLifeTime 0
+</IfModule>

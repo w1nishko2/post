@@ -19,13 +19,18 @@ class DownloadCategoryPhotoJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
-    public $timeout = 180; // Увеличен таймаут до 3 минут
+    public $timeout = 0; // БЕЗ ОГРАНИЧЕНИЙ
     public $backoff = [60, 300, 900]; // 1 минута, 5 минут, 15 минут
     
     /**
      * Максимальное количество попыток до отказа
      */
     public $maxExceptions = 3;
+    
+    /**
+     * Отключаем автоматический fail при timeout
+     */
+    public $failOnTimeout = false;
 
     protected int $categoryId;
     protected string $photoUrl;
@@ -98,9 +103,11 @@ class DownloadCategoryPhotoJob implements ShouldQueue
                 'url' => $downloadUrl,
             ]);
 
-            // Увеличиваем лимит времени для PHP
-            @set_time_limit(180);
-            @ini_set('max_execution_time', '180');
+            // ПОЛНОСТЬЮ убираем ограничения времени
+            @set_time_limit(0);
+            @ini_set('max_execution_time', '0');
+            @ini_set('max_input_time', '0');
+            @ini_set('memory_limit', '-1');
 
             $uploadResult = $imageService->downloadFromUrl($downloadUrl, 'categories');
 

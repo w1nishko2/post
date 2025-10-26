@@ -40,10 +40,19 @@ class ProductsImport implements ToModel, WithStartRow
         $this->downloadMode = $downloadMode;
         $this->yandexService = app(YandexDiskService::class);
         
-        // Увеличиваем лимиты PHP для импорта
-        @set_time_limit(600); // 10 минут
-        @ini_set('max_execution_time', '600');
-        @ini_set('memory_limit', '512M'); // Увеличиваем лимит памяти
+        // Полностью убираем ограничения времени и памяти
+        @set_time_limit(0); // Без ограничений
+        @ini_set('max_execution_time', '0'); // Без ограничений
+        @ini_set('memory_limit', '-1'); // Без ограничений памяти
+        @ini_set('max_input_time', '0'); // Без ограничений на input
+        
+        // Отключаем вывод ошибок в браузер (только в лог)
+        @ini_set('display_errors', '0');
+        @ini_set('log_errors', '1');
+        
+        // Увеличиваем лимиты для POST и загрузки файлов
+        @ini_set('post_max_size', '256M');
+        @ini_set('upload_max_filesize', '256M');
     }
 
     /**
@@ -59,6 +68,9 @@ class ProductsImport implements ToModel, WithStartRow
      */
     public function model(array $row)
     {
+        // Сбрасываем таймер выполнения на каждой строке
+        @set_time_limit(0);
+        
         $this->currentRow++;
         
         // Логируем прогресс каждые 10 строк
@@ -69,6 +81,11 @@ class ProductsImport implements ToModel, WithStartRow
                 'skipped' => $this->skippedCount,
                 'errors' => count($this->importErrors)
             ]);
+            
+            // Принудительно очищаем память каждые 10 строк
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
+            }
         }
         
         // Добавляем отладочную информацию

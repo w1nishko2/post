@@ -28,8 +28,9 @@ class DownloadProductImagesJob implements ShouldQueue
 
     /**
      * Таймаут выполнения задачи (в секундах)
+     * 0 = без ограничений
      */
-    public $timeout = 180; // Увеличен с 120 до 180 секунд
+    public $timeout = 0; // БЕЗ ОГРАНИЧЕНИЙ
 
     /**
      * Задержка между попытками (в секундах)
@@ -40,6 +41,11 @@ class DownloadProductImagesJob implements ShouldQueue
      * Максимальное количество исключений до отказа
      */
     public $maxExceptions = 3;
+    
+    /**
+     * Отключаем автоматический fail при timeout
+     */
+    public $failOnTimeout = false;
 
     protected int $productId;
     protected array $imageUrls;
@@ -78,9 +84,11 @@ class DownloadProductImagesJob implements ShouldQueue
             // Обновляем статус
             $product->update(['images_download_status' => 'processing']);
             
-            // Увеличиваем лимит времени для PHP
-            @set_time_limit(180);
-            @ini_set('max_execution_time', '180');
+            // ПОЛНОСТЬЮ убираем ограничения времени
+            @set_time_limit(0);
+            @ini_set('max_execution_time', '0');
+            @ini_set('max_input_time', '0');
+            @ini_set('memory_limit', '-1');
 
             $urls = $this->imageUrls;
 
@@ -119,6 +127,9 @@ class DownloadProductImagesJob implements ShouldQueue
             $lastOrder = $product->images()->max('order') ?? -1;
 
             foreach ($urls as $index => $url) {
+                // Сбрасываем таймер на каждой итерации
+                @set_time_limit(0);
+                
                 // Ограничиваем максимум 5 изображений
                 if ($existingImagesCount + $successCount >= 5) {
                     Log::info('Достигнут лимит изображений (5)', ['product_id' => $this->productId]);
