@@ -39,6 +39,11 @@ class ProductsImport implements ToModel, WithStartRow
         $this->downloadImages = $downloadImages;
         $this->downloadMode = $downloadMode;
         $this->yandexService = app(YandexDiskService::class);
+        
+        // Увеличиваем лимиты PHP для импорта
+        @set_time_limit(600); // 10 минут
+        @ini_set('max_execution_time', '600');
+        @ini_set('memory_limit', '512M'); // Увеличиваем лимит памяти
     }
 
     /**
@@ -248,8 +253,9 @@ class ProductsImport implements ToModel, WithStartRow
                 // Устанавливаем статус
                 $product->update(['images_download_status' => 'pending']);
                 
-                // Добавляем Job для загрузки (с задержкой чтобы не все сразу)
-                $delay = now()->addSeconds($this->importedCount * 2); // По 2 сек задержки между товарами
+                // Добавляем Job для загрузки (с увеличенной задержкой для снижения нагрузки)
+                // Увеличена задержка с 2 до 5 секунд между товарами
+                $delay = now()->addSeconds($this->importedCount * 5); 
                 
                 DownloadProductImagesJob::dispatch(
                     $product->id,
@@ -262,7 +268,7 @@ class ProductsImport implements ToModel, WithStartRow
                     'product_name' => $name,
                     'urls_count' => count($photoData['photo_urls']),
                     'is_yandex' => $photoData['is_yandex_disk'],
-                    'delay_seconds' => $this->importedCount * 2,
+                    'delay_seconds' => $this->importedCount * 5,
                 ]);
             }
 
@@ -514,8 +520,8 @@ class ProductsImport implements ToModel, WithStartRow
                 // Устанавливаем статус
                 $existingProduct->update(['images_download_status' => 'pending']);
                 
-                // Добавляем Job для загрузки
-                $delay = now()->addSeconds($this->updatedCount * 2);
+                // Добавляем Job для загрузки с увеличенной задержкой
+                $delay = now()->addSeconds($this->updatedCount * 5);
                 
                 DownloadProductImagesJob::dispatch(
                     $existingProduct->id,
@@ -526,6 +532,7 @@ class ProductsImport implements ToModel, WithStartRow
                 Log::info('Job загрузки изображений добавлен для обновлённого товара', [
                     'product_id' => $existingProduct->id,
                     'urls_count' => count($photoData['photo_urls']),
+                    'delay_seconds' => $this->updatedCount * 5,
                 ]);
             }
 
@@ -604,7 +611,7 @@ class ProductsImport implements ToModel, WithStartRow
                     'is_active' => true,
                 ]);
                 
-                // Если нужно скачивать фото и есть URL - запускаем Job
+                // Если нужно скачивать фото и есть URL - запускаем Job с задержкой
                 if ($this->downloadImages && $categoryPhotoUrlClean) {
                     Log::info("Запуск загрузки фото для новой категории", [
                         'category_id' => $category->id,
@@ -613,11 +620,12 @@ class ProductsImport implements ToModel, WithStartRow
                         'is_yandex' => $isCategoryYandexDisk
                     ]);
                     
+                    // Увеличена задержка до 3 секунд
                     DownloadCategoryPhotoJob::dispatch(
                         $category->id,
                         $categoryPhotoUrlClean,
                         $isCategoryYandexDisk
-                    )->delay(now()->addSeconds(1));
+                    )->delay(now()->addSeconds(3));
                 } elseif (!$this->downloadImages && $categoryPhotoUrlClean) {
                     // Если не скачиваем, просто сохраняем URL
                     $category->update(['photo_url' => $categoryPhotoUrlClean]);
@@ -647,11 +655,12 @@ class ProductsImport implements ToModel, WithStartRow
                             'current_photo' => $category->photo_url
                         ]);
                         
+                        // Увеличена задержка до 3 секунд
                         DownloadCategoryPhotoJob::dispatch(
                             $category->id,
                             $categoryPhotoUrlClean,
                             $isCategoryYandexDisk
-                        )->delay(now()->addSeconds(1));
+                        )->delay(now()->addSeconds(3));
                     } else {
                         // Если не скачиваем, просто сохраняем URL
                         $category->update(['photo_url' => $categoryPhotoUrlClean]);

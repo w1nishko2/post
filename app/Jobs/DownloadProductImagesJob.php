@@ -29,12 +29,17 @@ class DownloadProductImagesJob implements ShouldQueue
     /**
      * Таймаут выполнения задачи (в секундах)
      */
-    public $timeout = 120;
+    public $timeout = 180; // Увеличен с 120 до 180 секунд
 
     /**
      * Задержка между попытками (в секундах)
      */
     public $backoff = [60, 300, 900]; // 1 мин, 5 мин, 15 мин
+    
+    /**
+     * Максимальное количество исключений до отказа
+     */
+    public $maxExceptions = 3;
 
     protected int $productId;
     protected array $imageUrls;
@@ -72,6 +77,10 @@ class DownloadProductImagesJob implements ShouldQueue
 
             // Обновляем статус
             $product->update(['images_download_status' => 'processing']);
+            
+            // Увеличиваем лимит времени для PHP
+            @set_time_limit(180);
+            @ini_set('max_execution_time', '180');
 
             $urls = $this->imageUrls;
 

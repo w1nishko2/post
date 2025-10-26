@@ -18,6 +18,11 @@ class Kernel extends ConsoleKernel
                  ->withoutOverlapping()
                  ->runInBackground();
 
+        // Очистка старых сессий (вместо несуществующей session:clear)
+        $schedule->command('app:clear-sessions')
+                 ->daily()
+                 ->withoutOverlapping();
+
         // Альтернативно можно использовать Job
         // $schedule->job(new \App\Jobs\CancelExpiredOrdersJob)
         //          ->everyTenMinutes()
