@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class StoreProductRequest extends FormRequest
 {
@@ -37,45 +38,9 @@ class StoreProductRequest extends FormRequest
                     }
                 },
             ],
-            'photo_url' => [
-                'nullable',
-                'url',
-                'max:500'
-            ],
-            'yandex_disk_folder_url' => [
-                'nullable',
-                'url',
-                'max:500',
-                'regex:/^https:\/\/disk\.yandex\.(ru|com)\/d\/[a-zA-Z0-9_-]+$/i'
-            ],
-            'photos_gallery' => [
-                'nullable',
-                'array',
-                'max:20'
-            ],
-            'photos_gallery.*' => [
-                'url',
-                'max:1000'
-            ],
-            'main_photo_index' => [
-                'nullable',
-                'integer',
-                'min:0',
-                function ($attribute, $value, $fail) {
-                    if ($value !== null && $this->has('photos_gallery')) {
-                        $photosGallery = $this->input('photos_gallery');
-                        
-                        // Если photos_gallery еще строка (JSON), декодируем
-                        if (is_string($photosGallery)) {
-                            $photosGallery = json_decode($photosGallery, true);
-                        }
-                        
-                        if (is_array($photosGallery) && $value >= count($photosGallery)) {
-                            $fail('Индекс главной фотографии не может быть больше количества фотографий в галерее.');
-                        }
-                    }
-                }
-            ],
+            'images' => 'nullable|array|max:5',
+            'images.*' => 'nullable|file|image|max:10240|mimes:jpeg,jpg,png,gif,webp,bmp,tiff,tif,avif,heic,heif',
+            'main_photo_index' => 'nullable|integer|min:0|max:4',
             'specifications' => 'nullable|array',
             'specifications.*' => 'string|max:255',
             'quantity' => 'required|integer|min:0|max:999999',
@@ -102,20 +67,17 @@ class StoreProductRequest extends FormRequest
             
             'category_id.exists' => 'Выбранная категория не существует.',
             
-            'photo_url.url' => 'Ссылка на фото должна быть корректным URL.',
-            'photo_url.max' => 'Ссылка на фото не должна превышать 500 символов.',
-            
-            'yandex_disk_folder_url.url' => 'Ссылка на папку Яндекс.Диска должна быть корректным URL.',
-            'yandex_disk_folder_url.max' => 'Ссылка на папку не должна превышать 500 символов.',
-            'yandex_disk_folder_url.regex' => 'Ссылка должна быть корректной ссылкой на публичную папку Яндекс.Диска.',
-            
-            'photos_gallery.array' => 'Галерея фотографий должна быть массивом.',
-            'photos_gallery.max' => 'Галерея может содержать максимум 20 фотографий.',
-            'photos_gallery.*.url' => 'Все элементы галереи должны быть корректными URL.',
-            'photos_gallery.*.max' => 'URL фотографии не должен превышать 1000 символов.',
+            'images.array' => 'Изображения должны быть в виде массива файлов.',
+            'images.max' => 'Можно загрузить максимум 5 изображений.',
+            'images.*.required' => 'Каждый файл обязателен.',
+            'images.*.file' => 'Каждый элемент должен быть файлом.',
+            'images.*.image' => 'Каждый файл должен быть изображением.',
+            'images.*.max' => 'Размер файла не должен превышать 10MB.',
+            'images.*.mimes' => 'Поддерживаемые форматы: JPEG, PNG, GIF, WebP, BMP, TIFF, AVIF, HEIC/HEIF.',
             
             'main_photo_index.integer' => 'Индекс главной фотографии должен быть числом.',
             'main_photo_index.min' => 'Индекс главной фотографии не может быть отрицательным.',
+            'main_photo_index.max' => 'Индекс главной фотографии не может превышать 4.',
             
             'specifications.array' => 'Характеристики должны быть в виде списка.',
             'specifications.*.string' => 'Каждая характеристика должна быть строкой.',
@@ -150,10 +112,19 @@ class StoreProductRequest extends FormRequest
             'user_id' => Auth::id(), // Автоматически добавляем ID пользователя
         ]);
 
-        // Обработка ссылки на Яндекс.Диск - очистка от лишних пробелов
-        if ($this->has('yandex_disk_folder_url')) {
-            $yandexUrl = trim($this->input('yandex_disk_folder_url'));
-            $this->merge(['yandex_disk_folder_url' => empty($yandexUrl) ? null : $yandexUrl]);
+        // Фильтруем пустые изображения из массива
+        if ($this->has('images') && is_array($this->images)) {
+            $filteredImages = array_filter($this->images, function($image) {
+                return $image instanceof \Illuminate\Http\UploadedFile;
+            });
+            $this->merge(['images' => array_values($filteredImages)]);
+        }
+
+        // Гарантируем, что main_photo_index всегда установлен как integer
+        if (!$this->has('main_photo_index') || $this->input('main_photo_index') === null) {
+            $this->merge(['main_photo_index' => 0]);
+        } else {
+            $this->merge(['main_photo_index' => (int) $this->input('main_photo_index')]);
         }
 
         // Обработка характеристик - если они переданы как строки, разделенные переводом строки
@@ -167,42 +138,6 @@ class StoreProductRequest extends FormRequest
                 }
             }
             $this->merge(['specifications' => $specifications]);
-        }
-
-        // Обработка галереи фотографий из JSON
-        if ($this->has('photos_gallery') && !empty($this->photos_gallery)) {
-            $photosGallery = $this->photos_gallery;
-            
-            // Если это уже JSON строка, проверяем её корректность
-            if (is_string($photosGallery)) {
-                $decoded = json_decode($photosGallery, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    // Фильтруем пустые и некорректные URL
-                    $validUrls = array_filter($decoded, function($url) {
-                        return is_string($url) && !empty(trim($url)) && filter_var(trim($url), FILTER_VALIDATE_URL);
-                    });
-                    
-                    // Переиндексируем массив и обрезаем до разумного лимита
-                    $validUrls = array_values(array_slice($validUrls, 0, 20));
-                    
-                    // Сохраняем как массив, а не JSON строку
-                    $this->merge(['photos_gallery' => $validUrls]);
-                    
-                    // Корректируем индекс главной фотографии
-                    $mainPhotoIndex = (int) $this->input('main_photo_index', 0);
-                    if ($mainPhotoIndex >= count($validUrls)) {
-                        $this->merge(['main_photo_index' => count($validUrls) > 0 ? 0 : null]);
-                    }
-                }
-            }
-            // Если это уже массив (что не должно происходить через форму, но на всякий случай)
-            elseif (is_array($photosGallery)) {
-                $validUrls = array_filter($photosGallery, function($url) {
-                    return is_string($url) && !empty(trim($url)) && filter_var(trim($url), FILTER_VALIDATE_URL);
-                });
-                $validUrls = array_values(array_slice($validUrls, 0, 20));
-                $this->merge(['photos_gallery' => $validUrls]);
-            }
         }
     }
 }

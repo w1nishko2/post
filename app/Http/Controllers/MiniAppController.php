@@ -230,6 +230,7 @@ class MiniAppController extends Controller
                                'photos_gallery' => $product->all_photos,
                                'has_multiple_photos' => $product->has_multiple_photos,
                                'price' => $product->price,
+                               'price_with_markup' => $product->price_with_markup,
                                'formatted_price' => $product->formatted_price_with_markup,
                                'created_at' => $product->created_at ? $product->created_at->toISOString() : null,
                                'quantity' => $product->quantity,
@@ -266,11 +267,17 @@ class MiniAppController extends Controller
                          ->orderBy('name')
                          ->get()
                          ->map(function ($category) {
+                             // Формируем правильный URL для изображения категории
+                             $photoUrl = null;
+                             if ($category->photo_url) {
+                                 $photoUrl = asset('storage/' . ltrim($category->photo_url, '/'));
+                             }
+                             
                              return [
                                  'id' => $category->id,
                                  'name' => $category->name,
                                  'description' => $category->description,
-                                 'photo_url' => $category->photo_url,
+                                 'photo_url' => $photoUrl,
                                  'products_count' => $category->products_count,
                              ];
                          });
@@ -317,6 +324,7 @@ class MiniAppController extends Controller
                 'photo_url' => $product->main_photo_url,
                 'main_photo_url' => $product->main_photo_url,
                 'price' => $product->price,
+                'price_with_markup' => $product->price_with_markup,
                 'formatted_price' => $product->formatted_price_with_markup,
                 'created_at' => $product->created_at ? $product->created_at->toISOString() : null,
                 'quantity' => $product->quantity,
@@ -367,6 +375,7 @@ class MiniAppController extends Controller
             'main_photo_index' => $product->main_photo_index,
             'specifications' => $product->specifications,
             'price' => $product->price,
+            'price_with_markup' => $product->price_with_markup,
             'quantity' => $product->quantity,
             'formatted_price' => $product->formatted_price_with_markup,
             'availability_status' => $product->availability_status,

@@ -61,15 +61,38 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'photo_url' => 'nullable|url|max:500',
+            'photo' => 'nullable|file|image|max:10240|mimes:jpeg,jpg,png,gif,webp,bmp,tiff,tif,avif,heic,heif',
             'is_active' => 'boolean',
+        ], [
+            'name.required' => 'Название категории обязательно для заполнения.',
+            'photo.image' => 'Файл должен быть изображением.',
+            'photo.max' => 'Размер изображения не должен превышать 10MB.',
+            'photo.mimes' => 'Поддерживаемые форматы: JPEG, PNG, GIF, WebP, BMP, TIFF, AVIF, HEIC/HEIF',
         ]);
 
-        $validated['user_id'] = Auth::id();
-        $validated['telegram_bot_id'] = $telegramBot->id;
-        $validated['is_active'] = $request->has('is_active');
+        $data = [
+            'user_id' => Auth::id(),
+            'telegram_bot_id' => $telegramBot->id,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => $request->has('is_active'),
+        ];
 
-        Category::create($validated);
+        // Обработка загрузки фотографии
+        if ($request->hasFile('photo')) {
+            try {
+                $imageService = app(\App\Services\ImageUploadService::class);
+                $uploadResult = $imageService->upload($request->file('photo'), 'categories');
+                $data['photo_url'] = $uploadResult['file_path']; // Сохраняем только путь без /storage/
+            } catch (\Exception $e) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Ошибка при загрузке изображения: ' . $e->getMessage());
+            }
+        }
+
+        Category::create($data);
 
         return redirect()
             ->route('bot.categories.index', $telegramBot)
@@ -120,13 +143,42 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'photo_url' => 'nullable|url|max:500',
+            'photo' => 'nullable|file|image|max:10240|mimes:jpeg,jpg,png,gif,webp,bmp,tiff,tif,avif,heic,heif',
             'is_active' => 'boolean',
+        ], [
+            'name.required' => 'Название категории обязательно для заполнения.',
+            'photo.image' => 'Файл должен быть изображением.',
+            'photo.max' => 'Размер изображения не должен превышать 10MB.',
+            'photo.mimes' => 'Поддерживаемые форматы: JPEG, PNG, GIF, WebP, BMP, TIFF, AVIF, HEIC/HEIF',
         ]);
 
-        $validated['is_active'] = $request->has('is_active');
+        $data = [
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => $request->has('is_active'),
+        ];
 
-        $category->update($validated);
+        // Обработка загрузки новой фотографии
+        if ($request->hasFile('photo')) {
+            try {
+                $imageService = app(\App\Services\ImageUploadService::class);
+                
+                // Удаляем старую фотографию, если она есть
+                if ($category->photo_url) {
+                    $imageService->delete($category->photo_url, '');
+                }
+                
+                $uploadResult = $imageService->upload($request->file('photo'), 'categories');
+                $data['photo_url'] = $uploadResult['file_path'];
+            } catch (\Exception $e) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Ошибка при загрузке изображения: ' . $e->getMessage());
+            }
+        }
+
+        $category->update($data);
 
         return redirect()
             ->route('bot.categories.index', $telegramBot)

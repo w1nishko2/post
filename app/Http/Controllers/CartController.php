@@ -61,7 +61,7 @@ class CartController extends Controller
 
             $cartItem->update([
                 'quantity' => $newQuantity,
-                'price' => $product->price, // Обновляем цену
+                'price' => $product->price_with_markup, // Обновляем цену с учетом наценки
             ]);
         } else {
             // Создать новую позицию
@@ -71,7 +71,7 @@ class CartController extends Controller
                 'telegram_user_id' => $telegramUserId,
                 'product_id' => $product->id,
                 'quantity' => $quantity,
-                'price' => $product->price,
+                'price' => $product->price_with_markup, // Цена с учетом наценки
             ]);
         }
 
@@ -160,7 +160,7 @@ class CartController extends Controller
 
         $cart->update([
             'quantity' => $request->quantity,
-            'price' => $cart->product->price, // Обновляем цену
+            'price' => $cart->product->price_with_markup, // Обновляем цену с учетом наценки
         ]);
 
         return response()->json([

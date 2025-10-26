@@ -1,0 +1,331 @@
+/* Стили для галереи изображений товаров */
+
+/* Контейнер галереи */
+#product-image-gallery-container {
+    margin-top: 1rem;
+}
+
+/* Drag & Drop зона */
+#image-dropzone {
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    background-color: #f7fafc;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+}
+
+#image-dropzone:hover {
+    border-color: #4299e1;
+    background-color: #ebf8ff;
+}
+
+#image-dropzone.dragover {
+    border-color: #4299e1;
+    background-color: #bee3f8;
+    transform: scale(1.02);
+}
+
+#image-dropzone i {
+    color: #4299e1;
+    margin-bottom: 0.5rem;
+}
+
+#image-dropzone p {
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+}
+
+#image-dropzone .btn {
+    margin-top: 0.5rem;
+}
+
+/* Скрытый input для файлов */
+#image-file-input {
+    display: none;
+}
+
+/* Заголовок галереи */
+#gallery-header {
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.gallery-title {
+    font-weight: 600;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+}
+
+.gallery-title i {
+    margin-right: 0.5rem;
+}
+
+/* Сетка изображений */
+#image-gallery {
+    display: none;
+    margin-top: 1rem;
+}
+
+#image-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Карточка изображения */
+.image-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.image-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.image-card.main-image {
+    box-shadow: 0 0 0 2px #f6ad55;
+}
+
+.image-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* Квадратное соотношение сторон */
+    overflow: hidden;
+}
+
+.image-wrapper img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.image-card:hover .image-wrapper img {
+    transform: scale(1.05);
+}
+
+/* Бейдж главного изображения */
+.main-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-bottom-right-radius: 8px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Оверлей с кнопками */
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.image-card:hover .image-overlay {
+    opacity: 1;
+}
+
+.image-action-btn {
+    background: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-action-btn:hover {
+    transform: scale(1.1);
+}
+
+.image-action-btn.set-main-btn {
+    color: #f6ad55;
+}
+
+.image-action-btn.set-main-btn:hover {
+    background: #f6ad55;
+    color: white;
+}
+
+.image-action-btn.delete-btn {
+    color: #e53e3e;
+}
+
+.image-action-btn.delete-btn:hover {
+    background: #e53e3e;
+    color: white;
+}
+
+/* Информация об изображении */
+.image-info {
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #718096;
+}
+
+/* Прогресс загрузки */
+#upload-progress {
+    display: none;
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #ebf8ff;
+    border: 1px solid #bee3f8;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#upload-progress .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #bee3f8;
+    border-top-color: #4299e1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    #image-gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    #image-dropzone {
+        padding: 1.5rem 1rem;
+        min-height: 150px;
+    }
+    
+    .image-action-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+@media (max-width: 480px) {
+    #image-gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    #gallery-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+}
+
+/* Уведомления (alerts) */
+.alert {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    position: relative;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-dismissible {
+    padding-right: 3rem;
+}
+
+.btn-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    padding: 0;
+    background-color: transparent;
+    border: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.btn-close:hover {
+    opacity: 0.75;
+}
+
+/* Анимации появления */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.image-card {
+    animation: fadeIn 0.3s ease;
+}

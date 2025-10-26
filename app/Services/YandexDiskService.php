@@ -2,265 +2,242 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
+use Exception;
 
+/**
+ * Сервис для работы с публичными ресурсами Яндекс.Диска
+ */
 class YandexDiskService
 {
-    private const API_BASE_URL = 'https://cloud-api.yandex.net/v1/disk';
-    
+    private Client $client;
+    private const API_URL = 'https://cloud-api.yandex.net/v1/disk/public/resources';
+    private const TIMEOUT = 15; // секунд
+    private const MAX_FILES = 100; // максимум файлов для получения
+
+    public function __construct()
+    {
+        $this->client = new Client([
+            'timeout' => self::TIMEOUT,
+            'connect_timeout' => 5,
+            'headers' => [
+                'Accept' => 'application/json',
+                'User-Agent' => 'Laravel-Product-Import/1.0',
+            ],
+        ]);
+    }
+
     /**
-     * Получить список файлов из публичной папки Яндекс.Диска
+     * Проверяет, является ли URL ссылкой на Яндекс.Диск
      */
-    public function getPublicFolderFiles(string $publicKey): array
+    public function isYandexDiskUrl(string $url): bool
+    {
+        return strpos($url, 'disk.yandex.ru') !== false || 
+               strpos($url, 'yadi.sk') !== false;
+    }
+
+    /**
+     * Получить список изображений из публичной папки/альбома или один файл
+     * 
+     * @param string $publicUrl Публичная ссылка на папку или файл
+     * @param int $limit Максимальное количество файлов (до 5 для товара)
+     * @return array Массив прямых ссылок на скачивание изображений
+     * @throws Exception
+     */
+    public function getImageUrlsFromPublicFolder(string $publicUrl, int $limit = 5): array
     {
         try {
-            // Сначала получаем информацию о папке без ограничений по полям
-            $response = Http::timeout(30)->get(self::API_BASE_URL . '/public/resources', [
-                'public_key' => "https://disk.yandex.ru/d/{$publicKey}",
-                'limit' => 100
+            Log::info('Запрос к Яндекс.Диску', ['url' => $publicUrl]);
+
+            // Проверяем, не является ли ссылка альбомом (/a/)
+            if (strpos($publicUrl, '/a/') !== false) {
+                Log::warning('Обнаружена ссылка на альбом (/a/)', ['url' => $publicUrl]);
+                throw new Exception('Ссылки на альбомы Яндекс.Диска (/a/) не поддерживаются API. Пожалуйста, используйте ссылки на папки (/d/) или отдельные файлы (/i/). Для создания папки: откройте альбом → Три точки → Переместить в папку → Создать папку → Поделиться папкой.');
+            }
+
+            // Получаем информацию о публичном ресурсе
+            $response = $this->client->get(self::API_URL, [
+                'query' => [
+                    'public_key' => $publicUrl,
+                    'limit' => self::MAX_FILES,
+                    'fields' => 'type,name,mime_type,file,media_type,_embedded.items.name,_embedded.items.type,_embedded.items.mime_type,_embedded.items.file,_embedded.items.media_type,_embedded.items.sizes',
+                ],
             ]);
 
-            if (!$response->successful()) {
-                Log::error('Yandex Disk API error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'public_key' => $publicKey
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            // Проверяем тип ресурса
+            if (isset($data['type']) && $data['type'] === 'file') {
+                // Это одиночный файл, а не папка
+                Log::info('Яндекс.Диск: обнаружен одиночный файл', [
+                    'url' => $publicUrl,
+                    'name' => $data['name'] ?? 'unknown',
+                    'type' => $data['mime_type'] ?? 'unknown'
                 ]);
-                return [];
+
+                // Проверяем, что это изображение
+                if (!$this->isImageFile($data)) {
+                    throw new Exception('Ссылка указывает на файл, который не является изображением.');
+                }
+
+                // Получаем прямую ссылку на скачивание файла
+                if (isset($data['file'])) {
+                    Log::info('Найдено одно изображение в Яндекс.Диске', ['url' => $publicUrl]);
+                    return [$data['file']];
+                } else {
+                    throw new Exception('Не удалось получить ссылку на скачивание файла.');
+                }
             }
 
-            $data = $response->json();
-            Log::info('Yandex Disk API response', ['data' => $data]);
-            
-            $items = $data['_embedded']['items'] ?? [];
-            
-            if (empty($items)) {
-                Log::warning('No items found in Yandex Disk folder', [
-                    'public_key' => $publicKey,
-                    'response_structure' => array_keys($data)
-                ]);
-                return [];
+            // Это папка/альбом - получаем список файлов
+            if (!isset($data['_embedded']['items'])) {
+                throw new Exception('Не удалось получить список файлов из Яндекс.Диска. Возможно, ссылка не является публичной или папка пуста.');
             }
-            
+
+            $imageUrls = [];
+
             // Фильтруем только изображения
-            $images = array_filter($items, function ($item) {
-                $mediaType = $item['media_type'] ?? '';
-                $mimeType = $item['mime_type'] ?? '';
-                $name = $item['name'] ?? '';
-                
-                // Проверяем по media_type, mime_type или расширению файла
-                $isImage = str_starts_with($mediaType, 'image/') || 
-                          str_starts_with($mimeType, 'image/') ||
-                          preg_match('/\.(jpg|jpeg|png|gif|webp|bmp)$/i', $name);
-                
-                return $isImage && isset($item['file']);
-            });
+            foreach ($data['_embedded']['items'] as $item) {
+                // Пропускаем папки
+                if ($item['type'] === 'dir') {
+                    continue;
+                }
 
-            Log::info('Filtered images', [
-                'total_items' => count($items),
-                'filtered_images' => count($images)
-            ]);
+                // Проверяем, что это изображение
+                if ($this->isImageFile($item)) {
+                    // Пробуем получить прямую ссылку из поля 'file' (для альбомов)
+                    if (isset($item['file'])) {
+                        $imageUrls[] = $item['file'];
+                        Log::info('Прямая ссылка из поля file', ['file' => $item['name']]);
+                    } 
+                    // Если нет поля 'file', пробуем через download API
+                    else {
+                        $downloadUrl = $this->getDirectDownloadUrl($publicUrl, $item['name']);
+                        
+                        if ($downloadUrl) {
+                            $imageUrls[] = $downloadUrl;
+                            Log::info('Ссылка через download API', ['file' => $item['name']]);
+                        }
+                    }
 
-            // Возвращаем массив с информацией о изображениях
-            return array_map(function ($item) {
-                $previewUrl = $item['preview'] ?? null;
-                $fileUrl = $item['file'];
-                
-                return [
-                    'name' => $item['name'],
-                    'url' => $fileUrl, // Оригинальный URL для сохранения
-                    'preview' => $previewUrl,
-                    'media_type' => $item['media_type'] ?? $item['mime_type'] ?? null,
-                    // URL для отображения через прокси
-                    'display_url' => $previewUrl ?: $fileUrl, // Используем preview или основной файл
-                    'proxy_url' => url('/api/yandex-image-proxy?url=' . urlencode($previewUrl ?: $fileUrl))
-                ];
-            }, array_values($images));
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching Yandex Disk folder', [
-                'public_key' => $publicKey,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
-        }
-    }
-
-    /**
-     * Извлечь публичный ключ из URL Яндекс.Диска
-     */
-    public function extractPublicKey(string $url): ?string
-    {
-        // Поддерживаем различные форматы URL
-        $patterns = [
-            // Папки
-            '/disk\.yandex\.ru\/d\/([a-zA-Z0-9_-]+)/',
-            '/disk\.yandex\.com\/d\/([a-zA-Z0-9_-]+)/',
-            '/yadi\.sk\/d\/([a-zA-Z0-9_-]+)/',
-            // Отдельные файлы
-            '/disk\.yandex\.ru\/i\/([a-zA-Z0-9_-]+)/',
-            '/disk\.yandex\.com\/i\/([a-zA-Z0-9_-]+)/',
-            '/yadi\.sk\/i\/([a-zA-Z0-9_-]+)/',
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $url, $matches)) {
-                return $matches[1];
+                    // Ограничиваем количество
+                    if (count($imageUrls) >= $limit) {
+                        break;
+                    }
+                }
             }
-        }
 
-        return null;
+            Log::info('Найдено изображений в Яндекс.Диске', [
+                'url' => $publicUrl,
+                'count' => count($imageUrls),
+            ]);
+
+            if (empty($imageUrls)) {
+                throw new Exception('В указанной папке Яндекс.Диска не найдено изображений.');
+            }
+
+            return $imageUrls;
+
+        } catch (Exception $e) {
+            Log::error('Ошибка при работе с Яндекс.Диском', [
+                'url' => $publicUrl,
+                'error' => $e->getMessage(),
+            ]);
+            
+            throw new Exception('Не удалось получить изображения из Яндекс.Диска: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Определить тип ссылки Яндекс.Диска (папка или файл)
+     * Получить прямую ссылку на скачивание файла
      */
-    public function getLinkType(string $url): ?string
-    {
-        if (preg_match('/disk\.yandex\.(ru|com)\/d\//', $url) || preg_match('/yadi\.sk\/d\//', $url)) {
-            return 'folder';
-        }
-        
-        if (preg_match('/disk\.yandex\.(ru|com)\/i\//', $url) || preg_match('/yadi\.sk\/i\//', $url)) {
-            return 'file';
-        }
-        
-        return null;
-    }
-
-    /**
-     * Получить информацию о публичном файле
-     */
-    public function getPublicFileInfo(string $publicKey): ?array
+    private function getDirectDownloadUrl(string $publicUrl, string $fileName): ?string
     {
         try {
-            $response = Http::timeout(30)->get(self::API_BASE_URL . '/public/resources', [
-                'public_key' => "https://disk.yandex.ru/i/{$publicKey}"
+            // Получаем ссылку на скачивание через API
+            $response = $this->client->get(self::API_URL . '/download', [
+                'query' => [
+                    'public_key' => $publicUrl,
+                    'path' => '/' . $fileName,
+                ],
             ]);
 
-            if (!$response->successful()) {
-                Log::error('Yandex Disk file API error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'public_key' => $publicKey
-                ]);
-                return null;
-            }
+            $data = json_decode($response->getBody()->getContents(), true);
 
-            $data = $response->json();
-            
-            // Проверяем, что это изображение
-            $mediaType = $data['media_type'] ?? '';
-            $mimeType = $data['mime_type'] ?? '';
-            $name = $data['name'] ?? '';
-            
-            $isImage = str_starts_with($mediaType, 'image/') || 
-                      str_starts_with($mimeType, 'image/') ||
-                      preg_match('/\.(jpg|jpeg|png|gif|webp|bmp)$/i', $name);
-            
-            if (!$isImage || !isset($data['file'])) {
-                return null;
-            }
+            return $data['href'] ?? null;
 
-            return [
-                'name' => $data['name'],
-                'url' => $data['file'],
-                'preview' => $data['preview'] ?? null,
-                'media_type' => $mediaType ?: $mimeType,
-                'display_url' => $data['preview'] ? url('/api/yandex-image-proxy?url=' . urlencode($data['preview'])) : url('/api/yandex-image-proxy?url=' . urlencode($data['file']))
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching Yandex Disk file', [
-                'public_key' => $publicKey,
-                'error' => $e->getMessage()
+        } catch (Exception $e) {
+            Log::warning('Не удалось получить прямую ссылку на файл', [
+                'fileName' => $fileName,
+                'error' => $e->getMessage(),
             ]);
+            
             return null;
         }
     }
 
     /**
-     * Проверить валидность URL папки Яндекс.Диска
+     * Проверяет, является ли файл изображением
      */
-    public function validateFolderUrl(string $url): bool
+    private function isImageFile(array $item): bool
     {
-        $publicKey = $this->extractPublicKey($url);
-        if (!$publicKey) {
-            return false;
-        }
-
-        try {
-            $response = Http::get(self::API_BASE_URL . '/public/resources', [
-                'public_key' => "https://disk.yandex.ru/d/{$publicKey}",
-                'fields' => 'type,name'
-            ]);
-
-            return $response->successful() && 
-                   $response->json('type') === 'dir';
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Получить актуальные ссылки на изображения для отображения
-     */
-    public function getActualImageUrls(string $publicKey): array
-    {
-        $files = $this->getPublicFolderFiles($publicKey);
-        
-        return array_map(function ($file) {
-            // Возвращаем превью для отображения, так как они более стабильны
-            return [
-                'name' => $file['name'],
-                'url' => $file['url'],
-                'display_url' => $file['preview'] ?? $file['url']
-            ];
-        }, $files);
-    }
-
-    /**
-     * Получить прямые ссылки на изображения для отображения
-     */
-    public function getImageUrls(string $publicKey): array
-    {
-        $files = $this->getPublicFolderFiles($publicKey);
-        
-        return array_map(function ($file) {
-            return $file['url'];
-        }, $files);
-    }
-
-    /**
-     * Получить информацию о папке
-     */
-    public function getFolderInfo(string $publicKey): ?array
-    {
-        try {
-            $response = Http::timeout(30)->get(self::API_BASE_URL . '/public/resources', [
-                'public_key' => "https://disk.yandex.ru/d/{$publicKey}"
-            ]);
-
-            if (!$response->successful()) {
-                Log::error('Error getting folder info', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'public_key' => $publicKey
-                ]);
-                return null;
+        // Проверяем по MIME типу
+        if (isset($item['mime_type'])) {
+            if (strpos($item['mime_type'], 'image/') === 0) {
+                return true;
             }
+        }
 
-            $data = $response->json();
-            Log::info('Folder info response', ['data' => $data]);
+        // Проверяем по media_type
+        if (isset($item['media_type']) && $item['media_type'] === 'image') {
+            return true;
+        }
+
+        // Проверяем по расширению файла
+        if (isset($item['name'])) {
+            $extension = strtolower(pathinfo($item['name'], PATHINFO_EXTENSION));
+            $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'heic', 'heif', 'avif'];
             
-            return $data;
-        } catch (\Exception $e) {
-            Log::error('Error getting Yandex Disk folder info', [
-                'public_key' => $publicKey,
-                'error' => $e->getMessage()
+            return in_array($extension, $imageExtensions);
+        }
+
+        return false;
+    }
+
+    /**
+     * Нормализовать публичную ссылку Яндекс.Диска
+     * (обрабатывает короткие ссылки yadi.sk и полные disk.yandex.ru)
+     */
+    public function normalizePublicUrl(string $url): string
+    {
+        // Убираем параметры запроса, которые могут мешать
+        $url = strtok($url, '#'); // Убираем якорь
+        
+        return trim($url);
+    }
+
+    /**
+     * Получить информацию о публичном ресурсе
+     */
+    public function getResourceInfo(string $publicUrl): ?array
+    {
+        try {
+            $response = $this->client->get(self::API_URL, [
+                'query' => [
+                    'public_key' => $publicUrl,
+                    'fields' => 'name,type,size,created,modified,public_url',
+                ],
             ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+
+        } catch (Exception $e) {
+            Log::error('Ошибка получения информации о ресурсе', [
+                'url' => $publicUrl,
+                'error' => $e->getMessage(),
+            ]);
+            
             return null;
         }
     }

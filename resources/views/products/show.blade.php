@@ -64,8 +64,8 @@
             <!-- Фотография товара -->
             <div class="admin-card admin-mb-4">
                 <div class="admin-card-body admin-text-center">
-                    @if($product->photo_url)
-                        <img src="{{ $product->photo_url }}" alt="{{ $product->name }}" 
+                    @if($product->main_photo_url)
+                        <img src="{{ $product->main_photo_url }}" alt="{{ $product->name }}" 
                              style="width: 100%; max-height: 400px; object-fit: contain; border-radius: var(--radius-md);">
                     @else
                         <div style="height: 300px; display: flex; align-items: center; justify-content: center; background-color: var(--color-light-gray); border-radius: var(--radius-md); color: var(--color-gray);">

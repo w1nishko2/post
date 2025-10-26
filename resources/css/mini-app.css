@@ -117,10 +117,45 @@
     width: 100%;
     max-width: 600px;
     margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.back-button {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--search-height);
+    height: var(--search-height);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.back-button:hover {
+    background-color: var(--color-light-gray);
+    border-color: var(--color-primary);
+}
+
+.back-button i {
+    font-size: var(--font-size-md);
+}
+
+/* Показывать кнопку назад только на десктопе при просмотре категории */
+@media (min-width: 769px) {
+    .back-button.show {
+        display: flex;
+    }
 }
 
 .search-wrapper {
     display: flex;
+    flex: 1;
     height: var(--search-height);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -1109,12 +1144,13 @@
     
     .product-info {
         padding: 10px;
-        height: 90px;
+        max-height: 120px;
+        height: 100%;
     }
     
     .product-name {
         font-size: var(--font-size-xs);
-        height: 32px;
+        min-height: 50px;
     }
 }
 
@@ -1463,7 +1499,7 @@ img.modal-product-image {
 .product-gallery {
     position: relative;
     width: 100%;
-    max-height: 400px;
+    max-height: 815px;
     background-color: var(--color-light-gray);
     border-radius: var(--radius-md);
     overflow: hidden;
@@ -1471,10 +1507,21 @@ img.modal-product-image {
 
 .gallery-main-image {
     width: 100%;
-    height: 300px;
+    height: 400px;
     object-fit: cover;
     display: block;
-    cursor: pointer;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    touch-action: pan-y pinch-zoom;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-in-out;
+    will-change: transform, opacity;
+}
+
+.gallery-main-image:active {
+    cursor: grabbing;
 }
 
 .gallery-thumbnails {
@@ -1568,6 +1615,7 @@ img.modal-product-image {
     display: none;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .gallery-fullscreen.show {
@@ -1578,12 +1626,25 @@ img.modal-product-image {
     position: relative;
     max-width: 90%;
     max-height: 90%;
+    overflow: hidden;
 }
 
 .gallery-fullscreen-image {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    touch-action: pan-y pinch-zoom;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-in-out;
+    will-change: transform, opacity;
+}
+
+.gallery-fullscreen-image:active {
+    cursor: grabbing;
 }
 
 .gallery-fullscreen-close {
@@ -1637,6 +1698,248 @@ img.modal-product-image {
     right: -60px;
 }
 
+/* Плейсхолдеры для изображений */
+.category-placeholder,
+.product-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-light-gray);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-muted);
+    font-size: 24px;
+    min-height: 120px;
+    width: 100%;
+}
+
+.category-placeholder i,
+.product-image-placeholder i {
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.category-placeholder .placeholder-text,
+.product-image-placeholder span {
+    font-size: 12px;
+    text-align: center;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+/* Улучшенная обработка ошибок изображений */
+.category-image[style*="display: none"] + .category-placeholder,
+.modal-product-image[style*="display: none"] + .product-image-placeholder {
+    display: flex !important;
+}
+
+.no-image .product-image {
+    background-color: var(--color-light-gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.no-image .product-image::before {
+    content: '📷';
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
 div#cartModalBody {
     overflow: scroll;
+}
+
+/* ===== ЛЕНИВАЯ ЗАГРУЗКА КАТЕГОРИЙ ===== */
+
+/* Skeleton заглушки для незагруженных категорий */
+.category-skeleton {
+    opacity: 0.7;
+}
+
+.skeleton-line {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    height: 16px;
+    margin-bottom: 8px;
+}
+
+.skeleton-title {
+    width: 120px;
+    height: 18px;
+    margin-bottom: 6px;
+}
+
+.skeleton-count {
+    width: 80px;
+    height: 14px;
+}
+
+.skeleton-image {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Плавное появление загруженной категории */
+.category-loaded {
+    animation: categorySlideIn 0.4s ease-out;
+}
+
+@keyframes categorySlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.category-image-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    min-height: 60px;
+}
+
+.lazy-category .category-placeholder {
+    opacity: 0.5;
+}
+
+.lazy-category.loaded {
+    animation: categoryFadeIn 0.4s ease-out;
+}
+
+@keyframes categoryFadeIn {
+    from {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Анимация spinner */
+.fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===== БЕСКОНЕЧНАЯ ПРОКРУТКА ТОВАРОВ ===== */
+
+#infiniteScrollLoader {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: var(--tg-theme-hint-color, #999);
+}
+
+#infiniteScrollLoader .spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top-color: var(--tg-theme-button-color, #3390ec);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+#infiniteScrollTrigger {
+    height: 1px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+/* ===== УЛУЧШЕННЫЕ СТИЛИ ДЛЯ СВАЙПА ===== */
+
+/* Swiper для категорий - улучшенная поддержка свайпа */
+.categories-swiper {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.categories-swiper:active {
+    cursor: grabbing;
+}
+
+.categories-swiper .swiper-wrapper {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Галерея - плавный свайп */
+.gallery-main-image {
+    cursor: grab !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    touch-action: pan-y pinch-zoom;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gallery-main-image:active {
+    cursor: grabbing !important;
+}
+
+.gallery-fullscreen-image {
+    cursor: grab !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    touch-action: pan-y pinch-zoom;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gallery-fullscreen-image:active {
+    cursor: grabbing !important;
+}
+
+/* Отключение выделения текста при свайпе */
+.product-gallery *,
+.gallery-fullscreen * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Разрешаем клики по кнопкам */
+.gallery-navigation,
+.gallery-thumbnail,
+.gallery-fullscreen-close,
+.gallery-fullscreen-nav {
+    user-select: auto;
+    cursor: pointer !important;
 }

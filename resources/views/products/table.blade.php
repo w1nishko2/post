@@ -44,12 +44,9 @@
     </div>
     @endif
 
-    <!-- Действия и поиск -->
     <div class="admin-card admin-mb-4">
         <div class="admin-card-body">
-            <!-- Фильтры в адаптивной сетке -->
             <div class="admin-filters-row">
-                <!-- Поиск -->
                 <div class="admin-filter-group">
                     <label for="search" class="admin-form-label">
                         <span class="admin-d-none-xs">Поиск товаров</span>
@@ -62,7 +59,6 @@
                         </button>
                     </div>
                 </div>
-                
                 <!-- Категория -->
                 <div class="admin-filter-group">
                     <label for="category-filter" class="admin-form-label">Категория</label>
@@ -154,9 +150,9 @@
                                                value="{{ $product->id }}">
                                     </td>
                                     <td>
-                                        @if($product->photo_url)
+                                        @if($product->main_photo_url)
                                             <div class="admin-product-photo">
-                                                <img src="{{ $product->photo_url }}" alt="{{ $product->name }}">
+                                                <img src="{{ $product->main_photo_url }}" alt="{{ $product->name }}">
                                             </div>
                                         @else
                                             <div class="admin-product-photo admin-no-photo">
@@ -341,10 +337,6 @@
                     </div>
                     <h6>Товары не найдены</h6>
                     <p class="admin-text-muted">У вас пока нет товаров в этом боте</p>
-                    <a href="{{ route('bot.products.create', $telegramBot) }}" class="admin-btn admin-btn-primary">
-                        <i class="fas fa-plus admin-me-2"></i>
-                        Добавить первый товар
-                    </a>
                 </div>
             @endif
         </div>
@@ -394,7 +386,7 @@
                     @csrf
                     <div class="admin-form-group">
                         <label for="import_file" class="admin-form-label">Выберите файл для импорта</label>
-                        <input type="file" class="admin-form-control" id="import_file" name="import_file" 
+                        <input type="file" class="admin-form-control" id="import_file" name="file" 
                                accept=".csv,.xlsx,.xls" required>
                         <div class="admin-form-help">Поддерживаемые форматы: CSV, Excel (.xlsx, .xls)</div>
                     </div>

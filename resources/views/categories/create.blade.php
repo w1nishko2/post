@@ -71,20 +71,38 @@
                             <div class="admin-col admin-col-12 admin-col-md-6">
                                 <!-- Фотография категории -->
                                 <div class="admin-form-group">
-                                    <label for="photo_url" class="admin-form-label">
-                                        Ссылка на фотографию
+                                    <label for="photo" class="admin-form-label">
+                                        <i class="fas fa-image admin-me-1"></i>
+                                        Фотография категории
                                     </label>
-                                    <input type="url" 
-                                           class="admin-form-control @error('photo_url') admin-form-error @enderror" 
-                                           id="photo_url" 
-                                           name="photo_url" 
-                                           value="{{ old('photo_url') }}" 
-                                           placeholder="https://example.com/category-image.jpg">
-                                    @error('photo_url')
-                                        <div class="admin-form-error">{{ $message }}</div>
+                                    
+                                    <!-- Зона загрузки -->
+                                    <div id="category-photo-dropzone" style="border: 2px dashed #cbd5e0; border-radius: 8px; padding: 1.5rem; text-align: center; background-color: #f7fafc; transition: all 0.3s ease; cursor: pointer;">
+                                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #4299e1; margin-bottom: 0.5rem;"></i>
+                                        <p style="margin-bottom: 0.5rem;"><strong>Перетащите изображение сюда</strong></p>
+                                        <p class="admin-text-muted" style="font-size: 0.875rem;">или</p>
+                                        <button type="button" class="admin-btn admin-btn-outline-primary admin-btn-sm" id="select-category-photo-btn">
+                                            <i class="fas fa-folder-open admin-me-1"></i>
+                                            Выбрать файл
+                                        </button>
+                                        <input type="file" id="photo" name="photo" accept="image/*,.heic,.heif" hidden>
+                                        <p class="admin-text-muted admin-mt-2" style="font-size: 0.75rem;">
+                                            Максимальный размер: 10MB. Поддерживаемые форматы: JPEG, PNG, GIF, WebP, HEIC, HEIF
+                                        </p>
+                                    </div>
+                                    
+                                    @error('photo')
+                                        <div class="admin-form-error admin-mt-2">{{ $message }}</div>
                                     @enderror
-                                    <div class="admin-form-text">
-                                        Рекомендуемый размер: 300x300px. JPG, PNG
+                                    
+                                    <!-- Превью загруженного изображения -->
+                                    <div id="category-photo-preview" style="display: none; margin-top: 1rem;">
+                                        <div style="position: relative; width: 200px; height: 200px; border-radius: 8px; overflow: hidden; border: 2px solid #e2e8f0;">
+                                            <img id="category-preview-img" src="" style="width: 100%; height: 100%; object-fit: cover;" alt="Превью">
+                                            <button type="button" onclick="removeCategoryPhoto()" style="position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -108,26 +126,7 @@
                             </div>
                         </div>
 
-                        <!-- Предварительный просмотр фото -->
-                        <div class="admin-form-group" id="photoPreview" style="display: none;">
-                            <label class="admin-form-label">
-                                Предварительный просмотр
-                            </label>
-                            <div class="admin-card admin-bg-light">
-                                <div class="admin-card-body">
-                                    <div class="admin-d-flex admin-align-items-center admin-gap-md">
-                                        <img id="previewImage" 
-                                             src="" 
-                                             alt="Предварительный просмотр" 
-                                             style="width: 80px; height: 80px; object-fit: cover; border-radius: var(--radius-md);">
-                                        <div class="admin-flex-1">
-                                            <h6 class="admin-mb-1" id="previewName">Название категории</h6>
-                                            <p class="admin-text-muted admin-mb-0" id="previewDescription">Описание категории</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
 
                         <!-- Статус активности -->
                         <div class="admin-form-group">
@@ -163,94 +162,121 @@
                 </div>
             </div>
 
-            <!-- Подсказки -->
-            <div class="admin-card admin-mt-4">
-                <div class="admin-card-header">
-                    <h6 class="admin-mb-0">
-                        <i class="fas fa-lightbulb admin-me-2"></i>
-                        Полезные советы
-                    </h6>
-                </div>
-                <div class="admin-card-body">
-                    <div class="admin-row">
-                        <div class="admin-col admin-col-12 admin-col-md-6">
-                            <h6 class="admin-text-info admin-mb-2">
-                                <i class="fas fa-tag admin-me-1"></i>
-                                Названия категорий
-                            </h6>
-                            <ul class="admin-text-muted admin-mb-3" style="padding-left: 20px;">
-                                <li>Используйте простые и понятные названия</li>
-                                <li>Избегайте слишком длинных названий</li>
-                                <li>Думайте о том, как клиент будет искать товар</li>
-                            </ul>
-                        </div>
-                        <div class="admin-col admin-col-12 admin-col-md-6">
-                            <h6 class="admin-text-success admin-mb-2">
-                                <i class="fas fa-image admin-me-1"></i>
-                                Изображения категорий
-                            </h6>
-                            <ul class="admin-text-muted admin-mb-0" style="padding-left: 20px;">
-                                <li>Рекомендуемый размер: 300x300 пикселей</li>
-                                <li>Используйте качественные изображения</li>
-                                <li>Изображение должно отражать суть категории</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
+           
         </div>
     </div>
 </div>
 @endsection
 
-@push('scripts')
+
 <script>
+// Функция удаления фото категории
+window.removeCategoryPhoto = function() {
+    const photoInput = document.getElementById('photo');
+    const preview = document.getElementById('category-photo-preview');
+    const dropzone = document.getElementById('category-photo-dropzone');
+    
+    photoInput.value = '';
+    preview.style.display = 'none';
+    dropzone.style.display = 'block';
+};
+
 document.addEventListener('DOMContentLoaded', function() {
-    const photoUrlInput = document.getElementById('photo_url');
+    const photoInput = document.getElementById('photo');
+    const selectBtn = document.getElementById('select-category-photo-btn');
+    const dropzone = document.getElementById('category-photo-dropzone');
+    const preview = document.getElementById('category-photo-preview');
+    const previewImg = document.getElementById('category-preview-img');
     const nameInput = document.getElementById('name');
-    const descriptionInput = document.getElementById('description');
-    const photoPreview = document.getElementById('photoPreview');
-    const previewImage = document.getElementById('previewImage');
-    const previewName = document.getElementById('previewName');
-    const previewDescription = document.getElementById('previewDescription');
+    const form = document.getElementById('categoryForm');
 
-    function updatePreview() {
-        const photoUrl = photoUrlInput.value.trim();
-        const name = nameInput.value.trim() || 'Название категории';
-        const description = descriptionInput.value.trim() || 'Описание категории';
+    // Изменяем enctype формы для загрузки файлов
+    form.setAttribute('enctype', 'multipart/form-data');
 
-        previewName.textContent = name;
-        previewDescription.textContent = description;
+    // Обработка клика на кнопку выбора файла
+    selectBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Предотвращаем всплытие события к dropzone
+        photoInput.click();
+    });
 
-        if (photoUrl && isValidUrl(photoUrl)) {
-            previewImage.src = photoUrl;
-            previewImage.onerror = function() {
-                photoPreview.style.display = 'none';
-            };
-            previewImage.onload = function() {
-                photoPreview.style.display = 'block';
-            };
+    // Обработка клика на зону dropzone
+    dropzone.addEventListener('click', function(e) {
+        // Проверяем, что клик был именно на dropzone, а не на кнопке внутри
+        if (e.target === dropzone || e.target.closest('#category-photo-dropzone') === dropzone) {
+            photoInput.click();
+        }
+    });
+
+    // Обработка выбора файла
+    photoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            handleFile(file);
+        }
+    });
+
+    // Drag & Drop
+    dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#4299e1';
+        this.style.backgroundColor = '#ebf8ff';
+    });
+
+    dropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#cbd5e0';
+        this.style.backgroundColor = '#f7fafc';
+    });
+
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#cbd5e0';
+        this.style.backgroundColor = '#f7fafc';
+        
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            photoInput.files = dataTransfer.files;
+            handleFile(file);
         } else {
-            photoPreview.style.display = 'none';
+            alert('Пожалуйста, загрузите изображение');
         }
-    }
+    });
 
-    function isValidUrl(string) {
-        try {
-            new URL(string);
-            return true;
-        } catch (_) {
-            return false;
+    // Обработка файла
+    function handleFile(file) {
+        // Проверка размера (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Файл слишком большой. Максимальный размер: 10MB');
+            photoInput.value = '';
+            return;
         }
-    }
 
-    // Обновление превью при изменении полей
-    photoUrlInput.addEventListener('input', updatePreview);
-    nameInput.addEventListener('input', updatePreview);
-    descriptionInput.addEventListener('input', updatePreview);
+        // Проверка типа файла
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+        if (!validTypes.includes(file.type) && !file.name.match(/\.(heic|heif)$/i)) {
+            alert('Неподдерживаемый формат файла. Используйте: JPEG, PNG, GIF, WebP, HEIC, HEIF');
+            photoInput.value = '';
+            return;
+        }
+
+        // Показываем превью
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+            dropzone.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
 
     // Валидация формы
-    document.getElementById('categoryForm').addEventListener('submit', function(e) {
+    form.addEventListener('submit', function(e) {
         const name = nameInput.value.trim();
         
         if (!name) {
@@ -259,15 +285,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Пожалуйста, укажите название категории');
             return false;
         }
-
-        const photoUrl = photoUrlInput.value.trim();
-        if (photoUrl && !isValidUrl(photoUrl)) {
-            e.preventDefault();
-            photoUrlInput.focus();
-            alert('Пожалуйста, укажите корректную ссылку на изображение');
-            return false;
-        }
     });
 });
 </script>
-@endpush

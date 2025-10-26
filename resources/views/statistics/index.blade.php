@@ -326,8 +326,8 @@
                                         <tr>
                                             <td>
                                                 <div class="admin-d-flex admin-align-items-center">
-                                                    @if(isset($item['product']) && $item['product']->photo_url)
-                                                        <img src="{{ $item['product']->photo_url }}" alt="{{ $item['product']->name }}" 
+                                                    @if(isset($item['product']) && $item['product']->main_photo_url)
+                                                        <img src="{{ $item['product']->main_photo_url }}" alt="{{ $item['product']->name }}" 
                                                              class="admin-me-2 admin-d-none-xs" style="width: 32px; height: 32px; object-fit: cover; border-radius: var(--radius-sm);">
                                                     @endif
                                                     <span>{{ isset($item['product']) ? Str::limit($item['product']->name, 20) : 'Неизвестный товар' }}</span>

@@ -63,7 +63,7 @@
             </h5>
         </div>
         <div class="admin-card-body">
-            <form method="POST" action="{{ route('bot.products.store', $telegramBot) }}">
+            <form method="POST" action="{{ route('bot.products.store', $telegramBot) }}" enctype="multipart/form-data">
                 @csrf
                 
                 <div class="admin-row">
@@ -123,28 +123,40 @@
                     </div>
 
                     <div class="admin-col admin-col-4">
-                        <!-- Изображение товара -->
+                        <!-- Фотографии товара -->
                         <div class="admin-form-group">
-                            <label class="admin-form-label">Изображение товара</label>
-                            <div id="photo-preview" class="admin-mb-3" style="display: none;">
-                                <div style="width: 100%; height: 200px; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;">
-                                    <img id="preview-image" style="width: 100%; height: 100%; object-fit: cover;">
-                                </div>
-                            </div>
+                            <label for="images" class="admin-form-label">
+                                <i class="fas fa-image admin-me-1"></i>
+                                Фотографии товара
+                                <small class="text-muted d-block" style="font-weight: normal;">
+                                    Выберите до 5 фотографий (JPEG, PNG, GIF, WebP, HEIC и др.)
+                                </small>
+                            </label>
+                            <input type="file" 
+                                   class="admin-form-control @error('images') admin-border-danger @enderror @error('images.*') admin-border-danger @enderror" 
+                                   id="images" 
+                                   name="images[]" 
+                                   accept="image/*,.heic,.heif,.avif"
+                                   multiple>
+                            <small class="admin-form-text text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                Максимум 5 фото, до 10MB каждое. Файлы автоматически конвертируются в WebP.
+                            </small>
+                            @error('images')
+                                <div class="admin-form-error">{{ $message }}</div>
+                            @enderror
+                            @error('images.*')
+                                <div class="admin-form-error">{{ $message }}</div>
+                            @enderror
                             
-                            <div class="admin-form-group">
-                                <label for="photo_url" class="admin-form-label">URL изображения</label>
-                                <input type="url" class="admin-form-control @error('photo_url') admin-border-danger @enderror" 
-                                       id="photo_url" name="photo_url" value="{{ old('photo_url') }}" 
-                                       placeholder="https://example.com/image.jpg">
-                                @error('photo_url')
-                                    <div class="admin-form-error">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            <!-- Превью загруженных фотографий -->
+                            <div id="images-preview" style="display: none; flex-wrap: wrap; gap: 10px; margin-top: 15px;"></div>
+                            
+                            <!-- Скрытое поле для индекса главной фотографии -->
+                            <input type="hidden" name="main_photo_index" id="main_photo_index" value="0">
                         </div>
                     </div>
                 </div>
-
                 <!-- Цена и количество -->
                 <div class="admin-row">
                     <div class="admin-col admin-col-4">
@@ -224,9 +236,7 @@
                     </div>
                 </div>
 
-                <!-- Скрытые поля для галереи -->
-                <input type="hidden" id="photos_gallery" name="photos_gallery" value="{{ old('photos_gallery', '[]') }}">
-                <input type="hidden" id="main_photo_index" name="main_photo_index" value="{{ old('main_photo_index', 0) }}">
+
 
                 <!-- Кнопки действий -->
                 <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
@@ -244,34 +254,69 @@
     </div>
 </div>
 
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Предварительный просмотр изображения
-    const photoUrlInput = document.getElementById('photo_url');
-    const photosPreview = document.getElementById('photos-preview');
+    // Превью изображений
+    const imagesInput = document.getElementById('images');
+    const imagesPreview = document.getElementById('images-preview');
+    const mainPhotoIndexInput = document.getElementById('main_photo_index');
+    let selectedFiles = [];
+    let mainPhotoIndex = 0;
     
-    if (photoUrlInput) {
-        photoUrlInput.addEventListener('blur', function() {
-            const url = this.value.trim();
-            let previewContainer = document.getElementById('photo-preview');
-            let previewImage = document.getElementById('preview-image');
-            
-            if (!previewContainer || !previewImage) return;
-            
-            if (url) {
-                previewImage.src = url;
-                previewContainer.style.display = 'block';
-                
-                previewImage.onerror = function() {
-                    previewContainer.style.display = 'none';
-                };
-            } else {
-                previewContainer.style.display = 'none';
-            }
+    if (imagesInput) {
+        imagesInput.addEventListener('change', function(e) {
+            selectedFiles = Array.from(e.target.files);
+            showImagesPreview();
         });
     }
-
-    // Автоматическое форматирование цены и расчёт
+    
+    function showImagesPreview() {
+        if (selectedFiles.length === 0) {
+            imagesPreview.style.display = 'none';
+            return;
+        }
+        
+        imagesPreview.style.display = 'flex';
+        imagesPreview.innerHTML = '';
+        
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const card = document.createElement('div');
+                card.style.cssText = 'position: relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; border: 2px solid ' + (index === mainPhotoIndex ? '#f6ad55' : '#e2e8f0') + '; cursor: pointer;';
+                
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                
+                const mainBadge = document.createElement('div');
+                mainBadge.style.cssText = 'position: absolute; top: 0; left: 0; background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%); color: white; padding: 4px 8px; font-size: 11px; font-weight: 600; display: ' + (index === mainPhotoIndex ? 'block' : 'none') + ';';
+                mainBadge.innerHTML = '<i class="fas fa-star"></i> Главная';
+                
+                const fileName = document.createElement('div');
+                fileName.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 4px; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+                fileName.textContent = file.name;
+                
+                card.appendChild(img);
+                card.appendChild(mainBadge);
+                card.appendChild(fileName);
+                
+                card.addEventListener('click', function() {
+                    mainPhotoIndex = index;
+                    mainPhotoIndexInput.value = index;
+                    showImagesPreview();
+                });
+                
+                imagesPreview.appendChild(card);
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // Функция автоматического расчета цены с наценкой
     const priceInput = document.getElementById('price');
     const markupInput = document.getElementById('markup_percentage');
     const quantityInput = document.getElementById('quantity');
@@ -297,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (totalValueDisplay) totalValueDisplay.textContent = totalValue.toLocaleString('ru-RU') + ' ₽';
     }
     
+    // Привязываем обработчики событий
     if (priceInput) {
         priceInput.addEventListener('input', updatePriceCalculation);
         priceInput.addEventListener('blur', function() {
@@ -305,22 +351,12 @@ document.addEventListener('DOMContentLoaded', function() {
             updatePriceCalculation();
         });
     }
-
-    if (markupInput) {
-        markupInput.addEventListener('input', updatePriceCalculation);
-    }
+    if (markupInput) markupInput.addEventListener('input', updatePriceCalculation);
+    if (quantityInput) quantityInput.addEventListener('input', updatePriceCalculation);
     
-    if (quantityInput) {
-        quantityInput.addEventListener('input', updatePriceCalculation);
-    }
-    
-    // Инициализация расчёта
+    // Первоначальный расчет
     updatePriceCalculation();
-    
-    // Проверяем предзаполненные значения при загрузке
-    if (photoUrlInput && photoUrlInput.value) {
-        photoUrlInput.dispatchEvent(new Event('blur'));
-    }
 });
 </script>
 @endsection
+                    

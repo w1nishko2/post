@@ -46,9 +46,10 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/bots/{telegramBot}/products/{product}/quick-update', [App\Http\Controllers\ProductController::class, 'quickUpdate'])->name('bot.products.quick-update');
         Route::post('/bots/{telegramBot}/products/bulk-markup', [App\Http\Controllers\ProductController::class, 'bulkMarkup'])->name('bot.products.bulk-markup');
         Route::post('/bots/{telegramBot}/products/bulk-status', [App\Http\Controllers\ProductController::class, 'bulkStatus'])->name('bot.products.bulk-status');
+
         
         Route::put('/bots/{telegramBot}/products/{product}', [App\Http\Controllers\ProductController::class, 'update'])
-            ->middleware('throttle:20,1') // Максимум 20 обновлений в минуту
+            ->middleware('throttle:60,1') // Максимум 60 обновлений в минуту
             ->name('bot.products.update');
             
         Route::delete('/bots/{telegramBot}/products/{product}', [App\Http\Controllers\ProductController::class, 'destroy'])
@@ -62,6 +63,27 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/bots/{telegramBot}/products/import', [App\Http\Controllers\ProductController::class, 'importFromExcel'])
             ->middleware('throttle:10,5') // Максимум 10 импортов в 5 минут
             ->name('bot.products.import');
+            
+        Route::post('/bots/{telegramBot}/products/ajax-import', [App\Http\Controllers\ProductController::class, 'ajaxImport'])
+            ->middleware('throttle:10,5') // Максимум 10 импортов в 5 минут
+            ->name('bot.products.ajax-import');
+        
+        // Роуты для загрузки изображений товаров
+        Route::post('/products/images/upload', [App\Http\Controllers\ProductImageController::class, 'upload'])
+            ->middleware('throttle:20,1') // Максимум 20 загрузок в минуту
+            ->name('product.images.upload');
+            
+        Route::delete('/products/images/{image}', [App\Http\Controllers\ProductImageController::class, 'delete'])
+            ->name('product.images.delete');
+            
+        Route::post('/products/images/{image}/set-main', [App\Http\Controllers\ProductImageController::class, 'setMain'])
+            ->name('product.images.set-main');
+            
+        Route::post('/products/images/update-order', [App\Http\Controllers\ProductImageController::class, 'updateOrder'])
+            ->name('product.images.update-order');
+            
+        Route::get('/products/{product}/images', [App\Http\Controllers\ProductImageController::class, 'index'])
+            ->name('product.images.index');
         
         // Роуты для категорий в контексте бота (с проверкой владения)
         Route::get('/bots/{telegramBot}/categories', [App\Http\Controllers\CategoryController::class, 'index'])->name('bot.categories.index');
@@ -116,7 +138,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('statistics', [App\Http\Controllers\StatisticsController::class, 'index'])->name('statistics.index');
     Route::get('statistics/chart-data', [App\Http\Controllers\StatisticsController::class, 'chartData'])->name('statistics.chart-data');
     Route::get('statistics/generate-report', [App\Http\Controllers\StatisticsController::class, 'generateFullReport'])->name('statistics.generate-report');
+    
+
 });
+
+
 
 // Роуты для корзины (доступны всем, включая неавторизованных через сессию)
 Route::prefix('cart')->name('cart.')->group(function () {
@@ -137,6 +163,8 @@ if (app()->environment('production')) {
 Route::post('/telegram/webhook/{bot}', [App\Http\Controllers\TelegramWebhookController::class, 'handle'])
     ->name('telegram.webhook')
     ->where('bot', '[0-9]+');
+
+
 
 // API роуты для Mini App
 Route::prefix('{shortName}/api')->where(['shortName' => '[a-zA-Z0-9_]+'])->middleware('track.miniapp')->group(function () {

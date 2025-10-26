@@ -4,6 +4,7 @@ console.log('Mini App загружается...');
 // Переменные для отладки и разработки
 const isDevelopmentMode = !window.Telegram?.WebApp;
 let userData = null;
+let isAppInitialized = false; // Флаг для предотвращения повторной инициализации
 
 // Переменные для поиска и категорий
 let allProducts = [];
@@ -11,6 +12,12 @@ let allCategories = [];
 let isSearchActive = false;
 let isInCategoryView = false; // Флаг для отслеживания просмотра категории
 let isScrollLocked = false; // Флаг блокировки скролла для предотвращения сворачивания
+
+// Переменные для контроля Swiper
+let swiperReinitCount = 0;
+let lastSwiperReinitTime = 0;
+const SWIPER_REINIT_COOLDOWN = 500; // минимальная задержка между переинициализациями
+const MAX_SWIPER_REINIT_ATTEMPTS = 3; // максимальное количество попыток переинициализации подряд
 
 // Функция для экранирования HTML (защита от XSS)
 function escapeHtml(text) {
@@ -25,6 +32,17 @@ function escapeHtml(text) {
     return String(text).replace(/[&<>"']/g, function(m) { 
         return map[m]; 
     });
+}
+
+// Функция для обработки ошибок загрузки изображений
+function handleImageError(img, placeholderSelector) {
+    img.style.display = 'none';
+    const placeholder = img.nextElementSibling || document.querySelector(placeholderSelector);
+    if (placeholder) {
+        placeholder.style.display = 'flex';
+        placeholder.title = 'Изображение недоступно';
+    }
+    console.warn('Ошибка загрузки изображения:', img.src);
 }
 
 // Функция для получения CSRF токена
@@ -55,7 +73,14 @@ function secureFetch(url, options = {}) {
 
 // Основная функция инициализации
 function initApp() {
+    // Предотвращаем повторную инициализацию
+    if (isAppInitialized) {
+        console.log('Mini App уже инициализирован, пропускаем');
+        return;
+    }
+    
     console.log('Инициализация Mini App...');
+    isAppInitialized = true;
     
     // Максимальное время загрузки - 3 секунды
     const maxLoadTime = setTimeout(() => {
@@ -108,12 +133,17 @@ function initApp() {
             setupScrollBehavior();
             
             // Скрытие кнопки "Назад" (только для поддерживаемых версий)
-            if (tg.BackButton && typeof tg.BackButton.hide === 'function') {
+            if (tg.version && parseFloat(tg.version) >= 6.1 && tg.BackButton) {
                 try {
-                    tg.BackButton.hide();
+                    if (typeof tg.BackButton.hide === 'function') {
+                        tg.BackButton.hide();
+                        console.log('BackButton hidden for WebApp version', tg.version);
+                    }
                 } catch (e) {
-                    console.log('BackButton control not supported in this version');
+                    console.log('BackButton control not supported in version', tg.version, ':', e.message);
                 }
+            } else {
+                console.log('BackButton not available in WebApp version', tg.version || 'unknown');
             }
             
             console.log('Telegram WebApp полностью настроен');
@@ -175,6 +205,10 @@ function initApp() {
                     console.error('Ошибка настройки модальных окон:', error);
                 }
             }, 100);
+            
+            // Обработчик изменения размера окна для кнопки "Назад"
+            window.addEventListener('resize', handleBackButtonVisibility);
+            
         } catch (error) {
             console.error('Ошибка при скрытии загрузочного экрана:', error);
         }
@@ -395,7 +429,7 @@ async function loadCategories() {
     }
 }
 
-// Отрисовка категорий
+// Отрисовка категорий с ленивой загрузкой
 function renderCategories(categories) {
     console.log('Отрисовка категорий:', categories);
     const track = document.getElementById('categoriesTrack');
@@ -412,10 +446,125 @@ function renderCategories(categories) {
         return;
     }
 
-    track.innerHTML = categories.map(category => `
-        <div class="category-card" onclick="filterByCategory(${category.id}, '${escapeHtml(category.name).replace(/'/g, "\\'")}')">
+    // Сохраняем данные категорий глобально для ленивой загрузки
+    window.allCategoriesData = categories;
+    
+    // Рендерим только первые 8 категорий, остальные - пустые слайды-заглушки
+    const initialLoadCount = 8;
+    
+    track.innerHTML = categories.map((category, index) => {
+        const shouldRender = index < initialLoadCount;
+        
+        if (shouldRender) {
+            // Рендерим полную карточку
+            return `
+            <div class="category-card" 
+                 data-category-id="${category.id}" 
+                 data-category-name="${escapeHtml(category.name)}"
+                 data-index="${index}"
+                 data-loaded="true">
+                <div class="card h-200">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="category-info">
+                                <div class="category-name">${escapeHtml(category.name)}</div>
+                                ${category.description ? `<div class="category-description">${escapeHtml(category.description)}</div>` : ''}
+                                <div class="category-products-count">${category.products_count || 0} товаров</div>
+                            </div>
+                            ${category.photo_url 
+                                ? `<img src="${escapeHtml(category.photo_url)}" class="category-image" alt="${escapeHtml(category.name)}" onerror="handleImageError(this)" loading="eager">
+                                   <div class="category-placeholder" style="display: none;">
+                                       <i class="fas fa-folder"></i>
+                                       <span class="placeholder-text">Изображение недоступно</span>
+                                   </div>`
+                                : `<div class="category-placeholder">
+                                       <i class="fas fa-folder"></i>
+                                   </div>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else {
+            // Рендерим заглушку для ленивой загрузки
+            return `
+            <div class="category-card category-skeleton" 
+                 data-index="${index}"
+                 data-loaded="false">
+                <div class="card h-200">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="category-info">
+                                <div class="skeleton-line skeleton-title"></div>
+                                <div class="skeleton-line skeleton-count"></div>
+                            </div>
+                            <div class="skeleton-image">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+    }).join('');
+    
+    // Добавляем обработчик кликов только для загруженных категорий
+    const categoryCards = track.querySelectorAll('.category-card[data-loaded="true"]');
+    categoryCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const categoryId = this.getAttribute('data-category-id');
+            const categoryName = this.getAttribute('data-category-name');
+            if (categoryId && categoryName) {
+                filterByCategory(parseInt(categoryId), categoryName);
+            }
+        });
+    });
+    
+    console.log('Категории отрисованы, запуск переинициализации Swiper');
+    
+    // Переинициализируем Swiper (ленивая загрузка запустится из Blade после инициализации)
+    if (typeof window.reinitCategoriesSwiper === 'function') {
+        setTimeout(() => {
+            window.reinitCategoriesSwiper();
+        }, 100);
+    }
+}
+
+// Функция для настройки ленивой загрузки категорий
+function setupCategoryLazyLoading() {
+    const swiperInstance = window.categoriesSwiper;
+    
+    if (!swiperInstance) {
+        console.warn('Swiper не инициализирован для ленивой загрузки');
+        return;
+    }
+    
+    if (!swiperInstance.slides || swiperInstance.slides.length === 0) {
+        console.warn('Swiper slides не найдены, отложенная инициализация...');
+        setTimeout(() => {
+            setupCategoryLazyLoading();
+        }, 500);
+        return;
+    }
+    
+    console.log('Настройка ленивой загрузки слайдов категорий, всего слайдов:', swiperInstance.slides.length);
+    
+    // Функция загрузки слайда категории
+    const loadCategorySlide = (categoryCard) => {
+        if (!categoryCard) return;
+        if (categoryCard.getAttribute('data-loaded') === 'true') return;
+        
+        const index = parseInt(categoryCard.getAttribute('data-index'));
+        const category = window.allCategoriesData?.[index];
+        
+        if (!category) return;
+        
+        console.log(`Загрузка категории ${index}: ${category.name}`);
+        
+        // Заменяем заглушку на полную карточку
+        categoryCard.innerHTML = `
             <div class="card h-200">
-                <div class="card-body ">
+                <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="category-info">
                             <div class="category-name">${escapeHtml(category.name)}</div>
@@ -423,33 +572,81 @@ function renderCategories(categories) {
                             <div class="category-products-count">${category.products_count || 0} товаров</div>
                         </div>
                         ${category.photo_url 
-                            ? `<img src="${escapeHtml(category.photo_url)}" class="category-image " alt="${escapeHtml(category.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            ? `<img src="${escapeHtml(category.photo_url)}" class="category-image" alt="${escapeHtml(category.name)}" onerror="handleImageError(this)" loading="lazy">
                                <div class="category-placeholder" style="display: none;">
                                    <i class="fas fa-folder"></i>
+                                   <span class="placeholder-text">Изображение недоступно</span>
                                </div>`
-                            : `<div class="category-placeholder ">
+                            : `<div class="category-placeholder">
                                    <i class="fas fa-folder"></i>
                                </div>`
                         }
-                        
                     </div>
                 </div>
             </div>
-        </div>
-    `).join('');
-    
-    // Переинициализируем Swiper после изменения контента с защитой
-    if (typeof window.reinitCategoriesSwiper === 'function') {
-        // Добавляем защиту от слишком частых вызовов
-        clearTimeout(window.swiperInitTimeout);
-        window.swiperInitTimeout = setTimeout(() => {
-            try {
-                window.reinitCategoriesSwiper();
-            } catch (error) {
-                console.warn('Ошибка переинициализации Swiper:', error);
+        `;
+        
+        // Устанавливаем атрибуты
+        categoryCard.setAttribute('data-category-id', category.id);
+        categoryCard.setAttribute('data-category-name', category.name);
+        categoryCard.setAttribute('data-loaded', 'true');
+        categoryCard.classList.remove('category-skeleton');
+        categoryCard.classList.add('category-loaded');
+        
+        // Добавляем обработчик клика
+        categoryCard.addEventListener('click', function() {
+            const categoryId = this.getAttribute('data-category-id');
+            const categoryName = this.getAttribute('data-category-name');
+            if (categoryId && categoryName) {
+                filterByCategory(parseInt(categoryId), categoryName);
             }
-        }, 300);
-    }
+        });
+    };
+    
+    // Загрузка видимых категорий
+    const loadVisibleCategories = () => {
+        if (!swiperInstance.slides || swiperInstance.slides.length === 0) {
+            console.warn('Slides не доступны для загрузки');
+            return;
+        }
+        
+        const activeIndex = swiperInstance.activeIndex || 0;
+        const slidesPerView = swiperInstance.params.slidesPerView === 'auto' ? 4 : swiperInstance.params.slidesPerView;
+        
+        // Загружаем текущий слайд и соседние (±4 для запаса)
+        const startIndex = Math.max(0, activeIndex - 2);
+        const endIndex = Math.min(swiperInstance.slides.length - 1, activeIndex + slidesPerView + 4);
+        
+        console.log(`Загрузка видимых категорий: ${startIndex} - ${endIndex}`);
+        
+        for (let i = startIndex; i <= endIndex; i++) {
+            const slide = swiperInstance.slides[i];
+            const categoryCard = slide?.querySelector('.category-card');
+            if (categoryCard) {
+                loadCategorySlide(categoryCard);
+            }
+        }
+    };
+    
+    // Подключаем обработчики событий Swiper
+    swiperInstance.on('slideChange', () => {
+        loadVisibleCategories();
+    });
+    
+    swiperInstance.on('progress', () => {
+        loadVisibleCategories();
+    });
+    
+    swiperInstance.on('reachEnd', () => {
+        // Загружаем все оставшиеся при достижении конца
+        const allSkeletons = document.querySelectorAll('.category-skeleton');
+        console.log('Достигнут конец, загружаем оставшиеся категории:', allSkeletons.length);
+        allSkeletons.forEach(loadCategorySlide);
+    });
+    
+    // Загружаем видимые сразу
+    console.log('Загрузка начальных видимых категорий...');
+    loadVisibleCategories();
 }
 
 // Поиск товаров
@@ -552,12 +749,17 @@ function renderSearchResults(products, query) {
         return;
     }
 
-    const productsHTML = products.map(product => `
-        <article class="product-card" onclick="showProductDetails(${product.id})">
-            <div class="product-image ${!product.main_photo_url && !product.photo_url ? 'no-image' : ''}">
-                ${product.main_photo_url || product.photo_url 
-                    ? `<img src="${escapeHtml(processImageUrl(product.main_photo_url || product.photo_url))}" alt="${escapeHtml(product.name)}" 
-                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">
+    const productsHTML = products.map(product => {
+        const imageUrl = product.main_photo_url || product.photo_url;
+        const hasImage = !!imageUrl;
+        const isAvailable = product.isAvailable && product.quantity > 0;
+        
+        return `
+        <article class="product-card" data-product-id="${product.id}">
+            <div class="product-image ${!hasImage ? 'no-image' : ''}">
+                ${hasImage 
+                    ? `<img src="${escapeHtml(processImageUrl(imageUrl))}" alt="${escapeHtml(product.name)}" 
+                         onerror="handleImageError(this); this.parentElement.classList.add('no-image');" loading="lazy">
                       ${product.has_multiple_photos ? '<div class="position-absolute top-0 start-0 p-1"><span class="badge bg-dark bg-opacity-75"><i class="fas fa-images"></i></span></div>' : ''}` 
                     : ''
                 }
@@ -568,16 +770,17 @@ function renderSearchResults(products, query) {
                 <h3 class="product-name">${escapeHtml(product.name)}</h3>
                 ${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ''}
                 <div class="product-footer">
-                    <span class="product-price">${product.formatted_price || formatPrice(product.price)}</span>
-                    <button class="add-to-cart ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}" 
-                            onclick="event.stopPropagation(); addToCart(${product.id})"
-                            ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}>
+                    <span class="product-price">${escapeHtml(product.formatted_price || formatPrice(product.price))}</span>
+                    <button class="add-to-cart ${!isAvailable ? 'disabled' : ''}" 
+                            data-product-id="${product.id}"
+                            ${!isAvailable ? 'disabled' : ''}>
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
             </div>
         </article>
-    `).join('');
+    `;
+    }).join('');
 
     container.innerHTML = `
         <div class="products-header">
@@ -590,64 +793,101 @@ function renderSearchResults(products, query) {
 }
 
 // Фильтрация по категории
-function filterByCategory(categoryId, categoryName) {
+async function filterByCategory(categoryId, categoryName) {
     console.log('Фильтрация по категории:', categoryId, categoryName);
-    console.log('Все товары:', allProducts);
-    console.log('Все категории:', allCategories);
     
     isSearchActive = true;
     isInCategoryView = true; // Устанавливаем флаг просмотра категории
     
-    // Преобразуем categoryId к числу для корректного сравнения
-    const numCategoryId = parseInt(categoryId);
+    // Показываем кнопку "Назад" только на десктопе
+    const backButton = document.getElementById('backButton');
+    if (backButton && window.innerWidth > 768) {
+        backButton.style.display = 'flex';
+        backButton.classList.add('show');
+    }
     
-    const categoryProducts = allProducts.filter(product => {
-        const productCategoryId = parseInt(product.category_id);
-        console.log(`Товар ${product.name}: category_id=${productCategoryId}, ищем=${numCategoryId}`);
-        return productCategoryId === numCategoryId;
-    });
-
-    console.log('Найдено товаров в категории:', categoryProducts.length, categoryProducts);
-
     const container = document.getElementById('productsContainer');
     if (!container) {
         console.error('Контейнер productsContainer не найден');
         return;
     }
 
-    if (categoryProducts.length === 0) {
+    // Показываем индикатор загрузки
+    container.innerHTML = `
+        <div class="loading-content" style="padding: 2rem; text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Загрузка товаров...</div>
+        </div>
+    `;
+
+    try {
+        // Получаем short_name из meta-тега
+        const shortNameMeta = document.querySelector('meta[name="short-name"]');
+        const shortName = shortNameMeta ? shortNameMeta.getAttribute('content') : '';
+        
+        if (!shortName) {
+            throw new Error('Short name не найден');
+        }
+
+        // Загружаем товары категории с сервера
+        const response = await secureFetch(`/${shortName}/api/search?category_id=${categoryId}`);
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки: ${response.status}`);
+        }
+
+        const categoryProducts = await response.json();
+        console.log('Найдено товаров в категории:', categoryProducts.length, categoryProducts);
+
+        if (categoryProducts.length === 0) {
+            container.innerHTML = `
+                <div class="products-header">
+                    <h5 id="productsTitle"><i class="fas fa-folder-open me-2"></i>Категория: ${escapeHtml(categoryName)}</h5>
+                </div>
+                <div class="no-results">
+                    <i class="fas fa-folder-open"></i>
+                    <h6>В этой категории пока нет товаров</h6>
+                    <button class="btn btn-primary btn-sm" onclick="showAllProducts()">
+                        Показать все товары
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        // Отображаем товары категории
+        renderCategoryResults(categoryProducts, categoryName);
+
+        // Очищаем поле поиска
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        
+        // Добавляем CSS класс для отображения подсказки о свайпе
+        document.body.classList.add('category-view');
+        
+        // Показываем подсказку о свайпе через 1 секунду
+        setTimeout(() => {
+            showSwipeHint();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Ошибка загрузки товаров категории:', error);
         container.innerHTML = `
             <div class="products-header">
-                <h5 id="productsTitle"><i class="fas fa-folder-open me-2"></i>Категория: ${categoryName}</h5>
+                <h5 id="productsTitle"><i class="fas fa-folder-open me-2"></i>Категория: ${escapeHtml(categoryName)}</h5>
             </div>
             <div class="no-results">
-                <i class="fas fa-folder-open"></i>
-                <h6>В этой категории пока нет товаров</h6>
+                <i class="fas fa-exclamation-triangle"></i>
+                <h6>Ошибка загрузки товаров</h6>
+                <p class="text-muted">${escapeHtml(error.message)}</p>
                 <button class="btn btn-primary btn-sm" onclick="showAllProducts()">
-                    Показать все товары
+                    Вернуться к каталогу
                 </button>
             </div>
         `;
-        return;
     }
-
-    // Отображаем товары категории
-    // Отображаем товары категории
-    renderCategoryResults(categoryProducts, categoryName);
-
-    // Очищаем поле поиска
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.value = '';
-    }
-    
-    // Добавляем CSS класс для отображения подсказки о свайпе
-    document.body.classList.add('category-view');
-    
-    // Показываем подсказку о свайпе через 1 секунду
-    setTimeout(() => {
-        showSwipeHint();
-    }, 1000);
 }
 
 // Отрисовка результатов для категории
@@ -672,12 +912,17 @@ function renderCategoryResults(products, categoryName) {
         return;
     }
 
-    const productsHTML = products.map(product => `
-        <article class="product-card" onclick="showProductDetails(${product.id})">
-            <div class="product-image ${!product.main_photo_url && !product.photo_url ? 'no-image' : ''}">
-                ${product.main_photo_url || product.photo_url 
-                    ? `<img src="${escapeHtml(processImageUrl(product.main_photo_url || product.photo_url))}" alt="${escapeHtml(product.name)}" 
-                         onerror="this.parentElement.classList.add('no-image'); this.style.display='none';">
+    const productsHTML = products.map(product => {
+        const imageUrl = product.main_photo_url || product.photo_url;
+        const hasImage = !!imageUrl;
+        const isAvailable = product.isAvailable && product.quantity > 0;
+        
+        return `
+        <article class="product-card" data-product-id="${product.id}">
+            <div class="product-image ${!hasImage ? 'no-image' : ''}">
+                ${hasImage 
+                    ? `<img src="${escapeHtml(processImageUrl(imageUrl))}" alt="${escapeHtml(product.name)}" 
+                         onerror="handleImageError(this); this.parentElement.classList.add('no-image');" loading="lazy">
                       ${product.has_multiple_photos ? '<div class="position-absolute top-0 start-0 p-1"><span class="badge bg-dark bg-opacity-75"><i class="fas fa-images"></i></span></div>' : ''}` 
                     : ''
                 }
@@ -687,16 +932,17 @@ function renderCategoryResults(products, categoryName) {
                 <h3 class="product-name">${escapeHtml(product.name)}</h3>
                 ${product.description ? `<p class="product-description">${escapeHtml(product.description)}</p>` : ''}
                 <div class="product-footer">
-                    <span class="product-price">${product.formatted_price || formatPrice(product.price)}</span>
-                    <button class="add-to-cart ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}" 
-                            onclick="event.stopPropagation(); addToCart(${product.id})"
-                            ${!product.isAvailable || product.quantity <= 0 ? 'disabled' : ''}>
+                    <span class="product-price">${escapeHtml(product.formatted_price || formatPrice(product.price))}</span>
+                    <button class="add-to-cart ${!isAvailable ? 'disabled' : ''}" 
+                            data-product-id="${product.id}"
+                            ${!isAvailable ? 'disabled' : ''}>
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
             </div>
         </article>
-    `).join('');
+    `;
+    }).join('');
 
     container.innerHTML = `
         <div class="products-header">
@@ -712,6 +958,14 @@ function renderCategoryResults(products, categoryName) {
 function showAllProducts() {
     isSearchActive = false;
     isInCategoryView = false; // Сбрасываем флаг просмотра категории
+    
+    // Скрываем кнопку "Назад"
+    const backButton = document.getElementById('backButton');
+    if (backButton) {
+        backButton.style.display = 'none';
+        backButton.classList.remove('show');
+    }
+    
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.value = '';
@@ -732,17 +986,17 @@ function formatPrice(price) {
     });
 }
 
-// Функция для обработки URL изображений (использует прокси для Яндекс.Диска)
+// Функция для обработки URL изображений
 function processImageUrl(url) {
     if (!url) return url;
     
-    // Если URL уже проксирован Laravel или не от Яндекс.Диска, возвращаем как есть
-    if (url.includes('/api/yandex-image-proxy') || !url.includes('downloader.disk.yandex.ru')) {
+    // Если URL уже полный (начинается с http или /), возвращаем как есть
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
         return url;
     }
     
-    // Если это URL от Яндекс.Диска, используем прокси
-    return `/api/yandex-image-proxy?url=${encodeURIComponent(url)}`;
+    // Иначе добавляем начальный слэш для относительного пути
+    return '/' + url;
 }
 
 // Функция для вычисления расстояния Левенштейна
@@ -974,7 +1228,7 @@ function displayProductInModal(product, body, title, footer) {
                     <div class="position-relative">
                         <img src="${processImageUrl(product.main_photo_url || product.photo_url)}" alt="${product.name}" 
                              class="modal-product-image" 
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             onerror="handleImageError(this);" loading="lazy">
                         <div class="product-image-placeholder" style="display: none;">
                             <i class="fas fa-image"></i>
                             <span>Изображение недоступно</span>
@@ -995,7 +1249,7 @@ function displayProductInModal(product, body, title, footer) {
                     <h4 class="modal-product-name mb-3">${escapeHtml(product.name)}</h4>
                     
                     <div class="modal-product-price">
-                        ${formatPrice(product.price)} ₽
+                        ${product.formatted_price || formatPrice(product.price)}
                     </div>
                     
                     ${product.description ? `
@@ -1089,9 +1343,15 @@ function displayProductInModal(product, body, title, footer) {
     // Инициализируем количество если товар доступен
     if (product.isAvailable && product.quantity > 0) {
         setTimeout(() => {
-            updateModalQuantity(product.id, 1, product.price, product.quantity);
+            const priceToUse = product.price_with_markup || product.price;
+            updateModalQuantity(product.id, 1, priceToUse, product.quantity);
         }, 100);
     }
+    
+    // Инициализируем свайп для галереи
+    setTimeout(() => {
+        initGallerySwipe();
+    }, 150);
 }
 
 // Функции управления панелями
@@ -1128,7 +1388,7 @@ function getStatusBadge(product) {
     else if (product.availability_status === 'Заканчивается') statusClass = 'warning';  
     else if (product.availability_status === 'Нет в наличии') statusClass = 'danger';
     
-    return `<span class="badge bg-${statusClass} shadow-sm">${product.availability_status}</span>`;
+    return `<span class="badge bg-${statusClass} shadow-sm">${escapeHtml(product.availability_status || '')}</span>`;
 }
 
 // Функции для работы с количеством товара
@@ -1377,8 +1637,9 @@ function changeQuantityModal(productId, delta) {
     if (product) {
         const maxQuantity = Math.min(product.quantity, 99);
         const finalQuantity = Math.min(newQuantity, maxQuantity);
+        const priceToUse = product.price_with_markup || product.price;
         
-        updateModalQuantity(productId, finalQuantity, product.price, product.quantity);
+        updateModalQuantity(productId, finalQuantity, priceToUse, product.quantity);
     }
 }
 
@@ -2004,14 +2265,15 @@ function setupScrollBehavior() {
             tg.expand();
             
             // Отключаем стандартное поведение pull-to-refresh/close (только для поддерживаемых версий)
-            if (tg.version && parseFloat(tg.version) >= 6.1) {
-                tg.disableClosingConfirmation();
-            } else if (tg.disableClosingConfirmation) {
+            if (tg.version && parseFloat(tg.version) >= 6.1 && tg.disableClosingConfirmation) {
                 try {
                     tg.disableClosingConfirmation();
+                    console.log('Closing confirmation disabled for WebApp version', tg.version);
                 } catch (e) {
-                    console.log('Closing confirmation control not supported in this version');
+                    console.log('Closing confirmation control not supported in version', tg.version);
                 }
+            } else {
+                console.log('Closing confirmation not available in WebApp version', tg.version || 'unknown');
             }
             
             // Блокируем возможность закрытия через свайп вниз
@@ -2246,6 +2508,29 @@ function addCategorySwipeSupport() {
     }
 }
 
+// Функция для управления видимостью кнопки "Назад" при изменении размера окна
+function handleBackButtonVisibility() {
+    const backButton = document.getElementById('backButton');
+    
+    if (!backButton) return;
+    
+    // Если мы в режиме просмотра категории
+    if (isInCategoryView) {
+        // Показываем кнопку только на десктопе (> 768px)
+        if (window.innerWidth > 768) {
+            backButton.style.display = 'flex';
+            backButton.classList.add('show');
+        } else {
+            backButton.style.display = 'none';
+            backButton.classList.remove('show');
+        }
+    } else {
+        // Если не в режиме категории, скрываем кнопку
+        backButton.style.display = 'none';
+        backButton.classList.remove('show');
+    }
+}
+
 // Глобальные функции для использования в HTML
 window.initApp = initApp;
 window.showAlert = showAlert;
@@ -2278,6 +2563,7 @@ window.toggleCartFloat = toggleCartFloat;
 window.animateCartButtonOnAdd = animateCartButtonOnAdd;
 window.setCartButtonLoading = setCartButtonLoading;
 window.setCartButtonError = setCartButtonError;
+window.handleBackButtonVisibility = handleBackButtonVisibility;
 
 // Функции галереи
 window.setGalleryImage = setGalleryImage;
@@ -2287,6 +2573,215 @@ window.openGalleryFullscreen = openGalleryFullscreen;
 window.closeGalleryFullscreen = closeGalleryFullscreen;
 window.previousFullscreenImage = previousFullscreenImage;
 window.nextFullscreenImage = nextFullscreenImage;
+window.initGallerySwipe = initGallerySwipe;
+window.setupCategoryLazyLoading = setupCategoryLazyLoading;
+
+// ===== ФУНКЦИИ СВАЙПА ДЛЯ ГАЛЕРЕИ =====
+
+// Добавление поддержки свайпа для галереи изображений
+function initGallerySwipe() {
+    const galleryMain = document.querySelector('.product-gallery');
+    const galleryFullscreen = document.getElementById('gallery-fullscreen');
+    
+    if (galleryMain) {
+        addSwipeToGallery(galleryMain, false);
+    }
+    
+    if (galleryFullscreen) {
+        addSwipeToGallery(galleryFullscreen, true);
+    }
+}
+
+// Универсальная функция добавления свайпа к галерее
+function addSwipeToGallery(element, isFullscreen = false) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchCurrentX = 0;
+    let isDragging = false;
+    let startTime = 0;
+    const minSwipeDistance = 50; // минимальная дистанция для переключения
+    const maxSwipeTime = 300; // максимальное время для быстрого свайпа
+    
+    // Поддержка мыши для ПК
+    let isMouseDown = false;
+    
+    // Находим целевой элемент для свайпа
+    const swipeTarget = isFullscreen 
+        ? element.querySelector('.gallery-fullscreen-image')
+        : element.querySelector('.gallery-main-image');
+    
+    if (!swipeTarget) return;
+    
+    // Добавляем курсор grab для визуальной индикации
+    swipeTarget.style.cursor = 'grab';
+    swipeTarget.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    
+    // Touch события
+    swipeTarget.addEventListener('touchstart', handleStart, { passive: false });
+    swipeTarget.addEventListener('touchmove', handleMove, { passive: false });
+    swipeTarget.addEventListener('touchend', handleEnd, { passive: false });
+    
+    // Mouse события для ПК
+    swipeTarget.addEventListener('mousedown', handleMouseDown, { passive: false });
+    document.addEventListener('mousemove', handleMouseMove, { passive: false });
+    document.addEventListener('mouseup', handleMouseUp, { passive: false });
+    
+    function handleStart(e) {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchCurrentX = touch.clientX;
+        isDragging = true;
+        startTime = Date.now();
+        swipeTarget.style.transition = 'none'; // Убираем анимацию во время перетаскивания
+    }
+    
+    function handleMove(e) {
+        if (!isDragging) return;
+        
+        const touch = e.touches[0];
+        touchCurrentX = touch.clientX;
+        const deltaY = Math.abs(touch.clientY - touchStartY);
+        const deltaX = touch.clientX - touchStartX;
+        
+        // Если свайп горизонтальный, предотвращаем вертикальную прокрутку
+        if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10) {
+            e.preventDefault();
+            // Применяем трансформацию для визуального следования за пальцем
+            const translateX = deltaX * 0.3; // Коэффициент 0.3 для более плавного движения
+            swipeTarget.style.transform = `translateX(${translateX}px)`;
+        }
+    }
+    
+    function handleEnd(e) {
+        if (!isDragging) return;
+        
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = Math.abs(touchEndY - touchStartY);
+        const deltaTime = Date.now() - startTime;
+        
+        // Возвращаем анимацию
+        swipeTarget.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        swipeTarget.style.transform = 'translateX(0)';
+        
+        isDragging = false;
+        
+        // Проверяем, что свайп горизонтальный
+        if (Math.abs(deltaX) > deltaY) {
+            // Быстрый свайп или достаточная дистанция
+            if (Math.abs(deltaX) > minSwipeDistance || (deltaTime < maxSwipeTime && Math.abs(deltaX) > 30)) {
+                // Добавляем небольшую задержку перед переключением для плавности
+                setTimeout(() => {
+                    if (deltaX > 0) {
+                        // Свайп вправо - предыдущее изображение
+                        if (isFullscreen) {
+                            previousFullscreenImage();
+                        } else {
+                            previousGalleryImage();
+                        }
+                        triggerHapticFeedback('light');
+                    } else {
+                        // Свайп влево - следующее изображение
+                        if (isFullscreen) {
+                            nextFullscreenImage();
+                        } else {
+                            nextGalleryImage();
+                        }
+                        triggerHapticFeedback('light');
+                    }
+                }, 100);
+            }
+        }
+    }
+    
+    // Mouse handlers для ПК
+    function handleMouseDown(e) {
+        // Игнорируем клики по кнопкам
+        if (e.target.closest('button') || e.target.closest('.gallery-thumbnail')) {
+            return;
+        }
+        
+        isMouseDown = true;
+        touchStartX = e.clientX;
+        touchStartY = e.clientY;
+        touchCurrentX = e.clientX;
+        isDragging = false;
+        startTime = Date.now();
+        swipeTarget.style.cursor = 'grabbing';
+        swipeTarget.style.transition = 'none';
+        e.preventDefault();
+    }
+    
+    function handleMouseMove(e) {
+        if (!isMouseDown) return;
+        
+        touchCurrentX = e.clientX;
+        const deltaY = Math.abs(e.clientY - touchStartY);
+        const deltaX = e.clientX - touchStartX;
+        
+        // Начинаем dragging если прошли минимальное расстояние
+        if (Math.abs(deltaX) > 5 || deltaY > 5) {
+            isDragging = true;
+        }
+        
+        // Если тянем горизонтально
+        if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10) {
+            e.preventDefault();
+            // Применяем трансформацию для визуального следования за мышью
+            const translateX = deltaX * 0.3; // Коэффициент 0.3 для более плавного движения
+            swipeTarget.style.transform = `translateX(${translateX}px)`;
+        }
+    }
+    
+    function handleMouseUp(e) {
+        if (!isMouseDown) return;
+        
+        const touchEndX = e.clientX;
+        const touchEndY = e.clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = Math.abs(touchEndY - touchStartY);
+        const deltaTime = Date.now() - startTime;
+        
+        isMouseDown = false;
+        swipeTarget.style.cursor = 'grab';
+        
+        // Возвращаем анимацию
+        swipeTarget.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        swipeTarget.style.transform = 'translateX(0)';
+        
+        // Если было dragging и свайп горизонтальный
+        if (isDragging && Math.abs(deltaX) > deltaY) {
+            // Быстрый свайп или достаточная дистанция
+            if (Math.abs(deltaX) > minSwipeDistance || (deltaTime < maxSwipeTime && Math.abs(deltaX) > 30)) {
+                // Добавляем небольшую задержку перед переключением для плавности
+                setTimeout(() => {
+                    if (deltaX > 0) {
+                        // Свайп вправо - предыдущее изображение
+                        if (isFullscreen) {
+                            previousFullscreenImage();
+                        } else {
+                            previousGalleryImage();
+                        }
+                        triggerHapticFeedback('light');
+                    } else {
+                        // Свайп влево - следующее изображение
+                        if (isFullscreen) {
+                            nextFullscreenImage();
+                        } else {
+                            nextGalleryImage();
+                        }
+                        triggerHapticFeedback('light');
+                    }
+                }, 100);
+                e.preventDefault();
+            }
+        }
+        
+        isDragging = false;
+    }
+}
 
 // ===== ФУНКЦИИ ГАЛЕРЕИ =====
 
@@ -2303,7 +2798,19 @@ function setGalleryImage(index) {
     const thumbnails = document.querySelectorAll('.gallery-thumbnail');
     
     if (mainImage) {
-        mainImage.src = processImageUrl(window.currentGallery.photos[index]);
+        // Добавляем плавную анимацию появления
+        mainImage.style.opacity = '0';
+        mainImage.style.transform = 'scale(0.95)';
+        
+        setTimeout(() => {
+            mainImage.src = processImageUrl(window.currentGallery.photos[index]);
+            
+            // Анимация появления нового изображения
+            setTimeout(() => {
+                mainImage.style.opacity = '1';
+                mainImage.style.transform = 'scale(1)';
+            }, 50);
+        }, 150);
     }
     
     if (counter) {
@@ -2392,11 +2899,24 @@ function previousFullscreenImage() {
     if (!window.currentGallery || !window.currentGallery.photos) return;
     
     const newIndex = Math.max(0, window.currentGallery.currentIndex - 1);
+    if (newIndex === window.currentGallery.currentIndex) return; // Уже на первом изображении
+    
     window.currentGallery.currentIndex = newIndex;
     
     const fullscreenImage = document.getElementById('fullscreen-image');
     if (fullscreenImage) {
-        fullscreenImage.src = processImageUrl(window.currentGallery.photos[newIndex]);
+        // Добавляем плавную анимацию
+        fullscreenImage.style.opacity = '0';
+        fullscreenImage.style.transform = 'scale(0.95) translateX(0)';
+        
+        setTimeout(() => {
+            fullscreenImage.src = processImageUrl(window.currentGallery.photos[newIndex]);
+            
+            setTimeout(() => {
+                fullscreenImage.style.opacity = '1';
+                fullscreenImage.style.transform = 'scale(1) translateX(0)';
+            }, 50);
+        }, 150);
     }
     
     // Обновляем также основную галерею
@@ -2408,15 +2928,210 @@ function nextFullscreenImage() {
     if (!window.currentGallery || !window.currentGallery.photos) return;
     
     const newIndex = Math.min(window.currentGallery.photos.length - 1, window.currentGallery.currentIndex + 1);
+    if (newIndex === window.currentGallery.currentIndex) return; // Уже на последнем изображении
+    
     window.currentGallery.currentIndex = newIndex;
     
     const fullscreenImage = document.getElementById('fullscreen-image');
     if (fullscreenImage) {
-        fullscreenImage.src = processImageUrl(window.currentGallery.photos[newIndex]);
+        // Добавляем плавную анимацию
+        fullscreenImage.style.opacity = '0';
+        fullscreenImage.style.transform = 'scale(0.95) translateX(0)';
+        
+        setTimeout(() => {
+            fullscreenImage.src = processImageUrl(window.currentGallery.photos[newIndex]);
+            
+            setTimeout(() => {
+                fullscreenImage.style.opacity = '1';
+                fullscreenImage.style.transform = 'scale(1) translateX(0)';
+            }, 50);
+        }, 150);
     }
     
     // Обновляем также основную галерею
     setGalleryImage(newIndex);
+}
+
+// ===== БЕСКОНЕЧНАЯ ПРОКРУТКА ДЛЯ ТОВАРОВ =====
+
+let isLoadingMoreProducts = false;
+let currentProductsPage = 1;
+let hasMoreProducts = true;
+
+// Функция для инициализации бесконечной прокрутки
+function initInfiniteScroll() {
+    const trigger = document.getElementById('infiniteScrollTrigger');
+    if (!trigger) {
+        console.log('Infinite scroll trigger не найден');
+        return;
+    }
+    
+    console.log('Инициализация бесконечной прокрутки товаров');
+    
+    // Получаем начальные параметры
+    currentProductsPage = parseInt(trigger.getAttribute('data-next-page')) || 2;
+    hasMoreProducts = trigger.getAttribute('data-has-more') === 'true';
+    
+    // Создаем Intersection Observer для автоматической загрузки
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && hasMoreProducts && !isLoadingMoreProducts) {
+                loadMoreProducts();
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '200px', // Начинаем загрузку за 200px до достижения триггера
+        threshold: 0.1
+    });
+    
+    observer.observe(trigger);
+    
+    console.log('Infinite scroll инициализирован, следующая страница:', currentProductsPage);
+}
+
+// Функция загрузки дополнительных товаров
+async function loadMoreProducts() {
+    if (isLoadingMoreProducts || !hasMoreProducts) {
+        return;
+    }
+    
+    isLoadingMoreProducts = true;
+    
+    // Показываем индикатор загрузки
+    const loader = document.getElementById('infiniteScrollLoader');
+    if (loader) {
+        loader.style.display = 'block';
+    }
+    
+    try {
+        const shortName = document.querySelector('meta[name="short-name"]')?.content || 
+                         window.location.pathname.split('/')[1];
+        
+        const url = new URL(`/${shortName}`, window.location.origin);
+        url.searchParams.set('page', currentProductsPage);
+        
+        console.log('Загрузка страницы товаров:', currentProductsPage);
+        
+        const response = await fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        
+        // Парсим HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Извлекаем товары
+        const newProducts = doc.querySelectorAll('.product-card');
+        
+        if (newProducts.length === 0) {
+            // Больше нет товаров
+            hasMoreProducts = false;
+            const trigger = document.getElementById('infiniteScrollTrigger');
+            if (trigger) {
+                trigger.remove();
+            }
+            
+            // Показываем сообщение о завершении
+            if (loader) {
+                loader.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #888;">
+                        <i class="fas fa-check-circle"></i> Все товары загружены
+                    </div>
+                `;
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 2000);
+            }
+            
+            console.log('Все товары загружены');
+            return;
+        }
+        
+        // Добавляем новые товары в grid
+        const productsGrid = document.querySelector('.products-grid');
+        if (productsGrid) {
+            newProducts.forEach(product => {
+                const clonedProduct = product.cloneNode(true);
+                
+                // Добавляем обработчики событий
+                const addToCartBtn = clonedProduct.querySelector('.add-to-cart');
+                if (addToCartBtn && !addToCartBtn.disabled) {
+                    addToCartBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const productId = parseInt(this.getAttribute('data-product-id'));
+                        if (productId) {
+                            addToCart(productId);
+                        }
+                    });
+                }
+                
+                // Клик по карточке для открытия деталей
+                clonedProduct.addEventListener('click', function(e) {
+                    if (!e.target.closest('.add-to-cart')) {
+                        const productId = parseInt(this.getAttribute('data-product-id'));
+                        if (productId) {
+                            showProductDetails(productId);
+                        }
+                    }
+                });
+                
+                // Добавляем анимацию появления
+                clonedProduct.style.opacity = '0';
+                clonedProduct.style.transform = 'translateY(20px)';
+                productsGrid.appendChild(clonedProduct);
+                
+                // Плавное появление
+                setTimeout(() => {
+                    clonedProduct.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    clonedProduct.style.opacity = '1';
+                    clonedProduct.style.transform = 'translateY(0)';
+                }, 50);
+            });
+            
+            console.log(`Добавлено ${newProducts.length} товаров`);
+        }
+        
+        // Проверяем есть ли еще страницы
+        const nextTrigger = doc.getElementById('infiniteScrollTrigger');
+        if (nextTrigger) {
+            currentProductsPage = parseInt(nextTrigger.getAttribute('data-next-page')) || (currentProductsPage + 1);
+            hasMoreProducts = nextTrigger.getAttribute('data-has-more') === 'true';
+        } else {
+            hasMoreProducts = false;
+        }
+        
+    } catch (error) {
+        console.error('Ошибка загрузки товаров:', error);
+        hasMoreProducts = false;
+        
+        if (loader) {
+            loader.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #e74c3c;">
+                    <i class="fas fa-exclamation-triangle"></i> Ошибка загрузки товаров
+                </div>
+            `;
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 3000);
+        }
+    } finally {
+        isLoadingMoreProducts = false;
+        
+        // Скрываем loader если все успешно
+        if (loader && hasMoreProducts) {
+            loader.style.display = 'none';
+        }
+    }
 }
 
 // Инициализация при загрузке DOM
@@ -2435,9 +3150,14 @@ document.addEventListener('DOMContentLoaded', function() {
         telegramWebApp: !!(window.Telegram?.WebApp)
     });
     
-    // Инициализируем приложение
+    // Инициализируем приложение (проверяем, что не инициализирован из Blade)
     try {
-        initApp();
+        if (!window.isAppInitializedByBlade) {
+            console.log('Calling initApp from main DOMContentLoaded');
+            initApp();
+        } else {
+            console.log('initApp already called from Blade template');
+        }
     } catch (error) {
         console.error('Критическая ошибка инициализации:', error);
         // Принудительно показываем приложение даже при ошибке
@@ -2453,6 +3173,15 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Ошибка обновления счетчика корзины:', error);
         }
     }, 1000);
+    
+    // Инициализируем бесконечную прокрутку товаров
+    setTimeout(() => {
+        try {
+            initInfiniteScroll();
+        } catch (error) {
+            console.error('Ошибка инициализации infinite scroll:', error);
+        }
+    }, 1500);
     
     // Закрытие панели по ESC
     document.addEventListener('keydown', function(event) {
@@ -2484,6 +3213,38 @@ function setupModalBackdropHandlers() {
             }
         });
     }
+    
+    // Добавляем делегирование событий для карточек товаров
+    document.addEventListener('click', function(e) {
+        // Клик по карточке товара
+        const productCard = e.target.closest('.product-card');
+        if (productCard && !e.target.closest('.add-to-cart')) {
+            const productId = parseInt(productCard.getAttribute('data-product-id'));
+            if (productId) {
+                showProductDetails(productId);
+            }
+        }
+        
+        // Клик по кнопке добавления в корзину
+        const addToCartBtn = e.target.closest('.add-to-cart');
+        if (addToCartBtn && !addToCartBtn.disabled) {
+            e.stopPropagation();
+            const productId = parseInt(addToCartBtn.getAttribute('data-product-id'));
+            if (productId) {
+                addToCart(productId);
+            }
+        }
+        
+        // Клик по карточке категории
+        const categoryCard = e.target.closest('.category-card');
+        if (categoryCard) {
+            const categoryId = parseInt(categoryCard.getAttribute('data-category-id'));
+            const categoryName = categoryCard.getAttribute('data-category-name');
+            if (categoryId && categoryName) {
+                filterByCategory(categoryId, categoryName);
+            }
+        }
+    });
     
     // Добавляем поддержку свайпа для закрытия модальных окон
     addSwipeSupport();

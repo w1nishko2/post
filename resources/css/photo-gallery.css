@@ -1,0 +1,313 @@
+/* Стили для галереи фотографий */
+
+.photo-gallery-upload {
+    border: 2px dashed #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.photo-gallery-upload:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+}
+
+/* URL ввод */
+.url-input-section {
+    margin-bottom: 16px;
+}
+
+.url-input-section .input-group {
+    display: flex;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.url-input-section .admin-form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.url-input-section .admin-btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+
+
+/* Галерея фотографий */
+.photo-gallery {
+    margin-top: 16px;
+}
+
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.gallery-title {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+/* Элемент фотографии */
+.photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #dee2e6;
+}
+
+.photo-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.photo-item.main-photo {
+    border-color: #28a745;
+    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+}
+
+.photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.photo-item:hover img {
+    transform: scale(1.05);
+}
+
+/* Индикатор главной фотографии */
+.main-photo-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: #28a745;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Кнопка удаления */
+.remove-photo-btn {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.photo-item:hover .remove-photo-btn {
+    opacity: 1;
+}
+
+.remove-photo-btn:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+/* Подпись под фотографией */
+.photo-caption {
+    text-align: center;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.photo-item.main-photo .photo-caption {
+    color: #28a745;
+    font-weight: 600;
+}
+
+/* Информационное сообщение */
+.gallery-info {
+    padding: 8px 12px;
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    border-radius: 4px;
+    margin-top: 12px;
+}
+
+.gallery-info small {
+    color: #1976d2;
+}
+
+/* Состояние загрузки */
+.photo-item.loading {
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef, #f8f9fa);
+    background-size: 200% 200%;
+    animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.photo-item.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    border: 2px solid #007bff;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Ошибка загрузки */
+.photo-item.error {
+    border-color: #dc3545;
+    background-color: #f8d7da;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #721c24;
+}
+
+.photo-item.error i {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+/* HEIC плейсхолдер */
+.photo-item.heic-placeholder {
+    border-color: #ffc107;
+    background: linear-gradient(45deg, #fff3cd, #ffeaa7);
+    position: relative;
+}
+
+.photo-item.heic-placeholder::after {
+    content: 'HEIC';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: #ffc107;
+    color: #212529;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.photo-item.heic-placeholder img {
+    opacity: 0.8;
+}
+
+/* Индикатор обработки HEIC */
+.heic-processing {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #495057;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.heic-processing::before {
+    content: '⏳';
+    margin-right: 4px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+    }
+    
+    .photo-dropzone {
+        padding: 20px 12px;
+    }
+    
+    .gallery-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* Анимации */
+.photo-item {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Пустое состояние */
+.gallery-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: #6c757d;
+}
+
+.gallery-empty i {
+    font-size: 48px;
+    color: #dee2e6;
+    margin-bottom: 16px;
+}

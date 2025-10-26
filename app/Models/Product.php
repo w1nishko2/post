@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Product extends BaseModel
 {
@@ -17,7 +19,6 @@ class Product extends BaseModel
         'description',
         'article',
         'photo_url',
-        'yandex_disk_folder_url',
         'photos_gallery',
         'main_photo_index',
         'specifications',
@@ -26,6 +27,8 @@ class Product extends BaseModel
         'price',
         'markup_percentage',
         'is_active',
+        'images_download_status',
+        'images_download_error',
     ];
 
     // Защита от массового назначения критических полей
@@ -41,6 +44,69 @@ class Product extends BaseModel
         'is_active' => 'boolean',
         'main_photo_index' => 'integer',
     ];
+
+    /**
+     * Получить обработанные данные фотографий
+     */
+    public function getProcessedPhotoData(): array
+    {
+        // Сначала проверяем, есть ли сохраненная галерея
+        if ($this->photos_gallery && is_array($this->photos_gallery) && count($this->photos_gallery) > 0) {
+            $mainPhotoIndex = $this->main_photo_index ?? 0;
+            $mainPhoto = $this->photos_gallery[$mainPhotoIndex] ?? $this->photos_gallery[0] ?? null;
+            
+            return [
+                'type' => 'gallery',
+                'photos' => $this->photos_gallery,
+                'main_photo' => $mainPhoto,
+                'main_photo_index' => $mainPhotoIndex
+            ];
+        }
+        
+        // Если нет сохраненной галереи, но есть photo_url
+        if (!$this->photo_url) {
+            return [
+                'type' => 'none',
+                'photos' => [],
+                'main_photo' => null
+            ];
+        }
+
+        // Обычная фотография
+        return [
+            'type' => 'single',
+            'photos' => [$this->photo_url],
+            'main_photo' => $this->photo_url
+        ];
+    }
+
+    /**
+     * Получить главную фотографию для быстрого отображения
+     */
+    public function getMainPhotoForDisplay(): ?string
+    {
+        // Приоритет 1: Главное изображение из новой системы
+        $mainImage = $this->mainImage()->first();
+        if ($mainImage) {
+            return $mainImage->url;
+        }
+        
+        // Приоритет 2: Если есть сохраненная галерея - берем главную из неё и преобразуем в полный URL
+        if ($this->photos_gallery && is_array($this->photos_gallery) && count($this->photos_gallery) > 0) {
+            $mainPhotoIndex = $this->main_photo_index ?? 0;
+            $path = $this->photos_gallery[$mainPhotoIndex] ?? $this->photos_gallery[0] ?? null;
+            
+            if ($path) {
+                // Удаляем ведущий слэш если есть и добавляем /storage/
+                return asset('storage/' . ltrim($path, '/'));
+            }
+        }
+        
+        // Последний фоллбэк: возвращаем photo_url как есть
+        return $this->photo_url;
+    }
+
+
 
     /**
      * Связь с пользователем
@@ -64,6 +130,66 @@ class Product extends BaseModel
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Связь с изображениями товара
+     */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class);
+    }
+
+    /**
+     * Получить главное изображение
+     */
+    public function mainImage()
+    {
+        return $this->hasOne(ProductImage::class)->where('is_main', true);
+    }
+
+    /**
+     * Получить URL главного изображения
+     */
+    public function getMainImageUrlAttribute(): ?string
+    {
+        // Сначала проверяем новую систему изображений
+        $mainImage = $this->mainImage()->first();
+        if ($mainImage) {
+            return $mainImage->url;
+        }
+
+        // Фоллбэк на старую систему
+        return $this->getMainPhotoForDisplay();
+    }
+
+    /**
+     * Получить URL миниатюры главного изображения
+     */
+    public function getMainImageThumbnailAttribute(): ?string
+    {
+        $mainImage = $this->mainImage()->first();
+        if ($mainImage) {
+            return $mainImage->thumbnail_url;
+        }
+
+        // Фоллбэк на старую систему
+        return $this->getMainPhotoForDisplay();
+    }
+
+    /**
+     * Получить все URL изображений
+     */
+    public function getAllImageUrlsAttribute(): array
+    {
+        $images = $this->images()->ordered()->get();
+        
+        if ($images->isNotEmpty()) {
+            return $images->pluck('url')->toArray();
+        }
+
+        // Фоллбэк на старую систему
+        return $this->getAllPhotosAttribute();
     }
 
     /**
@@ -239,51 +365,37 @@ class Product extends BaseModel
     }
 
     /**
-     * Получить главную фотографию товара
+     * Получить главную фотографию товара (с прокси для Яндекс.Диска)
      */
     public function getMainPhotoUrlAttribute(): ?string
     {
-        // Если есть галерея фотографий
-        if ($this->photos_gallery && is_array($this->photos_gallery) && count($this->photos_gallery) > 0) {
-            $index = min($this->main_photo_index ?? 0, count($this->photos_gallery) - 1);
-            $originalUrl = $this->photos_gallery[$index] ?? null;
-            
-            // Если это URL из Яндекс.Диска, проксируем его
-            if ($originalUrl && (str_contains($originalUrl, 'downloader.disk.yandex.ru') || str_contains($originalUrl, 'disk.yandex'))) {
-                return url('/api/yandex-image-proxy?url=' . urlencode($originalUrl));
-            }
-            
-            return $originalUrl;
-        }
-        
-        // Иначе возвращаем стандартное поле photo_url
-        return $this->photo_url;
+        // Используем новый быстрый метод без HTTP запросов
+        return $this->getMainPhotoForDisplay();
     }
 
     /**
-     * Получить все фотографии товара (галерея + основная фотография)
+     * Получить все URL фотографий для отображения
      */
     public function getAllPhotosAttribute(): array
     {
-        $photos = [];
+        // Приоритет: новая система изображений из таблицы product_images
+        $images = $this->images()->ordered()->get();
         
-        // Если есть галерея фотографий из Яндекс.Диска
-        if ($this->photos_gallery && is_array($this->photos_gallery)) {
-            $photos = array_map(function($url) {
-                // Если это URL из Яндекс.Диска, проксируем его
-                if ($url && (str_contains($url, 'downloader.disk.yandex.ru') || str_contains($url, 'disk.yandex'))) {
-                    return url('/api/yandex-image-proxy?url=' . urlencode($url));
-                }
-                return $url;
+        if ($images->isNotEmpty()) {
+            return $images->pluck('url')->toArray();
+        }
+        
+        // Фоллбэк: Если есть сохраненная галерея, преобразуем пути в полные URL
+        if ($this->photos_gallery && is_array($this->photos_gallery) && count($this->photos_gallery) > 0) {
+            return array_map(function($path) {
+                // Удаляем ведущий слэш если есть и добавляем /storage/
+                return asset('storage/' . ltrim($path, '/'));
             }, $this->photos_gallery);
         }
         
-        // Если галерея пустая, но есть основная фотография
-        if (empty($photos) && $this->photo_url) {
-            $photos = [$this->photo_url];
-        }
-        
-        return $photos;
+        // Последний фоллбэк: используем обработанные данные
+        $photoData = $this->getProcessedPhotoData();
+        return $photoData['photos'] ?? ($this->photo_url ? [$this->photo_url] : []);
     }
 
     /**
@@ -291,47 +403,27 @@ class Product extends BaseModel
      */
     public function getHasMultiplePhotosAttribute(): bool
     {
-        return count($this->all_photos) > 1;
+        $photos = $this->getAllPhotosAttribute();
+        return count($photos) > 1;
     }
 
     /**
-     * Получить URL для работы с Яндекс.Диском
+     * Получить URL для отображения конкретной фотографии
      */
-    public function getYandexDiskPublicKeyAttribute(): ?string
+    public function getPhotoUrl($photo = null): string
     {
-        if (!$this->yandex_disk_folder_url) {
-            return null;
+        $url = null;
+        
+        if ($photo && is_array($photo) && isset($photo['display_url'])) {
+            $url = $photo['display_url'];
+        } elseif ($photo && is_string($photo)) {
+            $url = $photo;
+        } else {
+            $url = $this->getMainPhotoUrlAttribute();
         }
         
-        // Извлекаем публичный ключ из URL типа https://disk.yandex.ru/d/hV4dQv-tEeXN_A
-        if (preg_match('/\/d\/([a-zA-Z0-9_-]+)/', $this->yandex_disk_folder_url, $matches)) {
-            return $matches[1];
-        }
-        
-        return null;
+        return $url ?? '';
     }
 
-    /**
-     * Установить порядок фотографий в галерее
-     */
-    public function setPhotosOrder(array $photosUrls, int $mainPhotoIndex = 0): bool
-    {
-        return $this->update([
-            'photos_gallery' => $photosUrls,
-            'main_photo_index' => max(0, min($mainPhotoIndex, count($photosUrls) - 1))
-        ]);
-    }
 
-    /**
-     * Установить главную фотографию по индексу
-     */
-    public function setMainPhoto(int $index): bool
-    {
-        $gallery = $this->photos_gallery ?? [];
-        if (empty($gallery) || $index < 0 || $index >= count($gallery)) {
-            return false;
-        }
-        
-        return $this->update(['main_photo_index' => $index]);
-    }
 }

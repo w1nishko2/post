@@ -20,6 +20,9 @@
         <!-- Шапка с поиском -->
         <header class="app-header">
             <div class="search-container">
+                <button class="back-button" id="backButton" type="button" onclick="showAllProducts()" style="display: none;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
                 <div class="search-wrapper">
                     <input type="text" class="search-input" id="searchInput" 
                            placeholder="Поиск товаров..." autocomplete="off">
@@ -51,7 +54,7 @@
             
             <div class="products-grid">
                 @foreach($products as $product)
-                <article class="product-card" onclick="showProductDetails({{ $product->id }})">
+                <article class="product-card" data-product-id="{{ $product->id }}">
                     <div class="product-image">
                         @if($product->main_photo_url)
                             <img src="{{ $product->main_photo_url }}" 
@@ -75,7 +78,7 @@
                         <div class="product-footer">
                             <div class="product-price">{{ $product->formatted_price_with_markup }}</div>
                             <button class="add-to-cart {{ !$product->isAvailable() ? 'disabled' : '' }}" 
-                                    onclick="event.stopPropagation(); addToCart({{ $product->id }})"
+                                    data-product-id="{{ $product->id }}"
                                     {{ !$product->isAvailable() ? 'disabled' : '' }}>
                                 @if($product->isAvailable())
                                     <i class="fas fa-plus"></i>
@@ -89,39 +92,19 @@
                 @endforeach
             </div>
             
-            <!-- Пагинация -->
-            @if($products->hasPages())
-            <nav class="pagination-nav">
-                <div class="pagination-wrapper">
-                    @if ($products->onFirstPage())
-                        <span class="pagination-btn disabled">
-                            <i class="fas fa-chevron-left"></i>
-                        </span>
-                    @else
-                        <a href="{{ $products->previousPageUrl() }}" class="pagination-btn">
-                            <i class="fas fa-chevron-left"></i>
-                        </a>
-                    @endif
-                    
-                    @foreach ($products->getUrlRange(1, $products->lastPage()) as $page => $url)
-                        @if ($page == $products->currentPage())
-                            <span class="pagination-btn active">{{ $page }}</span>
-                        @else
-                            <a href="{{ $url }}" class="pagination-btn">{{ $page }}</a>
-                        @endif
-                    @endforeach
-                    
-                    @if ($products->hasMorePages())
-                        <a href="{{ $products->nextPageUrl() }}" class="pagination-btn">
-                            <i class="fas fa-chevron-right"></i>
-                        </a>
-                    @else
-                        <span class="pagination-btn disabled">
-                            <i class="fas fa-chevron-right"></i>
-                        </span>
-                    @endif
+            <!-- Индикатор загрузки для бесконечной прокрутки -->
+            @if($products->hasMorePages())
+            <div class="infinite-scroll-loader" id="infiniteScrollLoader" style="display: none;">
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Загрузка товаров...</div>
                 </div>
-            </nav>
+            </div>
+            <div class="infinite-scroll-trigger" id="infiniteScrollTrigger" data-next-page="{{ $products->currentPage() + 1 }}" data-has-more="true"></div>
+            @else
+            <div class="infinite-scroll-end" style="text-align: center; padding: 20px; color: #888;">
+                <i class="fas fa-check-circle"></i> Все товары загружены
+            </div>
             @endif
         </section>
         @else
@@ -218,6 +201,15 @@
             $productsData = [];
             if (isset($products) && $products->count() > 0) {
                 foreach ($products as $product) {
+                    // Преобразуем пути изображений в полные URL
+                    $photosGallery = [];
+                    if ($product->photos_gallery && is_array($product->photos_gallery)) {
+                        foreach ($product->photos_gallery as $photoPath) {
+                            // Удаляем ведущий слэш если есть и добавляем /storage/
+                            $photosGallery[] = asset('storage/' . ltrim($photoPath, '/'));
+                        }
+                    }
+                    
                     $productsData[$product->id] = [
                         'id' => $product->id,
                         'name' => $product->name,
@@ -225,19 +217,19 @@
                         'article' => $product->article,
                         'photo_url' => $product->photo_url,
                         'main_photo_url' => $product->main_photo_url,
-                        'photos_gallery' => $product->photos_gallery,
+                        'photos_gallery' => $photosGallery,
                         'specifications' => $product->specifications,
                         'quantity' => $product->quantity,
                         'price' => $product->price,
                         'formatted_price' => $product->formatted_price_with_markup,
                         'availability_status' => $product->availability_status,
                         'isAvailable' => $product->isAvailable(),
-                        'category_id' => $product->category_id
+                        'category_id' => (int)$product->category_id
                     ];
                 }
             }
         @endphp
-        @json($productsData)
+        {!! json_encode($productsData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) !!}
     </script>
 @endsection
 
@@ -363,19 +355,14 @@
                     slidesOffsetAfter: 0,
                     pagination: false,
                     navigation: false,
+                    simulateTouch: true, // Включаем симуляцию touch для мыши
+                    touchStartPreventDefault: false,
                     mousewheel: {
                         forceToAxis: true,
                         sensitivity: 1,
-                        releaseOnEdges: true
-                    },
-                    // Добавляем обработчики событий для отладки
-                    on: {
-                        init: function() {
-                            console.log('Swiper initialized successfully');
-                        },
-                        resize: function() {
-                            console.log('Swiper resized');
-                        }
+                        releaseOnEdges: true,
+                        eventsTarget: 'container',
+                        thresholdDelta: 7
                     },
                     breakpoints: {
                         320: {
@@ -388,6 +375,16 @@
                     on: {
                         init: function() {
                             console.log('Swiper initialized successfully');
+                            
+                            // Добавляем passive обработчики wheel событий для улучшения производительности
+                            const swiperEl = this.el;
+                            if (swiperEl && !swiperEl.hasPassiveWheelListeners) {
+                                swiperEl.addEventListener('wheel', function(e) {
+                                    // Пустой passive обработчик для улучшения производительности
+                                }, { passive: true });
+                                swiperEl.hasPassiveWheelListeners = true;
+                            }
+                            
                             // Безопасное обновление размеров после полной инициализации
                             setTimeout(() => {
                                 try {
@@ -396,9 +393,6 @@
                                     }
                                     if (this && this.updateSlides && typeof this.updateSlides === 'function') {
                                         this.updateSlides();
-                                    }
-                                    if (this && this.updateProgress && typeof this.updateProgress === 'function') {
-                                        this.updateProgress();
                                     }
                                     if (this && this.updateSlidesClasses && typeof this.updateSlidesClasses === 'function') {
                                         this.updateSlidesClasses();
@@ -422,6 +416,9 @@
                 
                 console.log('Swiper successfully created with', categoryCards.length, 'category cards');
                 
+                // Сохраняем глобально для доступа
+                window.categoriesSwiper = categoriesSwiper;
+                
             } catch (swiperError) {
                 console.error('Error creating Swiper instance:', swiperError);
                 categoriesSwiper = null;
@@ -436,6 +433,13 @@
                         } catch (e) {
                             console.warn('Error updating Swiper:', e);
                         }
+                    }
+                    
+                    // Запускаем ленивую загрузку категорий после инициализации Swiper
+                    if (typeof window.setupCategoryLazyLoading === 'function') {
+                        setTimeout(() => {
+                            window.setupCategoryLazyLoading();
+                        }, 200);
                     }
                 }, 100);
                 
@@ -467,18 +471,42 @@
             }
         }
         
-        // Функция для переинициализации при изменении контента
+        // Функция для переинициализации при изменении контента с улучшенной защитой
         function reinitSwiper() {
+            // Инициализируем счетчики если их нет
+            if (!window.swiperReinitRequestCount) {
+                window.swiperReinitRequestCount = 0;
+                window.lastSwiperReinitRequest = 0;
+            }
+            
+            const now = Date.now();
+            const timeSinceLastRequest = now - window.lastSwiperReinitRequest;
+            
+            // Сбрасываем счетчик если прошло достаточно времени
+            if (timeSinceLastRequest > 1000) {
+                window.swiperReinitRequestCount = 0;
+            }
+            
+            // Защита от слишком частых вызовов
+            if (window.swiperReinitRequestCount >= 5) {
+                console.warn('Слишком много запросов на переинициализацию Swiper, игнорируем');
+                return;
+            }
+            
             // Очищаем предыдущий таймаут если есть
             if (window.swiperReinitTimeout) {
                 clearTimeout(window.swiperReinitTimeout);
             }
             
+            window.swiperReinitRequestCount++;
+            window.lastSwiperReinitRequest = now;
+            
             window.swiperReinitTimeout = setTimeout(() => {
-                console.log('Reinitializing Swiper...');
+                console.log('Reinitializing Swiper... (request #' + window.swiperReinitRequestCount + ')');
                 const success = initCategoriesSwiper();
                 if (success) {
                     console.log('Swiper reinitialization successful');
+                    window.swiperReinitRequestCount = 0; // сброс счетчика после успешной инициализации
                 } else {
                     console.warn('Swiper reinitialization failed');
                 }
@@ -494,14 +522,16 @@
             // Увеличиваем задержку для инициализации Swiper
             setTimeout(initCategoriesSwiper, 1000);
             
-            // Ожидаем загрузки всех скриптов
+            // Ожидаем загрузки всех скриптов - убираем дублирующий вызов initApp
             setTimeout(function() {
-                if (typeof initApp === 'function') {
+                if (typeof initApp === 'function' && !window.isAppInitializedByBlade) {
+                    window.isAppInitializedByBlade = true;
+                    console.log('Calling initApp from Blade template');
                     initApp();
                     // Переинициализируем Swiper после загрузки приложения
                     setTimeout(initCategoriesSwiper, 500);
                 } else {
-                    console.error('initApp function not found');
+                    console.log('initApp already called or function not found');
                 }
             }, 800);
         });

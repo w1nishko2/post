@@ -1,237 +1,214 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-12">
-            <!-- Навигационная панель -->
-            <div class="card mb-4">
-                <div class="card-body p-0">
-                    <nav class="nav nav-pills nav-fill">
-                        <a class="nav-link" href="{{ route('home') }}">
-                            Мои боты
-                        </a>
-                        <a class="nav-link" href="{{ route('bot.products.index', $telegramBot) }}">
-                            Товары
-                        </a>
-                        <a class="nav-link active" href="{{ route('bot.categories.index', $telegramBot) }}">
-                            Категории
-                        </a>
-                    </nav>
+<div class="admin-container">
+    <!-- Навигационные табы -->
+    <div class="admin-nav-pills admin-mb-4">
+        <a class="admin-nav-pill" href="{{ route('home') }}">
+            <i class="fas fa-robot"></i>
+            Мои боты
+        </a>
+        <a class="admin-nav-pill" href="{{ route('bot.products.index', $telegramBot) }}">
+            <i class="fas fa-box"></i>
+            Товары
+        </a>
+        <a class="admin-nav-pill active" href="{{ route('bot.categories.index', $telegramBot) }}">
+            <i class="fas fa-folder"></i>
+            Категории
+        </a>
+    </div>
+
+    @if (session('success'))
+        <div class="admin-alert admin-alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    <!-- Информация о категории -->
+    <div class="admin-row admin-mb-4">
+        <div class="admin-col admin-col-md-8">
+            <div class="admin-card" style="height: 100%;">
+                <div class="admin-card-body">
+                    <div class="admin-d-flex" style="align-items: flex-start;">
+                        @if($category->photo_url)
+                            <img src="{{ asset('storage/' . ltrim($category->photo_url, '/')) }}" 
+                                 style="width: 120px; height: 120px; object-fit: cover; border-radius: var(--radius-md); margin-right: var(--space-lg);"
+                                 alt="{{ $category->name }}"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="width: 120px; height: 120px; border-radius: var(--radius-md); margin-right: var(--space-lg); background-color: var(--color-warning); display: none; align-items: center; justify-content: center; font-size: 40px; color: white;">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                        @else
+                            <div style="width: 120px; height: 120px; border-radius: var(--radius-md); margin-right: var(--space-lg); background-color: var(--color-warning); display: flex; align-items: center; justify-content: center; font-size: 40px; color: white;">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                        @endif
+                        
+                        <div style="flex-grow: 1;">
+                            <div class="admin-d-flex admin-align-items-center admin-mb-2">
+                                <h3 class="admin-mb-0" style="margin-right: var(--space-lg);">{{ $category->name }}</h3>
+                                @if($category->is_active)
+                                    <span class="admin-badge admin-badge-success">Активна</span>
+                                @else
+                                    <span class="admin-badge admin-badge-secondary">Не активна</span>
+                                @endif
+                            </div>
+
+                            @if($category->description)
+                                <p class="admin-text-muted admin-mb-3">{{ $category->description }}</p>
+                            @endif
+
+                            <div class="admin-row" style="text-align: center;">
+                                <div class="admin-col admin-col-4">
+                                    <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-sm);">
+                                        <h5 class="admin-text-primary admin-mb-1">{{ $category->products->count() }}</h5>
+                                        <small class="admin-text-muted">Всего товаров</small>
+                                    </div>
+                                </div>
+                                <div class="admin-col admin-col-4">
+                                    <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-sm);">
+                                        <h5 class="admin-text-success admin-mb-1">{{ $category->activeProducts->count() }}</h5>
+                                        <small class="admin-text-muted">Активных товаров</small>
+                                    </div>
+                                </div>
+                                <div class="admin-col admin-col-4">
+                                    <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-sm);">
+                                        <h5 class="admin-text-info admin-mb-1">{{ $category->created_at->format('d.m.Y') }}</h5>
+                                        <small class="admin-text-muted">Дата создания</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Хлебные крошки -->
-            <nav aria-label="breadcrumb" class="mb-4">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item">
-                        <a href="{{ route('bot.categories.index', $telegramBot) }}">
-                            Категории
+        <div class="admin-col admin-col-md-4">
+            <div class="admin-card" style="height: 100%;">
+                <div class="admin-card-header">
+                    <h6 class="admin-mb-0">Управление категорией</h6>
+                </div>
+                <div class="admin-card-body" style="display: flex; flex-direction: column;">
+                    <div style="display: grid; gap: var(--space-md); flex-grow: 1;">
+                        <a href="{{ route('bot.categories.edit', [$telegramBot, $category]) }}" class="admin-btn admin-btn-primary">
+                            <i class="fas fa-edit"></i>
+                            Редактировать
                         </a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        {{ $category->name }}
-                    </li>
-                </ol>
-            </nav>
+                        <a href="{{ route('bot.categories.index', $telegramBot) }}" class="admin-btn admin-btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i>
+                            К списку категорий
+                        </a>
+                        @if($category->products->count() == 0)
+                            <button class="admin-btn admin-btn-outline-danger" style="margin-top: auto;" onclick="deleteCategory()">
+                                <i class="fas fa-trash"></i>
+                                Удалить категорию
+                            </button>
+                        @else
+                            <button class="admin-btn admin-btn-outline-secondary" style="margin-top: auto;" disabled title="Нельзя удалить категорию с товарами">
+                                <i class="fas fa-ban"></i>
+                                Нельзя удалить
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    <!-- Товары в категории -->
+    <div class="admin-card">
+        <div class="admin-card-header admin-d-flex admin-justify-content-between admin-align-items-center">
+            <h5 class="admin-mb-0">
+                <i class="fas fa-box"></i>
+                Товары в категории
+                <span class="admin-badge admin-badge-secondary" style="margin-left: var(--space-sm);">{{ $category->products->count() }}</span>
+            </h5>
+            <div>
+                <a href="{{ route('bot.products.create', $telegramBot) }}?category_id={{ $category->id }}" class="admin-btn admin-btn-primary admin-btn-sm">
+                    <i class="fas fa-plus"></i>
+                    Добавить товар
+                </a>
+            </div>
+        </div>
 
-            @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="admin-card-body">
+            @if($category->products->count() > 0)
+                <div class="admin-row">
+                    @foreach($category->products as $product)
+                    <div class="admin-col admin-col-md-6 admin-col-lg-4 admin-mb-4">
+                        <div class="admin-card product-card" style="height: 100%;">
+                            <div class="admin-card-body">
+                                <div class="admin-d-flex admin-align-items-start admin-mb-3">
+                                    @if($product->main_image_url)
+                                        <img src="{{ $product->main_image_url }}" 
+                                             style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-md); margin-right: var(--space-md);"
+                                             alt="{{ $product->name }}"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div style="width: 60px; height: 60px; border-radius: var(--radius-md); margin-right: var(--space-md); background-color: var(--color-accent); display: none; align-items: center; justify-content: center; font-size: 20px; color: white;">
+                                            <i class="fas fa-cube"></i>
+                                        </div>
+                                    @else
+                                        <div style="width: 60px; height: 60px; border-radius: var(--radius-md); margin-right: var(--space-md); background-color: var(--color-accent); display: flex; align-items: center; justify-content: center; font-size: 20px; color: white;">
+                                            <i class="fas fa-cube"></i>
+                                        </div>
+                                    @endif
+                                    
+                                    <div style="flex-grow: 1;">
+                                        <h6 class="admin-mb-1">{{ $product->name }}</h6>
+                                        <p class="admin-text-success admin-mb-1" style="font-weight: bold;">{{ number_format($product->price, 0, ',', ' ') }} ₽</p>
+                                        <div class="admin-d-flex admin-align-items-center admin-text-muted" style="font-size: 0.875rem;">
+                                            <span style="margin-right: var(--space-sm);">Остаток: {{ $product->quantity ?? 'Неограничен' }}</span>
+                                            @if(!$product->is_active)
+                                                <span class="admin-badge admin-badge-secondary">Неактивен</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="admin-d-flex admin-gap-2">
+                                    <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" 
+                                       class="admin-btn admin-btn-sm admin-btn-outline-primary" style="flex: 1;">
+                                        <i class="fas fa-eye"></i> Просмотр
+                                    </a>
+                                    <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" 
+                                       class="admin-btn admin-btn-sm admin-btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            @else
+                <div style="text-align: center; padding: var(--space-xxl) 0;">
+                    <div style="margin-bottom: var(--space-lg);">
+                        <i class="fas fa-cube" style="font-size: 4rem; color: var(--color-text-muted); opacity: 0.5;"></i>
+                    </div>
+                    <h5 class="admin-text-muted admin-mb-3">В категории пока нет товаров</h5>
+                    <p class="admin-text-muted admin-mb-4">
+                        Добавьте первый товар в эту категорию или назначьте категорию существующим товарам.
+                    </p>
+                    <div class="admin-d-flex admin-gap-2 admin-justify-content-center">
+                        <a href="{{ route('bot.products.create', $telegramBot) }}?category_id={{ $category->id }}" class="admin-btn admin-btn-success">
+                            <i class="fas fa-plus"></i> Создать товар
+                        </a>
+                        <a href="{{ route('bot.products.index', $telegramBot) }}" class="admin-btn admin-btn-outline-primary">
+                            <i class="fas fa-list"></i> Все товары
+                        </a>
+                    </div>
                 </div>
             @endif
-
-            <!-- Информация о категории -->
-            <div class="row mb-4">
-                <div class="col-md-8">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-start">
-                                @if($category->photo_url)
-                                    <img src="{{ $category->photo_url }}" 
-                                         class="rounded me-4" 
-                                         style="width: 120px; height: 120px; object-fit: cover;"
-                                         alt="{{ $category->name }}"
-                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="rounded me-4 bg-warning d-none align-items-center justify-content-center " 
-                                         style="width: 120px; height: 120px; font-size: 40px;">
-                                        <i class="fas fa-folder"></i>
-                                    </div>
-                                @else
-                                    <div class="rounded me-4 bg-warning d-flex align-items-center justify-content-center " 
-                                         style="width: 120px; height: 120px; font-size: 40px;">
-                                        <i class="fas fa-folder"></i>
-                                    </div>
-                                @endif
-                                
-                                <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <h3 class="mb-0 me-3">{{ $category->name }}</h3>
-                                        @if($category->is_active)
-                                            <span class="badge bg-success">Активна</span>
-                                        @else
-                                            <span class="badge bg-secondary">Не активна</span>
-                                        @endif
-                                    </div>
-
-                                    @if($category->description)
-                                        <p class="text-muted mb-3">{{ $category->description }}</p>
-                                    @endif
-
-                                    <div class="row text-center">
-                                        <div class="col-4">
-                                            <div class="border rounded p-2">
-                                                <h5 class="text-primary mb-1">{{ $category->products->count() }}</h5>
-                                                <small class="text-muted">Всего товаров</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="border rounded p-2">
-                                                <h5 class="text-success mb-1">{{ $category->activeProducts->count() }}</h5>
-                                                <small class="text-muted">Активных товаров</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="border rounded p-2">
-                                                <h5 class="text-info mb-1">{{ $category->created_at->format('d.m.Y') }}</h5>
-                                                <small class="text-muted">Дата создания</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h6 class="mb-0">Управление категорией</h6>
-                        </div>
-                        <div class="card-body d-flex flex-column">
-                            <div class="d-grid gap-2 flex-grow-1">
-                                <a href="{{ route('bot.categories.edit', [$telegramBot, $category]) }}" class="btn btn-primary">
-                                    Редактировать
-                                </a>
-                                <a href="{{ route('bot.categories.index', $telegramBot) }}" class="btn btn-outline-primary">
-                                    К списку категорий
-                                </a>
-                                @if($category->products->count() == 0)
-                                    <button class="btn btn-outline-danger mt-auto" onclick="deleteCategory()">
-                                        Удалить категорию
-                                    </button>
-                                @else
-                                    <button class="btn btn-outline-secondary mt-auto" disabled title="Нельзя удалить категорию с товарами">
-                                        Нельзя удалить
-                                    </button>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Товары в категории -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        Товары в категории
-                        <span class="badge bg-secondary ms-2">{{ $category->products->count() }}</span>
-                    </h5>
-                    <div>
-                        <a href="{{ route('bot.products.create', $telegramBot) }}?category_id={{ $category->id }}" class="btn btn-primary btn-sm">
-                            Добавить товар
-                        </a>
-                    </div>
-                </div>
-
-                <div class="card-body">
-                    @if($category->products->count() > 0)
-                        <div class="row">
-                            @foreach($category->products as $product)
-                            <div class="col-md-6 col-lg-4 mb-4">
-                                <div class="card h-100 product-card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-start mb-3">
-                                            @if($product->photo_url)
-                                                <img src="{{ $product->photo_url }}" 
-                                                     class="rounded me-3" 
-                                                     style="width: 60px; height: 50px; object-fit: cover;"
-                                                     alt="{{ $product->name }}"
-                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="rounded me-3 bg-primary d-none align-items-center justify-content-center " 
-                                                     style="width: 60px; height: 50px; font-size: 20px;">
-                                                    <i class="fas fa-cube"></i>
-                                                </div>
-                                            @else
-                                                <div class="rounded me-3 bg-primary d-flex align-items-center justify-content-center " 
-                                                     style="width: 60px; height: 50px; font-size: 20px;">
-                                                    <i class="fas fa-cube"></i>
-                                                </div>
-                                            @endif
-                                            
-                                            <div class="flex-grow-1">
-                                                <h6 class="card-title mb-1">{{ $product->name }}</h6>
-                                                <p class="text-success fw-bold mb-1">{{ number_format($product->price, 0, ',', ' ') }} ₽</p>
-                                                <div class="d-flex align-items-center text-muted small">
-                                                    <span class="me-2">Остаток: {{ $product->quantity ?? 'Неограничен' }}</span>
-                                                    @if(!$product->is_active)
-                                                        <span class="badge bg-secondary">Неактивен</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="d-flex gap-2">
-                                            <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" 
-                                               class="btn btn-sm btn-outline-primary flex-fill">
-                                                <i class="fas fa-eye"></i> Просмотр
-                                            </a>
-                                            <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" 
-                                               class="btn btn-sm btn-outline-warning">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <div class="mb-4">
-                                <i class="fas fa-cube fa-4x text-muted opacity-50"></i>
-                            </div>
-                            <h5 class="text-muted mb-3">В категории пока нет товаров</h5>
-                            <p class="text-muted mb-4">
-                                Добавьте первый товар в эту категорию или назначьте категорию существующим товарам.
-                            </p>
-                            <div class="d-flex gap-2 justify-content-center">
-                                <a href="{{ route('bot.products.create', $telegramBot) }}?category_id={{ $category->id }}" class="btn btn-success">
-                                    <i class="fas fa-plus"></i> Создать товар
-                                </a>
-                                <a href="{{ route('bot.products.index', $telegramBot) }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-list"></i> Все товары
-                                </a>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
         </div>
     </div>
 </div>
 
 <!-- Скрытая форма для удаления -->
-<form id="delete-form" method="POST" action="{{ route('bot.categories.destroy', [$telegramBot, $category]) }}" class="d-none">
+<form id="delete-form" method="POST" action="{{ route('bot.categories.destroy', [$telegramBot, $category]) }}" class="admin-d-none">
     @csrf
     @method('DELETE')
 </form>
 @endsection
 
-@push('styles')
 <style>
 .product-card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -242,9 +219,7 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 </style>
-@endpush
 
-@push('scripts')
 <script>
 function deleteCategory() {
     if (confirm(`Вы уверены, что хотите удалить категорию "{{ $category->name }}"?\n\nЭто действие необратимо!`)) {
@@ -254,13 +229,12 @@ function deleteCategory() {
 
 // Автоматическое скрытие алертов
 document.addEventListener('DOMContentLoaded', function() {
-    const alerts = document.querySelectorAll('.alert');
+    const alerts = document.querySelectorAll('.admin-alert');
     alerts.forEach(alert => {
         setTimeout(() => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+            alert.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => alert.remove(), 300);
         }, 5000);
     });
 });
 </script>
-@endpush

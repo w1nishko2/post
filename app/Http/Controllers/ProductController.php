@@ -10,6 +10,8 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Exports\ProductsTemplateExport;
 use App\Exports\ProductsDataExport;
 use App\Imports\ProductsImport;
+use App\Services\ImageUploadService;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -180,35 +182,54 @@ class ProductController extends Controller
     /**
      * Store a newly created product in storage.
      */
-    public function store(StoreProductRequest $request, TelegramBot $telegramBot)
+    public function store(StoreProductRequest $request, TelegramBot $telegramBot, ImageUploadService $imageService)
     {
         // Проверка владения теперь выполняется middleware
+        
         $validated = $request->validated();
         $validated['user_id'] = Auth::id();
         $validated['telegram_bot_id'] = $telegramBot->id;
 
-        // Логирование данных галереи для отладки
-        Log::info('Creating product with gallery data', [
-            'user_id' => Auth::id(),
-            'bot_id' => $telegramBot->id,
-            'request_all' => $request->all(),
-            'request_yandex_url' => $request->input('yandex_disk_folder_url'),
-            'validated_yandex_url' => $validated['yandex_disk_folder_url'] ?? null,
-            'yandex_disk_folder_url' => $validated['yandex_disk_folder_url'] ?? null,
-            'photos_gallery_raw' => $request->input('photos_gallery'),
-            'photos_gallery_validated' => $validated['photos_gallery'] ?? null,
-            'main_photo_index' => $validated['main_photo_index'] ?? null,
-            'photos_gallery_processed' => $validated['photos_gallery'] ?? null
-        ]);
+        // Обработка загруженных изображений
+        if ($request->hasFile('images')) {
+            try {
+                $uploadedImages = $imageService->uploadMultiple($request->file('images'), 'products');
+                
+                // Собираем публичные URL изображений
+                $photosGallery = [];
+                foreach ($uploadedImages as $imageData) {
+                    $photosGallery[] = $imageData['file_path'];
+                }
+                
+                $validated['photos_gallery'] = $photosGallery;
+                $validated['main_photo_index'] = $request->input('main_photo_index', 0);
+                
+                // Устанавливаем главное фото в photo_url
+                if (!empty($photosGallery)) {
+                    $mainIndex = min($validated['main_photo_index'], count($photosGallery) - 1);
+                    $validated['photo_url'] = $photosGallery[$mainIndex];
+                }
+                
+                Log::info('Images uploaded for new product', [
+                    'count' => count($photosGallery),
+                    'photos_gallery' => $photosGallery,
+                    'main_photo_index' => $validated['main_photo_index']
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Error uploading images: ' . $e->getMessage());
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Ошибка при загрузке изображений: ' . $e->getMessage());
+            }
+        }
 
         $product = Product::create($validated);
 
-        // Логируем результат сохранения
         Log::info('Product created successfully', [
             'product_id' => $product->id,
-            'yandex_url_saved' => $product->yandex_disk_folder_url,
-            'photos_gallery_saved' => $product->photos_gallery,
-            'main_photo_index_saved' => $product->main_photo_index
+            'photos_gallery' => $product->photos_gallery,
+            'main_photo_index' => $product->main_photo_index
         ]);
 
         return redirect()->route('bot.products.index', $telegramBot)->with('success', 'Товар успешно добавлен!');
@@ -256,7 +277,7 @@ class ProductController extends Controller
     /**
      * Update the specified product in storage.
      */
-    public function update(UpdateProductRequest $request, TelegramBot $telegramBot, Product $product)
+    public function update(UpdateProductRequest $request, TelegramBot $telegramBot, Product $product, ImageUploadService $imageService)
     {
         // Проверяем, что бот и товар принадлежат текущему пользователю
         if ($telegramBot->user_id !== Auth::id() || $product->user_id !== Auth::id()) {
@@ -270,32 +291,47 @@ class ProductController extends Controller
 
         $validated = $request->validated();
 
-        // Логирование данных галереи для отладки
-        Log::info('Updating product with gallery data', [
-            'product_id' => $product->id,
-            'user_id' => Auth::id(),
-            'bot_id' => $telegramBot->id,
-            'request_all' => $request->all(),
-            'request_yandex_url' => $request->input('yandex_disk_folder_url'),
-            'validated_yandex_url' => $validated['yandex_disk_folder_url'] ?? null,
-            'old_yandex_disk_folder_url' => $product->yandex_disk_folder_url,
-            'new_yandex_disk_folder_url' => $validated['yandex_disk_folder_url'] ?? null,
-            'old_photos_gallery' => $product->photos_gallery,
-            'photos_gallery_raw' => $request->input('photos_gallery'),
-            'photos_gallery_validated' => $validated['photos_gallery'] ?? null,
-            'old_main_photo_index' => $product->main_photo_index,
-            'new_main_photo_index' => $validated['main_photo_index'] ?? null,
-            'photos_gallery_processed' => $validated['photos_gallery'] ?? null
-        ]);
+        // Обработка загруженных изображений
+        if ($request->hasFile('images')) {
+            try {
+                $uploadedImages = $imageService->uploadMultiple($request->file('images'), 'products');
+                
+                // Собираем публичные URL изображений
+                $photosGallery = [];
+                foreach ($uploadedImages as $imageData) {
+                    $photosGallery[] = $imageData['file_path'];
+                }
+                
+                $validated['photos_gallery'] = $photosGallery;
+                $validated['main_photo_index'] = $request->input('main_photo_index', 0);
+                
+                // Устанавливаем главное фото в photo_url
+                if (!empty($photosGallery)) {
+                    $mainIndex = min($validated['main_photo_index'], count($photosGallery) - 1);
+                    $validated['photo_url'] = $photosGallery[$mainIndex];
+                }
+                
+                Log::info('Images uploaded for product update', [
+                    'product_id' => $product->id,
+                    'count' => count($photosGallery),
+                    'photos_gallery' => $photosGallery,
+                    'main_photo_index' => $validated['main_photo_index']
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Error uploading images: ' . $e->getMessage());
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Ошибка при загрузке изображений: ' . $e->getMessage());
+            }
+        }
 
         $product->update($validated);
 
-        // Логируем результат обновления
         Log::info('Product updated successfully', [
             'product_id' => $product->id,
-            'yandex_url_saved' => $product->fresh()->yandex_disk_folder_url,
-            'photos_gallery_saved' => $product->fresh()->photos_gallery,
-            'main_photo_index_saved' => $product->fresh()->main_photo_index
+            'photos_gallery' => $product->photos_gallery,
+            'main_photo_index' => $product->main_photo_index
         ]);
 
         return redirect()->route('bot.products.index', $telegramBot)->with('success', 'Товар успешно обновлен!');
@@ -582,36 +618,66 @@ class ProductController extends Controller
         ]);
     }
 
+
+
     /**
      * Импорт товаров из Excel файла
      */
     public function importFromExcel(Request $request, TelegramBot $telegramBot)
     {
+        // Убираем ограничение времени выполнения для больших импортов
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+        
         // Проверяем, что бот принадлежит текущему пользователю
         if ($telegramBot->user_id !== Auth::id()) {
             abort(403, 'У вас нет доступа к этому боту.');
         }
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'update_existing' => 'boolean',
+            'download_images' => 'boolean',
         ], [
-            'excel_file.required' => 'Файл обязателен для загрузки.',
-            'excel_file.mimes' => 'Файл должен быть в формате Excel (xlsx, xls) или CSV.',
-            'excel_file.max' => 'Размер файла не должен превышать 2 МБ.',
+            'file.required' => 'Файл обязателен для загрузки.',
+            'file.mimes' => 'Файл должен быть в формате Excel (xlsx, xls) или CSV.',
+            'file.max' => 'Размер файла не должен превышать 2 МБ.',
         ]);
 
         try {
-            $import = new ProductsImport($telegramBot->id);
-            Excel::import($import, $request->file('excel_file'));
+            $updateExisting = $request->boolean('update_existing');
+            $downloadImages = $request->boolean('download_images');
+            
+            Log::info('Starting import', [
+                'user_id' => Auth::id(),
+                'bot_id' => $telegramBot->id,
+                'update_existing' => $updateExisting,
+                'download_images' => $downloadImages,
+                'file_name' => $request->file('file')->getClientOriginalName(),
+                'file_size' => $request->file('file')->getSize()
+            ]);
+            
+            $import = new ProductsImport($telegramBot->id, $updateExisting, $downloadImages, 'background');
+            Excel::import($import, $request->file('file'));
 
             $importedCount = $import->getImportedCount();
+            $updatedCount = $import->getUpdatedCount();
             $skippedCount = $import->getSkippedCount();
             $errors = $import->getImportErrors();
 
             // Формируем сообщение о результатах импорта
             $message = "Импорт завершен! Добавлено товаров: {$importedCount}";
             
+            if ($updatedCount > 0) {
+                $message .= ", обновлено: {$updatedCount}";
+            }
+            
             if ($skippedCount > 0) {
                 $message .= ", пропущено записей: {$skippedCount}";
+            }
+            
+            // Добавляем информацию о загрузке изображений
+            if ($downloadImages && ($importedCount > 0 || $updatedCount > 0)) {
+                $message .= ". Загрузка изображений запущена в фоновом режиме.";
             }
 
             if (!empty($errors)) {
@@ -622,7 +688,7 @@ class ProductController extends Controller
                     ->with('import_errors', $errorMessage);
             }
 
-            if ($importedCount == 0 && $skippedCount > 0) {
+            if ($importedCount == 0 && $updatedCount == 0 && $skippedCount > 0) {
                 return redirect()->route('bot.products.index', $telegramBot)
                     ->with('error', 'Не удалось импортировать ни одного товара. Проверьте формат файла и заголовки столбцов.');
             }
@@ -632,7 +698,7 @@ class ProductController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Import error: ' . $e->getMessage(), [
-                'file' => $request->file('excel_file')->getClientOriginalName(),
+                'file' => $request->file('file')->getClientOriginalName(),
                 'user_id' => Auth::id(),
                 'bot_id' => $telegramBot->id
             ]);
@@ -640,5 +706,123 @@ class ProductController extends Controller
             return redirect()->route('bot.products.index', $telegramBot)
                 ->with('error', 'Ошибка при импорте файла: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * AJAX импорт товаров с возвратом JSON
+     */
+    public function ajaxImport(Request $request, TelegramBot $telegramBot)
+    {
+        // Убираем ограничение времени выполнения для больших импортов
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+        
+        // Проверяем, что бот принадлежит текущему пользователю
+        if ($telegramBot->user_id !== Auth::id()) {
+            return response()->json(['error' => 'У вас нет доступа к этому боту.'], 403);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'update_existing' => 'boolean',
+            'download_images' => 'boolean',
+        ]);
+
+        try {
+            $updateExisting = $request->boolean('update_existing');
+            $downloadImages = $request->boolean('download_images');
+            
+            Log::info('Starting AJAX import', [
+                'user_id' => Auth::id(),
+                'bot_id' => $telegramBot->id,
+                'update_existing' => $updateExisting,
+                'download_images' => $downloadImages,
+                'file_name' => $request->file('file')->getClientOriginalName(),
+                'file_size' => $request->file('file')->getSize()
+            ]);
+            
+            $import = new ProductsImport($telegramBot->id, $updateExisting, $downloadImages, 'background');
+            Excel::import($import, $request->file('file'));
+
+            $importedCount = $import->getImportedCount();
+            $updatedCount = $import->getUpdatedCount();
+            $skippedCount = $import->getSkippedCount();
+            $errors = $import->getImportErrors();
+
+            // Формируем сообщение о результатах импорта
+            $message = "Импорт завершен! Добавлено товаров: {$importedCount}";
+            
+            if ($updatedCount > 0) {
+                $message .= ", обновлено: {$updatedCount}";
+            }
+            
+            if ($skippedCount > 0) {
+                $message .= ", пропущено записей: {$skippedCount}";
+            }
+            
+            // Добавляем информацию о загрузке изображений
+            if ($downloadImages && ($importedCount > 0 || $updatedCount > 0)) {
+                $message .= ". Изображения загружаются в фоновом режиме.";
+            }
+
+            if (!empty($errors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'errors' => $errors,
+                    'stats' => [
+                        'imported' => $importedCount,
+                        'updated' => $updatedCount,
+                        'skipped' => $skippedCount
+                    ]
+                ]);
+            }
+
+            if ($importedCount == 0 && $updatedCount == 0 && $skippedCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не удалось импортировать ни одного товара. Проверьте формат файла и заголовки столбцов.',
+                    'stats' => [
+                        'imported' => $importedCount,
+                        'updated' => $updatedCount,
+                        'skipped' => $skippedCount
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'stats' => [
+                    'imported' => $importedCount,
+                    'updated' => $updatedCount,
+                    'skipped' => $skippedCount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('AJAX Import error: ' . $e->getMessage(), [
+                'file' => $request->file('file')->getClientOriginalName(),
+                'user_id' => Auth::id(),
+                'bot_id' => $telegramBot->id
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при импорте файла: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    /**
+     * Проверка, является ли файл изображением по расширению
+     */
+    private function isImageFile($filename)
+    {
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'tiff', 'tif', 'heic', 'heif', 'avif', 'ico', 'raw', 'dng', 'cr2', 'nef', 'arw', 'psd', 'ai', 'eps'];
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        return in_array($extension, $imageExtensions);
     }
 }
