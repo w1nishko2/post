@@ -18,6 +18,11 @@
         <!-- Шапка с поиском -->
         <header class="app-header">
             <div class="search-container">
+                <?php if($bot->logo): ?>
+                    <div class="app-logo">
+                        <img src="<?php echo e(asset('storage/' . $bot->logo)); ?>" alt="<?php echo e($bot->bot_name); ?>" />
+                    </div>
+                <?php endif; ?>
                 <button class="back-button" id="backButton" type="button" onclick="showAllProducts()" style="display: none;">
                     <i class="fas fa-arrow-left"></i>
                 </button>

@@ -36,6 +36,8 @@ class UpdateTelegramBotRequest extends FormRequest
             'api_hash' => 'nullable|string|max:255',
             'mini_app_url' => 'nullable|string|max:255',
             'mini_app_short_name' => 'nullable|string|max:64|regex:/^[a-zA-Z0-9_]+$/',
+            'logo' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:10240', // 10MB
+            'remove_logo' => 'nullable|boolean',
             'is_active' => 'boolean',
         ];
     }
@@ -63,6 +65,10 @@ class UpdateTelegramBotRequest extends FormRequest
             
             'mini_app_short_name.max' => 'Короткое имя Mini App не должно превышать 64 символа.',
             'mini_app_short_name.regex' => 'Короткое имя может содержать только буквы, цифры и подчеркивания.',
+            
+            'logo.image' => 'Логотип должен быть изображением.',
+            'logo.mimes' => 'Логотип должен быть в формате PNG, JPG, JPEG или WebP.',
+            'logo.max' => 'Размер логотипа не должен превышать 10 МБ.',
             
             'is_active.boolean' => 'Статус активности должен быть true или false.',
         ];

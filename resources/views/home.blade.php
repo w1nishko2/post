@@ -200,7 +200,7 @@
     <div class="admin-modal" id="editBotModal{{ $bot->id }}">
         <div class="admin-modal-dialog">
             <div class="admin-modal-content">
-                <form method="POST" action="{{ route('telegram-bots.update', $bot) }}">
+                <form method="POST" action="{{ route('telegram-bots.update', $bot) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     <div class="admin-modal-header">
@@ -232,6 +232,21 @@
                         <label for="bot_name_{{ $bot->id }}" class="admin-form-label required">Название бота</label>
                         <input type="text" class="admin-form-control" id="bot_name_{{ $bot->id }}" name="bot_name" 
                                value="{{ $bot->bot_name }}" required>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label for="logo_{{ $bot->id }}" class="admin-form-label">Логотип Mini App</label>
+                        @if($bot->logo)
+                            <div class="admin-mb-2">
+                                <img src="{{ asset('storage/' . $bot->logo) }}" alt="Логотип" style="max-width: 100px; max-height: 100px; border-radius: 8px;">
+                                <div class="admin-form-check admin-mt-2">
+                                    <input type="checkbox" class="admin-form-check-input" id="remove_logo_{{ $bot->id }}" name="remove_logo" value="1">
+                                    <label for="remove_logo_{{ $bot->id }}" class="admin-form-check-label">Удалить логотип</label>
+                                </div>
+                            </div>
+                        @endif
+                        <input type="file" class="admin-form-control" id="logo_{{ $bot->id }}" name="logo" accept="image/png,image/webp,image/jpeg">
+                        <div class="admin-form-text">Поддерживаемые форматы: PNG, WebP, JPEG. Максимальный размер: 10 МБ</div>
                     </div>
 
                     <div class="admin-form-group admin-mb-0">

@@ -20,6 +20,11 @@
         <!-- Шапка с поиском -->
         <header class="app-header">
             <div class="search-container">
+                @if($bot->logo)
+                    <div class="app-logo">
+                        <img src="{{ asset('storage/' . $bot->logo) }}" alt="{{ $bot->bot_name }}" />
+                    </div>
+                @endif
                 <button class="back-button" id="backButton" type="button" onclick="showAllProducts()" style="display: none;">
                     <i class="fas fa-arrow-left"></i>
                 </button>

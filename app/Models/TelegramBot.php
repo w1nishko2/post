@@ -22,6 +22,7 @@ class TelegramBot extends BaseModel
         'webhook_url',
         'mini_app_url',
         'mini_app_short_name',
+        'logo',
         'menu_button',
         'commands',
         'is_active',

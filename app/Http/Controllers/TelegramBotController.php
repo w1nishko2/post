@@ -104,6 +104,33 @@ class TelegramBotController extends Controller
 
         $validated['last_updated_at'] = now();
 
+        // Обработка загрузки логотипа
+        if ($request->hasFile('logo')) {
+            $imageService = app(\App\Services\ImageUploadService::class);
+            
+            try {
+                // Удаляем старый логотип если есть
+                if ($telegramBot->logo) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($telegramBot->logo);
+                }
+                
+                // Загружаем новый логотип
+                $result = $imageService->upload($request->file('logo'), 'logos');
+                $validated['logo'] = $result['file_path'];
+            } catch (\Exception $e) {
+                return back()->withErrors(['logo' => 'Ошибка при загрузке логотипа: ' . $e->getMessage()])
+                            ->withInput();
+            }
+        }
+        
+        // Удаление логотипа если установлен флаг
+        if ($request->has('remove_logo') && $request->remove_logo) {
+            if ($telegramBot->logo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($telegramBot->logo);
+            }
+            $validated['logo'] = null;
+        }
+
         $telegramBot->update($validated);
 
         // Обновляем webhook если нужно

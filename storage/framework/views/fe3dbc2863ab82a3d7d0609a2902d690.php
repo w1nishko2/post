@@ -1,18 +1,18 @@
-@extends('layouts.app')
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 <div class="admin-container">
     <!-- Навигационные табы -->
     <div class="admin-nav-pills admin-mb-4">
-        <a class="admin-nav-pill" href="{{ route('home') }}">
+        <a class="admin-nav-pill" href="<?php echo e(route('home')); ?>">
             <i class="fas fa-robot"></i> Мои боты
         </a>
-        <a class="admin-nav-pill active" href="{{ route('products.select-bot') }}">
+        <a class="admin-nav-pill active" href="<?php echo e(route('products.select-bot')); ?>">
             <i class="fas fa-boxes"></i> Мои магазины
         </a>
     </div>
 
-    @if(isset($telegramBot))
+    <?php if(isset($telegramBot)): ?>
     <!-- Информация о боте -->
     <div class="admin-card admin-mb-4">
         <div class="admin-card-body">
@@ -20,17 +20,17 @@
             <div class="admin-d-flex admin-align-items-center admin-justify-content-between admin-flex-wrap admin-gap-sm">
                 <div class="admin-d-flex admin-align-items-center admin-flex-1">
                     <div class="admin-me-3">
-                        <div class="admin-bot-avatar {{ $telegramBot->is_active ? '' : 'inactive' }}">
+                        <div class="admin-bot-avatar <?php echo e($telegramBot->is_active ? '' : 'inactive'); ?>">
                             <i class="fas fa-robot"></i>
                         </div>
                     </div>
                     <div class="admin-flex-1">
-                        <h6 class="admin-mb-1">{{ $telegramBot->bot_name }}</h6>
-                        <div class="admin-text-muted">@{{ $telegramBot->bot_username }}</div>
+                        <h6 class="admin-mb-1"><?php echo e($telegramBot->bot_name); ?></h6>
+                        <div class="admin-text-muted">{{ $telegramBot->bot_username }}</div>
                     </div>
                 </div>
                 <div class="admin-d-flex admin-gap-sm admin-flex-wrap">
-                    <a href="{{ route('bot.products.index', $telegramBot) }}" class="admin-btn admin-btn-sm">
+                    <a href="<?php echo e(route('bot.products.index', $telegramBot)); ?>" class="admin-btn admin-btn-sm">
                         <i class="fas fa-th-large admin-me-1"></i>
                         <span class="admin-d-none-xs">Плитки</span>
                     </a>
@@ -42,7 +42,7 @@
             </div>
         </div>
     </div>
-    @endif
+    <?php endif; ?>
 
     <div class="admin-card admin-mb-4">
         <div class="admin-card-body">
@@ -64,9 +64,9 @@
                     <label for="category-filter" class="admin-form-label">Категория</label>
                     <select class="admin-form-control admin-select" id="category-filter">
                         <option value="">Все</option>
-                        @foreach($categories ?? [] as $category)
-                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                        @endforeach
+                        <?php $__currentLoopData = $categories ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($category->id); ?>"><?php echo e($category->name); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </select>
                 </div>
                 
@@ -87,12 +87,12 @@
                             <i class="fas fa-question-circle admin-me-1"></i>
                             <span class="admin-d-none-xs">Помощь</span>
                         </button>
-                        <a href="{{ route('bot.products.create', $telegramBot) }}" 
+                        <a href="<?php echo e(route('bot.products.create', $telegramBot)); ?>" 
                            class="admin-btn admin-btn-primary admin-btn-sm">
                             <i class="fas fa-plus admin-me-1"></i>
                             <span class="admin-d-none-xs">Добавить</span>
                         </a>
-                        <a href="{{ route('bot.products.export-data', $telegramBot) }}" 
+                        <a href="<?php echo e(route('bot.products.export-data', $telegramBot)); ?>" 
                            class="admin-btn admin-btn-success admin-btn-sm">
                             <i class="fas fa-download admin-me-1"></i>
                             <span class="admin-d-none-xs">Экспорт</span>
@@ -150,7 +150,7 @@
                 <h5 class="admin-mb-0 admin-flex-1">
                     <i class="fas fa-table admin-me-2"></i>
                     <span class="admin-d-none-xs">Товары </span>
-                    <span>({{ $products->total() ?? 0 }})</span>
+                    <span>(<?php echo e($products->total() ?? 0); ?>)</span>
                 </h5>
                 <div class="admin-d-flex admin-align-items-center admin-gap-sm">
                     <div class="admin-text-muted admin-d-none-xs" style="font-size: 0.85rem;">
@@ -160,16 +160,16 @@
                     <span class="admin-text-muted admin-d-none-xs">Показать:</span>
                     <select class="admin-form-control admin-select" id="per-page" 
                             style="width: auto; min-width: 60px; padding: 4px 8px;">
-                        <option value="10" {{ request('per_page', 15) == 10 ? 'selected' : '' }}>10</option>
-                        <option value="15" {{ request('per_page', 15) == 15 ? 'selected' : '' }}>15</option>
-                        <option value="25" {{ request('per_page', 15) == 25 ? 'selected' : '' }}>25</option>
-                        <option value="50" {{ request('per_page', 15) == 50 ? 'selected' : '' }}>50</option>
+                        <option value="10" <?php echo e(request('per_page', 15) == 10 ? 'selected' : ''); ?>>10</option>
+                        <option value="15" <?php echo e(request('per_page', 15) == 15 ? 'selected' : ''); ?>>15</option>
+                        <option value="25" <?php echo e(request('per_page', 15) == 25 ? 'selected' : ''); ?>>25</option>
+                        <option value="50" <?php echo e(request('per_page', 15) == 50 ? 'selected' : ''); ?>>50</option>
                     </select>
                 </div>
             </div>
         </div>
         <div class="admin-card-body admin-p-0">
-            @if($products->count() > 0)
+            <?php if($products->count() > 0): ?>
                 <div class="admin-table-responsive">
                     <table class="admin-table">
                         <thead>
@@ -190,22 +190,22 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($products as $product)
-                                <tr data-product-id="{{ $product->id }}">
+                            <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <tr data-product-id="<?php echo e($product->id); ?>">
                                     <td>
                                         <input type="checkbox" class="admin-form-check-input product-checkbox" 
-                                               value="{{ $product->id }}">
+                                               value="<?php echo e($product->id); ?>">
                                     </td>
                                     <td>
-                                        @if($product->main_photo_url)
+                                        <?php if($product->main_photo_url): ?>
                                             <div class="admin-product-photo">
-                                                <img src="{{ $product->main_photo_url }}" alt="{{ $product->name }}">
+                                                <img src="<?php echo e($product->main_photo_url); ?>" alt="<?php echo e($product->name); ?>">
                                             </div>
-                                        @else
+                                        <?php else: ?>
                                             <div class="admin-product-photo admin-no-photo">
                                                 <i class="fas fa-image"></i>
                                             </div>
-                                        @endif
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="admin-product-info">
@@ -213,12 +213,13 @@
                                                 <span class="editable-field" 
                                                       data-field="name" 
                                                       data-type="text" 
-                                                      data-value="{{ $product->name }}"
+                                                      data-value="<?php echo e($product->name); ?>"
                                                       title="Нажмите для редактирования">
-                                                    {{ $product->name }}
+                                                    <?php echo e($product->name); ?>
+
                                                 </span>
                                                 <input type="text" class="admin-form-control edit-input" 
-                                                       value="{{ $product->name }}" 
+                                                       value="<?php echo e($product->name); ?>" 
                                                        style="display: none; font-size: 14px; padding: 4px 8px; width: 100%;">
                                             </div>
                                         </div>
@@ -228,35 +229,36 @@
                                             <span class="editable-field" 
                                                   data-field="description" 
                                                   data-type="textarea" 
-                                                  data-value="{{ $product->description ?? '' }}"
+                                                  data-value="<?php echo e($product->description ?? ''); ?>"
                                                   title="Нажмите для редактирования описания"
                                                   style="cursor: pointer; display: block;">
-                                                @if($product->description)
-                                                    {{ Str::limit($product->description, 60) }}
-                                                @else
+                                                <?php if($product->description): ?>
+                                                    <?php echo e(Str::limit($product->description, 60)); ?>
+
+                                                <?php else: ?>
                                                     <span class="admin-text-muted">Нет описания</span>
-                                                @endif
+                                                <?php endif; ?>
                                             </span>
                                             <textarea class="admin-form-control edit-input" 
                                                       rows="3"
-                                                      style="display: none; font-size: 12px; padding: 4px 8px; width: 100%; resize: vertical;">{{ $product->description }}</textarea>
+                                                      style="display: none; font-size: 12px; padding: 4px 8px; width: 100%; resize: vertical;"><?php echo e($product->description); ?></textarea>
                                         </div>
                                     </td>
                                     <td>
                                         <span class="editable-field" 
                                               data-field="article" 
                                               data-type="text" 
-                                              data-value="{{ $product->article ?? '' }}"
+                                              data-value="<?php echo e($product->article ?? ''); ?>"
                                               title="Нажмите для редактирования артикула"
                                               style="cursor: pointer;">
-                                            @if($product->article)
-                                                <span class="admin-text-mono">{{ $product->article }}</span>
-                                            @else
+                                            <?php if($product->article): ?>
+                                                <span class="admin-text-mono"><?php echo e($product->article); ?></span>
+                                            <?php else: ?>
                                                 <span class="admin-text-muted">—</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </span>
                                         <input type="text" class="admin-form-control edit-input" 
-                                               value="{{ $product->article }}" 
+                                               value="<?php echo e($product->article); ?>" 
                                                placeholder="Артикул"
                                                style="display: none; font-size: 12px; padding: 4px; width: 100%;">
                                     </td>
@@ -264,22 +266,23 @@
                                         <span class="editable-field" 
                                               data-field="category_id" 
                                               data-type="select" 
-                                              data-value="{{ $product->category_id }}"
+                                              data-value="<?php echo e($product->category_id); ?>"
                                               title="Нажмите для изменения категории">
-                                            @if($product->category)
-                                                <span class="admin-badge">{{ $product->category->name }}</span>
-                                            @else
+                                            <?php if($product->category): ?>
+                                                <span class="admin-badge"><?php echo e($product->category->name); ?></span>
+                                            <?php else: ?>
                                                 <span class="admin-text-muted">Без категории</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </span>
                                         <select class="admin-form-control edit-input" style="display: none; font-size: 12px; padding: 4px;">
                                             <option value="">Без категории</option>
-                                            @foreach($categories ?? [] as $category)
-                                                <option value="{{ $category->id }}" 
-                                                        {{ $product->category_id == $category->id ? 'selected' : '' }}>
-                                                    {{ $category->name }}
+                                            <?php $__currentLoopData = $categories ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <option value="<?php echo e($category->id); ?>" 
+                                                        <?php echo e($product->category_id == $category->id ? 'selected' : ''); ?>>
+                                                    <?php echo e($category->name); ?>
+
                                                 </option>
-                                            @endforeach
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                         </select>
                                     </td>
                                     <td>
@@ -287,13 +290,13 @@
                                             <span class="editable-field" 
                                                   data-field="price" 
                                                   data-type="number" 
-                                                  data-value="{{ $product->price }}"
+                                                  data-value="<?php echo e($product->price); ?>"
                                                   title="Нажмите для изменения цены"
                                                   style="cursor: pointer;">
-                                                {{ number_format($product->price, 0, ',', ' ') }} ₽
+                                                <?php echo e(number_format($product->price, 0, ',', ' ')); ?> ₽
                                             </span>
                                             <input type="number" class="admin-form-control edit-input" 
-                                                   value="{{ $product->price }}" 
+                                                   value="<?php echo e($product->price); ?>" 
                                                    min="0" step="0.01"
                                                    style="display: none; font-size: 12px; padding: 4px; width: 100%;">
                                         </div>
@@ -303,17 +306,17 @@
                                             <span class="editable-field" 
                                                   data-field="markup_percentage" 
                                                   data-type="number" 
-                                                  data-value="{{ $product->markup_percentage ?? 0 }}"
+                                                  data-value="<?php echo e($product->markup_percentage ?? 0); ?>"
                                                   title="Нажмите для изменения наценки"
                                                   style="cursor: pointer;">
-                                                @if($product->markup_percentage > 0)
-                                                    <span class="admin-badge admin-badge-info">+{{ $product->markup_percentage }}%</span>
-                                                @else
+                                                <?php if($product->markup_percentage > 0): ?>
+                                                    <span class="admin-badge admin-badge-info">+<?php echo e($product->markup_percentage); ?>%</span>
+                                                <?php else: ?>
                                                     <span class="admin-text-muted">—</span>
-                                                @endif
+                                                <?php endif; ?>
                                             </span>
                                             <input type="number" class="admin-form-control edit-input" 
-                                                   value="{{ $product->markup_percentage ?? 0 }}" 
+                                                   value="<?php echo e($product->markup_percentage ?? 0); ?>" 
                                                    min="0" step="0.01" max="1000"
                                                    placeholder="0"
                                                    style="display: none; font-size: 12px; padding: 4px; width: 80px;">
@@ -324,14 +327,15 @@
                                             <span class="editable-field" 
                                                   data-field="quantity" 
                                                   data-type="number" 
-                                                  data-value="{{ $product->quantity }}"
+                                                  data-value="<?php echo e($product->quantity); ?>"
                                                   title="Нажмите для изменения количества">
-                                                <span class="admin-badge {{ $product->quantity > 0 ? 'admin-badge-success' : 'admin-badge-danger' }}">
-                                                    {{ $product->quantity }}
+                                                <span class="admin-badge <?php echo e($product->quantity > 0 ? 'admin-badge-success' : 'admin-badge-danger'); ?>">
+                                                    <?php echo e($product->quantity); ?>
+
                                                 </span>
                                             </span>
                                             <input type="number" class="admin-form-control edit-input" 
-                                                   value="{{ $product->quantity }}" 
+                                                   value="<?php echo e($product->quantity); ?>" 
                                                    min="0" step="1"
                                                    style="display: none; font-size: 12px; padding: 4px; width: 60px;">
                                         </div>
@@ -341,85 +345,86 @@
                                             <span class="editable-field status-toggle" 
                                                   data-field="is_active" 
                                                   data-type="boolean" 
-                                                  data-value="{{ $product->is_active ? 1 : 0 }}"
+                                                  data-value="<?php echo e($product->is_active ? 1 : 0); ?>"
                                                   title="Нажмите для изменения статуса"
                                                   style="cursor: pointer;">
-                                                @if($product->is_active)
+                                                <?php if($product->is_active): ?>
                                                     <span class="admin-status-active">
                                                         <i class="fas fa-check-circle"></i>
                                                     </span>
-                                                @else
+                                                <?php else: ?>
                                                     <span class="admin-status-inactive">
                                                         <i class="fas fa-times-circle"></i>
                                                     </span>
-                                                @endif
+                                                <?php endif; ?>
                                             </span>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="admin-table-actions">
-                                            <a href="{{ route('bot.products.show', [$telegramBot, $product]) }}" 
+                                            <a href="<?php echo e(route('bot.products.show', [$telegramBot, $product])); ?>" 
                                                class="admin-btn admin-btn-xs" title="Просмотр">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('bot.products.edit', [$telegramBot, $product]) }}" 
+                                            <a href="<?php echo e(route('bot.products.edit', [$telegramBot, $product])); ?>" 
                                                class="admin-btn admin-btn-xs admin-btn-primary" title="Полное редактирование">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <button class="admin-btn admin-btn-xs admin-btn-danger" 
-                                                    onclick="deleteProduct({{ $product->id }}, '{{ $product->name }}')" 
+                                                    onclick="deleteProduct(<?php echo e($product->id); ?>, '<?php echo e($product->name); ?>')" 
                                                     title="Удалить">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
                     </table>
                 </div>
                 
                 <!-- Пагинация -->
-                @if($products->hasPages())
+                <?php if($products->hasPages()): ?>
                     <div class="admin-card-footer">
                         <div class="admin-d-flex admin-justify-content-between admin-align-items-center">
                             <div class="admin-text-muted">
-                                Показаны записи {{ $products->firstItem() }}-{{ $products->lastItem() }} 
-                                из {{ $products->total() }}
+                                Показаны записи <?php echo e($products->firstItem()); ?>-<?php echo e($products->lastItem()); ?> 
+                                из <?php echo e($products->total()); ?>
+
                             </div>
                             <div class="admin-pagination">
-                                @if($products->onFirstPage())
+                                <?php if($products->onFirstPage()): ?>
                                     <span class="admin-page-link disabled">
                                         <i class="fas fa-chevron-left"></i>
                                     </span>
-                                @else
-                                    <a href="{{ $products->previousPageUrl() }}" class="admin-page-link">
+                                <?php else: ?>
+                                    <a href="<?php echo e($products->previousPageUrl()); ?>" class="admin-page-link">
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
-                                @endif
+                                <?php endif; ?>
 
-                                @foreach($products->getUrlRange(1, $products->lastPage()) as $page => $url)
-                                    @if($page == $products->currentPage())
-                                        <span class="admin-page-link active">{{ $page }}</span>
-                                    @else
-                                        <a href="{{ $url }}" class="admin-page-link">{{ $page }}</a>
-                                    @endif
-                                @endforeach
+                                <?php $__currentLoopData = $products->getUrlRange(1, $products->lastPage()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $page => $url): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php if($page == $products->currentPage()): ?>
+                                        <span class="admin-page-link active"><?php echo e($page); ?></span>
+                                    <?php else: ?>
+                                        <a href="<?php echo e($url); ?>" class="admin-page-link"><?php echo e($page); ?></a>
+                                    <?php endif; ?>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
-                                @if($products->hasMorePages())
-                                    <a href="{{ $products->nextPageUrl() }}" class="admin-page-link">
+                                <?php if($products->hasMorePages()): ?>
+                                    <a href="<?php echo e($products->nextPageUrl()); ?>" class="admin-page-link">
                                         <i class="fas fa-chevron-right"></i>
                                     </a>
-                                @else
+                                <?php else: ?>
                                     <span class="admin-page-link disabled">
                                         <i class="fas fa-chevron-right"></i>
                                     </span>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                @endif
-            @else
+                <?php endif; ?>
+            <?php else: ?>
                 <div class="admin-empty-state">
                     <div class="admin-empty-icon">
                         <i class="fas fa-box-open"></i>
@@ -427,7 +432,7 @@
                     <h6>Товары не найдены</h6>
                     <p class="admin-text-muted">У вас пока нет товаров в этом боте</p>
                 </div>
-            @endif
+            <?php endif; ?>
         </div>
     </div>
 
@@ -640,11 +645,11 @@ document.addEventListener('DOMContentLoaded', function() {
         element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
         // AJAX запрос для обновления
-        fetch('{{ route("bot.products.update-field", $telegramBot) }}', {
+        fetch('<?php echo e(route("bot.products.update-field", $telegramBot)); ?>', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>'
             },
             body: JSON.stringify({
                 id: productId,
@@ -794,12 +799,12 @@ function deleteProduct(productId, productName) {
         // Создаем скрытую форму для удаления
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '{{ route("bot.products.destroy", [$telegramBot, ":id"]) }}'.replace(':id', productId);
+        form.action = '<?php echo e(route("bot.products.destroy", [$telegramBot, ":id"])); ?>'.replace(':id', productId);
         
         const csrfToken = document.createElement('input');
         csrfToken.type = 'hidden';
         csrfToken.name = '_token';
-        csrfToken.value = '{{ csrf_token() }}';
+        csrfToken.value = '<?php echo e(csrf_token()); ?>';
         
         const methodField = document.createElement('input');
         methodField.type = 'hidden';
@@ -861,4 +866,5 @@ function toggleHelpPanel() {
     }
 }
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\OSPanel\domains\post\resources\views/products/table.blade.php ENDPATH**/ ?>
