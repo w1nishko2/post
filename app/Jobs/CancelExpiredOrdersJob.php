@@ -22,56 +22,33 @@ class CancelExpiredOrdersJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('Starting automatic cancellation of expired orders');
-
         // Находим все просроченные заказы
         $expiredOrders = Order::expired()->get();
 
         if ($expiredOrders->isEmpty()) {
-            Log::info('No expired orders found');
             return;
         }
 
-        $cancelledCount = 0;
         $errorCount = 0;
-
-        Log::info("Found {$expiredOrders->count()} expired orders to process");
 
         foreach ($expiredOrders as $order) {
             try {
-                if ($order->cancelAndUnreserve()) {
-                    $cancelledCount++;
-                    
-                    Log::info('Expired order cancelled automatically', [
-                        'order_id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'expired_at' => $order->expires_at,
-                        'total_amount' => $order->total_amount,
-                    ]);
-                } else {
+                if (!$order->cancelAndUnreserve()) {
                     $errorCount++;
                     Log::warning('Failed to cancel expired order', [
                         'order_id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'reason' => 'cancelAndUnreserve returned false'
+                        'order_number' => $order->order_number
                     ]);
                 }
             } catch (\Exception $e) {
                 $errorCount++;
-                Log::error('Exception occurred while cancelling expired order', [
+                Log::error('Exception while cancelling expired order', [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'error' => $e->getMessage()
                 ]);
             }
         }
-
-        Log::info('Automatic cancellation of expired orders completed', [
-            'total_processed' => $expiredOrders->count(),
-            'cancelled_count' => $cancelledCount,
-            'error_count' => $errorCount,
-        ]);
     }
 
     /**

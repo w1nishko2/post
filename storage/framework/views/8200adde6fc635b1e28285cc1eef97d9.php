@@ -21,7 +21,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     
     <!-- Mini App Styles ONLY (без app.css!) -->
-    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/mini-app.css']); ?>
+    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/mini-app.css', 'resources/js/mini-app.js']); ?>
     
     <!-- Дополнительные стили для мини-приложения -->
     <?php echo $__env->yieldPushContent('styles'); ?>
@@ -35,9 +35,7 @@
 <body class="mini-app-body">
     <?php echo $__env->yieldContent('content'); ?>
     
-    <!-- Mini App JS -->
-    <?php echo app('Illuminate\Foundation\Vite')(['resources/js/mini-app.js']); ?>
-    
+   
     <!-- Дополнительные скрипты для мини-приложения -->
     <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>

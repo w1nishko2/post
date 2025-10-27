@@ -261,9 +261,20 @@
         
         function initCategoriesSwiper() {
             try {
+                // Инициализируем счетчики попыток
+                if (!window.swiperInitAttempts) {
+                    window.swiperInitAttempts = 0;
+                }
+                
+                window.swiperInitAttempts++;
+                
+                // Максимум 10 попыток инициализации
+                if (window.swiperInitAttempts > 10) {
+                    return false;
+                }
+                
                 // Проверяем готовность DOM
                 if (!isDOMReady()) {
-                    console.warn('DOM not ready, waiting...');
                     waitForDOM().then(() => {
                         setTimeout(initCategoriesSwiper, 100);
                     });
@@ -272,8 +283,9 @@
                 
                 // Проверяем загрузку Swiper библиотеки
                 if (typeof Swiper === 'undefined') {
-                    console.warn('Swiper library not loaded yet, retrying...');
-                    setTimeout(initCategoriesSwiper, 500);
+                    if (window.swiperInitAttempts < 10) {
+                        setTimeout(initCategoriesSwiper, 500);
+                    }
                     return false;
                 }
                 
@@ -282,7 +294,7 @@
                     try {
                         categoriesSwiper.destroy(true, true);
                     } catch (e) {
-                        console.warn('Error destroying previous Swiper instance:', e);
+                        // Игнорируем ошибки при уничтожении
                     }
                     categoriesSwiper = null;
                 }
@@ -290,55 +302,48 @@
                 // Проверяем наличие контейнера
                 const swiperContainer = document.querySelector('.categories-swiper');
                 if (!swiperContainer) {
-                    console.warn('Swiper container not found');
                     return false;
                 }
                 
                 // Проверяем размеры контейнера
                 const containerRect = swiperContainer.getBoundingClientRect();
                 if (containerRect.width === 0 || containerRect.height === 0) {
-                    console.warn('Swiper container has zero size, retrying...');
-                    setTimeout(initCategoriesSwiper, 200);
+                    // Прекращаем попытки после 5 раза
+                    if (window.swiperInitAttempts < 5) {
+                        setTimeout(initCategoriesSwiper, 300);
+                    }
                     return false;
                 }
                 
                 // Убеждаемся, что контейнер видим
                 const containerStyle = getComputedStyle(swiperContainer);
-                if (containerStyle.display === 'none' || containerStyle.visibility === '') {
-                    console.warn('Swiper container is not visible, retrying...');
-                    setTimeout(initCategoriesSwiper, 200);
-                    return false;
-                }
-            
-            // Проверяем наличие категорий
-            const wrapper = swiperContainer.querySelector('.swiper-wrapper');
-            const categoryCards = wrapper ? wrapper.querySelectorAll('.category-card') : [];
-            
-            if (categoryCards.length === 0) {
-                console.warn('No category cards found for Swiper');
-                return false;
-            }
-            
-            // Оборачиваем каждую category-card в swiper-slide
-            categoryCards.forEach(card => {
-                if (!card.parentElement.classList.contains('swiper-slide')) {
-                    const slide = document.createElement('div');
-                    slide.className = 'swiper-slide';
-                    card.parentNode.insertBefore(slide, card);
-                    slide.appendChild(card);
-                }
-            });
-            
-            console.log('Swiper initialized with', categoryCards.length, 'slides');
-            
-            // Инициализируем Swiper с исправленными настройками
-            try {
-                // Дополнительная проверка перед созданием Swiper
-                if (typeof Swiper === 'undefined') {
-                    console.error('Swiper library not loaded');
+                if (containerStyle.display === 'none' || containerStyle.visibility === 'hidden') {
+                    if (window.swiperInitAttempts < 5) {
+                        setTimeout(initCategoriesSwiper, 300);
+                    }
                     return false;
                 }
                 
+                // Проверяем наличие категорий
+                const wrapper = swiperContainer.querySelector('.swiper-wrapper');
+                const slides = wrapper ? wrapper.querySelectorAll('.swiper-slide') : [];
+                
+                if (slides.length === 0) {
+                    return false;
+                }
+                
+                // Проверяем что слайды правильно обернуты (для совместимости со старым кодом)
+                const categoryCards = wrapper.querySelectorAll('.category-card');
+                categoryCards.forEach(card => {
+                    if (!card.parentElement.classList.contains('swiper-slide')) {
+                        const slide = document.createElement('div');
+                        slide.className = 'swiper-slide';
+                        card.parentNode.insertBefore(slide, card);
+                        slide.appendChild(card);
+                    }
+                });
+                
+                // Инициализируем Swiper с исправленными настройками
                 categoriesSwiper = new Swiper('.categories-swiper', {
                     slidesPerView: 'auto',
                     spaceBetween: 12,
@@ -379,8 +384,6 @@
                     },
                     on: {
                         init: function() {
-                            console.log('Swiper initialized successfully');
-                            
                             // Добавляем passive обработчики wheel событий для улучшения производительности
                             const swiperEl = this.el;
                             if (swiperEl && !swiperEl.hasPassiveWheelListeners) {
@@ -403,7 +406,7 @@
                                         this.updateSlidesClasses();
                                     }
                                 } catch (updateError) {
-                                    console.warn('Error during Swiper size update:', updateError);
+                                    // Игнорируем ошибки обновления
                                 }
                             }, 100);
                         },
@@ -413,30 +416,25 @@
                                     this.update();
                                 }
                             } catch (resizeError) {
-                                console.warn('Error during Swiper resize:', resizeError);
+                                // Игнорируем ошибки при ресайзе
                             }
                         }
                     }
                 });
                 
-                console.log('Swiper successfully created with', categoryCards.length, 'category cards');
-                
                 // Сохраняем глобально для доступа
                 window.categoriesSwiper = categoriesSwiper;
                 
-            } catch (swiperError) {
-                console.error('Error creating Swiper instance:', swiperError);
-                categoriesSwiper = null;
-                return false;
-            }
+                // Сбрасываем счетчик попыток после успешной инициализации
+                window.swiperInitAttempts = 0;
                 
-            // Принудительное обновление после инициализации
-            setTimeout(() => {
+                // Принудительное обновление после инициализации
+                setTimeout(() => {
                     if (categoriesSwiper && categoriesSwiper.update) {
                         try {
                             categoriesSwiper.update();
                         } catch (e) {
-                            console.warn('Error updating Swiper:', e);
+                            // Игнорируем ошибки обновления
                         }
                     }
                     
@@ -451,27 +449,7 @@
                 return true; // Успешная инициализация
                 
             } catch (error) {
-                console.error('Error initializing Swiper:', error);
-                console.error('Error details:', {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack
-                });
-                
                 categoriesSwiper = null; // Очищаем переменную при ошибке
-                
-                // Ограничиваем количество попыток переинициализации
-                if (!window.swiperRetryCount) window.swiperRetryCount = 0;
-                if (window.swiperRetryCount < 3) {
-                    window.swiperRetryCount++;
-                    setTimeout(() => {
-                        console.log('Retrying Swiper initialization... Attempt:', window.swiperRetryCount);
-                        initCategoriesSwiper();
-                    }, 1000 * window.swiperRetryCount);
-                } else {
-                    console.error('Max Swiper initialization attempts reached. Giving up.');
-                }
-                
                 return false; // Неудачная инициализация
             }
         }
@@ -494,7 +472,6 @@
             
             // Защита от слишком частых вызовов
             if (window.swiperReinitRequestCount >= 5) {
-                console.warn('Слишком много запросов на переинициализацию Swiper, игнорируем');
                 return;
             }
             
@@ -507,13 +484,9 @@
             window.lastSwiperReinitRequest = now;
             
             window.swiperReinitTimeout = setTimeout(() => {
-                console.log('Reinitializing Swiper... (request #' + window.swiperReinitRequestCount + ')');
                 const success = initCategoriesSwiper();
                 if (success) {
-                    console.log('Swiper reinitialization successful');
                     window.swiperReinitRequestCount = 0; // сброс счетчика после успешной инициализации
-                } else {
-                    console.warn('Swiper reinitialization failed');
                 }
             }, 300);
         }
@@ -522,7 +495,18 @@
         window.reinitCategoriesSwiper = reinitSwiper;
         
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, preparing Swiper initialization');
+            // Гарантируем скрытие экрана загрузки через 2 секунды максимум
+            setTimeout(function() {
+                const loadingEl = document.getElementById('loading');
+                const appEl = document.getElementById('app');
+                
+                if (loadingEl && loadingEl.style.display !== 'none') {
+                    loadingEl.style.display = 'none';
+                }
+                if (appEl && appEl.style.display === 'none') {
+                    appEl.style.display = 'block';
+                }
+            }, 2000);
             
             // Увеличиваем задержку для инициализации Swiper
             setTimeout(initCategoriesSwiper, 1000);
@@ -531,12 +515,15 @@
             setTimeout(function() {
                 if (typeof initApp === 'function' && !window.isAppInitializedByBlade) {
                     window.isAppInitializedByBlade = true;
-                    console.log('Calling initApp from Blade template');
                     initApp();
                     // Переинициализируем Swiper после загрузки приложения
                     setTimeout(initCategoriesSwiper, 500);
                 } else {
-                    console.log('initApp already called or function not found');
+                    // Даже если initApp не вызван, скрываем экран загрузки
+                    const loadingEl = document.getElementById('loading');
+                    const appEl = document.getElementById('app');
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (appEl) appEl.style.display = 'block';
                 }
             }, 800);
         });
@@ -549,14 +536,11 @@
                 if (categoriesSwiper && categoriesSwiper.update) {
                     try {
                         categoriesSwiper.update();
-                        console.log('Swiper updated on resize');
                     } catch (error) {
-                        console.warn('Error updating Swiper on resize:', error);
                         // Если обновление не удалось, попробуем переинициализировать
                         reinitSwiper();
                     }
                 } else {
-                    console.log('Swiper not available, reinitializing...');
                     initCategoriesSwiper();
                 }
             }, 250);
@@ -567,7 +551,6 @@
             const observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
                     if (mutation.type === 'childList' && mutation.target.id === 'categoriesTrack') {
-                        console.log('Categories content changed, reinitializing Swiper');
                         setTimeout(reinitSwiper, 100);
                     }
                 });

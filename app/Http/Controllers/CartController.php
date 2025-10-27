@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Product;
+use App\Models\CheckoutQueue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CartController extends Controller
 {
@@ -272,11 +274,23 @@ class CartController extends Controller
     }
 
     /**
-     * Оформить заказ
+     * Оформить заказ (БЫСТРЫЙ ВАРИАНТ - через очередь)
+     * 
+     * Вместо синхронного создания заказа:
+     * 1. Быстро валидируем корзину
+     * 2. Сохраняем данные в очередь checkout_queue
+     * 3. Мгновенно возвращаем session_id
+     * 4. CRON обрабатывает очередь в фоне
+     * 
+     * Преимущества:
+     * - Мгновенный ответ (1-2 сек вместо 10-30 сек)
+     * - Нет блокировки UI
+     * - Масштабируемость при высокой нагрузке
+     * - Повторные попытки при ошибках
      */
     public function checkout(Request $request)
     {
-        Log::info('Checkout started', [
+        Log::info('Checkout started (queue mode)', [
             'session_id' => Session::getId(),
             'user_id' => Auth::id(),
             'telegram_user_id' => $request->input('user_data.id'),
@@ -314,7 +328,7 @@ class CartController extends Controller
             ], 404);
         }
 
-        // Проверить наличие товаров и зарезервировать их
+        // БЫСТРАЯ проверка наличия товаров (БЕЗ резервирования - резервируем в фоне)
         foreach ($cartItems as $cartItem) {
             if (!$cartItem->product || !$cartItem->product->isAvailableForReservation($cartItem->quantity)) {
                 return response()->json([
@@ -325,113 +339,73 @@ class CartController extends Controller
         }
 
         // Проверяем на дублирование заказов (не более одного заказа от пользователя за последние 10 секунд)
-        $recentOrder = \App\Models\Order::where('telegram_chat_id', $request->user_data['id'])
-                                       ->where('created_at', '>=', now()->subSeconds(10))
-                                       ->first();
+        $recentCheckout = CheckoutQueue::where('telegram_user_id', $request->user_data['id'])
+                                      ->where('created_at', '>=', now()->subSeconds(10))
+                                      ->first();
 
-        if ($recentOrder) {
-            Log::warning('Duplicate order attempt detected', [
+        if ($recentCheckout) {
+            Log::warning('Duplicate checkout attempt detected', [
                 'telegram_user_id' => $request->user_data['id'],
-                'recent_order_id' => $recentOrder->id,
+                'recent_session_id' => $recentCheckout->session_id,
                 'session_id' => Session::getId()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Заказ уже оформляется. Подождите немного.'
+                'message' => 'Заказ уже оформляется. Подождите немного.',
+                'checkout_session_id' => $recentCheckout->session_id
             ], 429);
         }
 
         try {
-            DB::beginTransaction();
+            // Генерируем уникальный ID сессии оформления
+            $checkoutSessionId = (string) Str::uuid();
 
-            // Резервируем товары перед созданием заказа
-            $reservationErrors = [];
-            foreach ($cartItems as $cartItem) {
-                $product = $cartItem->product;
-                if (!$product->reserve($cartItem->quantity)) {
-                    $reservationErrors[] = "Не удалось зарезервировать товар \"{$product->name}\"";
-                }
-            }
+            // Подготавливаем данные корзины для очереди
+            $cartData = $cartItems->map(function ($item) {
+                return [
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'quantity' => $item->quantity,
+                    'price' => $item->price,
+                    'photo_url' => $item->product->photo_url,
+                ];
+            })->toArray();
 
-            if (!empty($reservationErrors)) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ошибка резервирования товаров: ' . implode(', ', $reservationErrors)
-                ], 400);
-            }
-
-            // Создать заказ
-            $customerName = trim(($request->user_data['first_name'] ?? '') . ' ' . ($request->user_data['last_name'] ?? ''));
-            $totalAmount = $cartItems->sum('total_price');
-
-            $order = \App\Models\Order::create([
+            // Добавляем в очередь оформления
+            CheckoutQueue::create([
+                'session_id' => $checkoutSessionId,
                 'user_id' => Auth::id(),
-                'session_id' => Session::getId(),
-                'telegram_chat_id' => $request->user_data['id'],
+                'session_cart_id' => Session::getId(),
+                'telegram_user_id' => $request->user_data['id'],
                 'telegram_bot_id' => $bot->id,
-                'customer_name' => $customerName,
+                'cart_data' => $cartData,
+                'user_data' => $request->user_data,
                 'notes' => $request->notes,
-                'total_amount' => $totalAmount,
-                'status' => \App\Models\Order::STATUS_PENDING,
-                'expires_at' => now()->addHours(5), // 5 часов на оплату
+                'status' => 'pending',
             ]);
 
-            // Создать позиции заказа (товары уже зарезервированы)
-            foreach ($cartItems as $cartItem) {
-                $product = $cartItem->product;
-
-                \App\Models\OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_article' => $product->article,
-                    'product_photo_url' => $product->photo_url,
-                    'quantity' => $cartItem->quantity,
-                    'price' => $cartItem->price,
-                    'total_price' => $cartItem->total_price,
-                ]);
-            }
-
-            // Отправить уведомления через Telegram АСИНХРОННО
-            Log::info('Dispatching Telegram notifications job', [
-                'order_id' => $order->id,
-                'order_number' => $order->order_number,
-                'admin_telegram_id' => $bot->admin_telegram_id,
-                'customer_telegram_id' => $order->telegram_chat_id
-            ]);
-            
-            // Запускаем задачу в фоне для отправки уведомлений
-            \App\Jobs\SendTelegramNotifications::dispatch($order, $bot);
-            
-            Log::info('Telegram notifications job dispatched', [
-                'order_id' => $order->id
-            ]);
-
-            // Очистить корзину после успешного заказа
+            // Очищаем корзину СРАЗУ (товары уже сохранены в checkout_queue)
             $this->clearCartItems();
 
-            DB::commit();
+            Log::info('Checkout added to queue', [
+                'checkout_session_id' => $checkoutSessionId,
+                'telegram_user_id' => $request->user_data['id'],
+                'bot_id' => $bot->id,
+                'items_count' => count($cartData)
+            ]);
 
+            // Мгновенный ответ!
             return response()->json([
                 'success' => true,
-                'message' => 'Заказ успешно оформлен! Уведомления отправляются в фоновом режиме.',
-                'order' => [
-                    'id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'total_amount' => $order->formatted_total,
-                    'status' => $order->status_label,
-                ],
-                'notifications' => [
-                    'job_dispatched' => true,
-                ]
+                'message' => 'Заказ принят! Обрабатывается...',
+                'checkout_session_id' => $checkoutSessionId,
+                'mode' => 'queue', // Указываем, что работаем через очередь
+                'estimated_time' => '10-30 секунд', // Примерное время обработки
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error('Order creation failed', [
+            Log::error('Failed to add checkout to queue', [
                 'error' => $e->getMessage(),
                 'bot_id' => $bot->id,
                 'user_data' => $request->user_data,
@@ -500,5 +474,72 @@ class CartController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Проверить статус обработки заказа по checkout_session_id
+     * 
+     * Возвращает:
+     * - pending: заказ в очереди
+     * - processing: заказ обрабатывается
+     * - completed: заказ создан, данные заказа в ответе
+     * - failed: ошибка при обработке
+     */
+    public function checkCheckoutStatus(Request $request)
+    {
+        $request->validate([
+            'checkout_session_id' => 'required|string|exists:checkout_queue,session_id'
+        ]);
+
+        try {
+            $checkout = CheckoutQueue::where('session_id', $request->checkout_session_id)->first();
+
+            if (!$checkout) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Сессия оформления не найдена'
+                ], 404);
+            }
+
+            $response = [
+                'success' => true,
+                'status' => $checkout->status,
+                'attempts' => $checkout->attempts,
+            ];
+
+            // Если заказ создан - возвращаем данные заказа
+            if ($checkout->status === 'completed' && $checkout->order) {
+                $order = $checkout->order;
+                $response['order'] = [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'total_amount' => $order->formatted_total,
+                    'status' => $order->status_label,
+                    'customer_name' => $order->customer_name,
+                    'created_at' => $order->created_at->format('d.m.Y H:i'),
+                ];
+                $response['message'] = 'Заказ успешно оформлен!';
+            } elseif ($checkout->status === 'failed') {
+                $response['message'] = 'Ошибка при оформлении заказа';
+                $response['error'] = $checkout->error_message;
+            } elseif ($checkout->status === 'processing') {
+                $response['message'] = 'Заказ обрабатывается...';
+            } else {
+                $response['message'] = 'Заказ в очереди на обработку';
+            }
+
+            return response()->json($response);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to check checkout status', [
+                'checkout_session_id' => $request->checkout_session_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при проверке статуса заказа'
+            ], 500);
+        }
     }
 }

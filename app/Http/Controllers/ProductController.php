@@ -69,30 +69,10 @@ class ProductController extends Controller
     {
         $query = $telegramBot->products()->with(['category']);
         
-        // Отладочная информация
-        Log::info('Search request', [
-            'search' => $request->get('search'),
-            'search_raw' => $request->input('search'),
-            'search_decoded' => urldecode($request->get('search', '')),
-            'all_params' => $request->all(),
-            'bot_id' => $telegramBot->id,
-            'total_products' => $telegramBot->products()->count()
-        ]);
-        
         // Поиск по различным полям
         if ($search = $request->get('search')) {
             // Декодируем URL-кодированную строку и убираем лишние пробелы
             $searchTerm = trim(urldecode($search));
-            Log::info('Searching for decoded: ' . $searchTerm);
-            Log::info('Search term length: ' . strlen($searchTerm));
-            Log::info('Search term bytes: ' . bin2hex($searchTerm));
-            
-            // Логируем первые несколько товаров для сравнения
-            $allProducts = $telegramBot->products()->limit(5)->get(['id', 'name']);
-            Log::info('Sample products:', $allProducts->pluck('name', 'id')->toArray());
-            
-            // Логируем SQL запрос
-            DB::enableQueryLog();
             
             $query->where(function($q) use ($searchTerm) {
                 // Основной поиск - простой и надежный
@@ -151,19 +131,6 @@ class ProductController extends Controller
         $products = $query->paginate(20)->appends($request->all());
         $categories = $telegramBot->categories()->active()->get();
 
-        // Логируем выполненные SQL запросы
-        if ($request->get('search')) {
-            $queries = DB::getQueryLog();
-            Log::info('SQL queries:', $queries);
-        }
-
-        // Отладочная информация о результатах
-        Log::info('Search results', [
-            'found_products' => count($products->items()),
-            'total_found' => $products->total(),
-            'search_term' => $request->get('search')
-        ]);
-
         return view('products.table', compact('products', 'telegramBot', 'categories'));
     }
 
@@ -210,12 +177,6 @@ class ProductController extends Controller
                     $validated['photo_url'] = $photosGallery[$mainIndex];
                 }
                 
-                Log::info('Images uploaded for new product', [
-                    'count' => count($photosGallery),
-                    'photos_gallery' => $photosGallery,
-                    'main_photo_index' => $validated['main_photo_index']
-                ]);
-                
             } catch (\Exception $e) {
                 Log::error('Error uploading images: ' . $e->getMessage());
                 return redirect()->back()
@@ -225,12 +186,6 @@ class ProductController extends Controller
         }
 
         $product = Product::create($validated);
-
-        Log::info('Product created successfully', [
-            'product_id' => $product->id,
-            'photos_gallery' => $product->photos_gallery,
-            'main_photo_index' => $product->main_photo_index
-        ]);
 
         return redirect()->route('bot.products.index', $telegramBot)->with('success', 'Товар успешно добавлен!');
     }
@@ -311,13 +266,6 @@ class ProductController extends Controller
                     $validated['photo_url'] = $photosGallery[$mainIndex];
                 }
                 
-                Log::info('Images uploaded for product update', [
-                    'product_id' => $product->id,
-                    'count' => count($photosGallery),
-                    'photos_gallery' => $photosGallery,
-                    'main_photo_index' => $validated['main_photo_index']
-                ]);
-                
             } catch (\Exception $e) {
                 Log::error('Error uploading images: ' . $e->getMessage());
                 return redirect()->back()
@@ -327,12 +275,6 @@ class ProductController extends Controller
         }
 
         $product->update($validated);
-
-        Log::info('Product updated successfully', [
-            'product_id' => $product->id,
-            'photos_gallery' => $product->photos_gallery,
-            'main_photo_index' => $product->main_photo_index
-        ]);
 
         return redirect()->route('bot.products.index', $telegramBot)->with('success', 'Товар успешно обновлен!');
     }
@@ -650,15 +592,6 @@ class ProductController extends Controller
             $updateExisting = $request->boolean('update_existing');
             $downloadImages = $request->boolean('download_images');
             
-            Log::info('🚀 Starting ULTRA-FAST QUEUE import', [
-                'user_id' => Auth::id(),
-                'bot_id' => $telegramBot->id,
-                'update_existing' => $updateExisting,
-                'download_images' => $downloadImages,
-                'file_name' => $request->file('file')->getClientOriginalName(),
-                'file_size' => $request->file('file')->getSize()
-            ]);
-            
             // v3.0: Сначала ВСЁ в БД, потом CRON обрабатывает
             $import = new ProductsImportQueue(
                 Auth::id(),
@@ -675,11 +608,6 @@ class ProductController extends Controller
 
             $totalImported = ProductsImportQueue::getTotalImported();
             $sessionId = $import->getImportSessionId();
-
-            Log::info('✅ ULTRA-FAST import completed', [
-                'session' => $sessionId,
-                'imported_to_queue' => $totalImported
-            ]);
 
             $message = "Импорт завершён! {$totalImported} товаров добавлено в очередь обработки. CRON начнёт обработку автоматически (каждую минуту 50 товаров).";
 
@@ -727,15 +655,6 @@ class ProductController extends Controller
             $updateExisting = $request->boolean('update_existing');
             $downloadImages = $request->boolean('download_images');
             
-            Log::info('🚀🚀🚀 Starting ULTRA-FAST QUEUE import', [
-                'user_id' => Auth::id(),
-                'bot_id' => $telegramBot->id,
-                'update_existing' => $updateExisting,
-                'download_images' => $downloadImages,
-                'file_name' => $request->file('file')->getClientOriginalName(),
-                'file_size' => $request->file('file')->getSize()
-            ]);
-            
             // НОВАЯ СТРАТЕГИЯ: Сначала ВСЁ в БД, потом CRON обрабатывает
             $import = new \App\Imports\ProductsImportQueue(
                 Auth::id(),
@@ -752,11 +671,6 @@ class ProductController extends Controller
 
             $totalImported = \App\Imports\ProductsImportQueue::getTotalImported();
             $sessionId = $import->getImportSessionId();
-
-            Log::info('✅✅✅ ULTRA-FAST import completed', [
-                'session' => $sessionId,
-                'imported_to_queue' => $totalImported
-            ]);
 
             return response()->json([
                 'success' => true,

@@ -154,6 +154,7 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::delete('/clear', [App\Http\Controllers\CartController::class, 'clear'])->name('clear');
     Route::get('/count', [App\Http\Controllers\CartController::class, 'getCount'])->name('count');
     Route::post('/checkout', [App\Http\Controllers\CartController::class, 'checkout'])->name('checkout');
+    Route::post('/checkout-status', [App\Http\Controllers\CartController::class, 'checkCheckoutStatus'])->name('checkout-status'); // 🆕 Проверка статуса оформления
 });
 if (app()->environment('production')) {
     URL::forceScheme('https');

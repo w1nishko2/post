@@ -23,8 +23,14 @@ class Kernel extends ConsoleKernel
                  ->daily()
                  ->withoutOverlapping();
 
-        // 🚀 НОВАЯ СИСТЕМА: Обработка очереди импорта (каждую минуту, по 50 товаров)
+        // 🚀 СИСТЕМА ИМПОРТА: Обработка очереди импорта (каждую минуту, по 50 товаров)
         $schedule->command('import:process-queue --limit=50')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->runInBackground();
+
+        // 🛒 СИСТЕМА ОФОРМЛЕНИЯ ЗАКАЗОВ: Обработка очереди checkout (каждую минуту, по 100 заказов)
+        $schedule->command('checkout:process-queue --limit=100')
                  ->everyMinute()
                  ->withoutOverlapping()
                  ->runInBackground();

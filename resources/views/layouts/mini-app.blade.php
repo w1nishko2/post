@@ -21,7 +21,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     
     <!-- Mini App Styles ONLY (без app.css!) -->
-    @vite(['resources/css/mini-app.css'])
+    @vite(['resources/css/mini-app.css', 'resources/js/mini-app.js'])
     
     <!-- Дополнительные стили для мини-приложения -->
     @stack('styles')
@@ -35,9 +35,7 @@
 <body class="mini-app-body">
     @yield('content')
     
-    <!-- Mini App JS -->
-    @vite(['resources/js/mini-app.js'])
-    
+   
     <!-- Дополнительные скрипты для мини-приложения -->
     @stack('scripts')
 </body>

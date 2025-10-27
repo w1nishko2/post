@@ -64,4 +64,159 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# post
+
+---
+
+# 🛍️ Weebs Market - Telegram E-commerce Platform
+
+Laravel-based e-commerce platform with Telegram Mini App integration.
+
+## 🚀 Features
+
+- 🤖 **Telegram Bot Integration** - Multi-bot support with unique short names
+- 📱 **Telegram Mini App** - Modern PWA for shopping
+- 📦 **Mass Product Import** - Queue-based Excel import with image downloading
+- 🛒 **Smart Checkout System** - Async order processing with queue
+- ⏰ **Auto-cancel Orders** - Automatic cancellation of expired orders
+- 🎨 **Category Management** - Dynamic categories with images
+- 📊 **Statistics** - Visitor tracking and analytics
+
+## ⚙️ CRON Setup for Sweb Hosting
+
+This project uses **Laravel Scheduler** for automated task processing.
+
+### 📚 Documentation Files
+
+| File | Description |
+|------|-------------|
+| **CRON_INDEX.md** | 📖 Main documentation hub |
+| **CRON_ИНСТРУКЦИЯ.txt** | 🇷🇺 Simple step-by-step guide (Russian) |
+| **CRON_QUICK_GUIDE.txt** | ⚡ Quick copy-paste commands |
+| **CRON_SETUP_SWEB.md** | 📝 Detailed Sweb setup guide |
+| **check-cron-config.php** | 🔍 Configuration checker script |
+
+### ⚡ Quick Setup
+
+Add **ONE** CRON job in Sweb control panel:
+
+**Schedule:** `* * * * *` (every minute)
+
+**Command:**
+```bash
+/usr/bin/php /home/USERNAME/domains/DOMAIN.COM/public_html/artisan schedule:run >> /dev/null 2>&1
+```
+
+Replace:
+- `USERNAME` - your hosting username
+- `DOMAIN.COM` - your domain
+
+### 🎯 Automated Tasks
+
+After CRON setup, the following tasks run automatically:
+
+| Task | Schedule | Description |
+|------|----------|-------------|
+| **Product Import** | Every minute | Processes 50 products from `import_queue` |
+| **Order Checkout** | Every minute | Processes 100 orders from `checkout_queue` |
+| **Cancel Expired Orders** | Every 15 minutes | Auto-cancel pending orders older than 24h |
+| **Clear Sessions** | Daily | Remove old inactive sessions |
+
+### 🔍 Monitoring
+
+```bash
+# Check import queue
+php artisan import:monitor-queue
+
+# Check checkout queue  
+php artisan checkout:monitor
+
+# View scheduled tasks
+php artisan schedule:list
+
+# Manual run (testing)
+php artisan schedule:run
+```
+
+### 📖 Full Documentation
+
+For complete setup instructions, see **[CRON_INDEX.md](CRON_INDEX.md)**
+
+## 🛠️ Installation
+
+```bash
+# Clone repository
+git clone https://github.com/w1nishko2/post.git
+
+# Install dependencies
+composer install
+npm install
+
+# Setup environment
+cp .env.example .env
+php artisan key:generate
+
+# Run migrations
+php artisan migrate
+
+# Build assets
+npm run build
+
+# Setup CRON (see CRON documentation above)
+```
+
+## 📦 Project Structure
+
+```
+app/
+├── Console/Commands/      # CRON commands
+├── Http/Controllers/      # Web & API controllers
+├── Models/               # Eloquent models
+├── Imports/              # Excel import classes
+├── Jobs/                 # Background jobs
+└── Services/             # Business logic
+
+database/
+├── migrations/           # Database schema
+└── seeders/             # Test data
+
+resources/
+├── css/                 # Styles (Vite)
+├── js/                  # JavaScript (Vite)
+└── views/               # Blade templates
+
+public/
+└── storage/             # Public file storage
+```
+
+## 🔑 Key Components
+
+### Import Queue System
+- Queue-based product import from Excel
+- Async image downloading from Yandex.Disk
+- Automatic category creation
+- Retry mechanism for failed imports
+
+### Checkout Queue System
+- Async order processing
+- Telegram user integration
+- Inventory reservation
+- Auto-notifications
+
+### Telegram Integration
+- Multi-bot support
+- Webhook handling
+- Mini App authentication
+- Order notifications
+
+## 📞 Support
+
+- **Sweb Hosting:** https://sweb.ru/support
+- **Laravel Docs:** https://laravel.com/docs
+- **Project Issues:** https://github.com/w1nishko2/post/issues
+
+---
+
+**Version:** 1.0  
+**Laravel:** 10.x  
+**PHP:** 8.2+  
+**Database:** MySQL 5.7+
