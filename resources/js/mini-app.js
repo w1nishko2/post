@@ -2,6 +2,7 @@
 
 // Переменные для отладки и разработки
 const isDevelopmentMode = !window.Telegram?.WebApp;
+const isTelegramEnvironment = !!(window.Telegram?.WebApp?.initData);
 let userData = null;
 let isAppInitialized = false; // Флаг для предотвращения повторной инициализации
 
@@ -2067,8 +2068,16 @@ function performClearCart() {
     });
 }
 
-// Функция перехода к оформлению заказа (НОВАЯ ВЕРСИЯ С ОЧЕРЕДЬЮ)
+// Функция перехода к оформлению заказа (НОВАЯ ВЕРСИЯ С ОЧЕРЕДЬЮ И ВЕБ-ПОДДЕРЖКОЙ)
 function proceedToCheckout() {
+    // Проверка окружения: Telegram или веб-браузер
+    if (!isTelegramEnvironment) {
+        // Открываем модальное окно для веб-оформления заказа
+        showWebCheckoutModal();
+        return;
+    }
+    
+    // Далее - логика для Telegram
     if (!userData) {
         showAlert('Ошибка: данные пользователя недоступны', 'error');
         return;
@@ -3280,3 +3289,208 @@ document.addEventListener('DOMContentLoaded', function() {
     // Настраиваем защиту от сворачивания через скролл
     preventPullToClose();
 });
+
+// ===== ФУНКЦИИ ДЛЯ ВЕБ-ОФОРМЛЕНИЯ ЗАКАЗА =====
+
+// Показать модальное окно веб-оформления заказа
+async function showWebCheckoutModal() {
+    const modal = document.getElementById('webCheckoutModal');
+    const body = document.getElementById('webCheckoutModalBody');
+    const itemsContainer = document.getElementById('webCheckoutItems');
+    const totalElement = document.getElementById('webCheckoutTotal');
+    
+    if (!modal || !body || !itemsContainer || !totalElement) {
+        showAlert('Ошибка: элементы формы не найдены', 'error');
+        return;
+    }
+    
+    // Показываем модальное окно
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    
+    // Загружаем данные корзины
+    try {
+        const response = await fetch('/cart', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const cartData = await response.json();
+        
+        if (!cartData.success || !cartData.items || cartData.items.length === 0) {
+            showAlert('Корзина пуста', 'warning');
+            closeWebCheckoutModal();
+            return;
+        }
+        
+        // Отображаем товары
+        itemsContainer.innerHTML = cartData.items.map(item => `
+            <div class="checkout-item">
+                <img 
+                    src="${item.product?.main_photo_url || item.product?.photo_url || '/images/placeholder.png'}" 
+                    alt="${escapeHtml(item.product?.name || 'Товар')}"
+                    class="checkout-item-image"
+                    onerror="this.src='/images/placeholder.png'"
+                >
+                <div class="checkout-item-details">
+                    <div class="checkout-item-name">${escapeHtml(item.product?.name || 'Товар')}</div>
+                    <div class="checkout-item-quantity">${item.quantity} шт.</div>
+                </div>
+                <div class="checkout-item-price">${formatPrice(item.total_price)} ₽</div>
+            </div>
+        `).join('');
+        
+        // Отображаем общую сумму
+        totalElement.textContent = `${formatPrice(cartData.total_amount)} ₽`;
+        
+        // Сбрасываем форму
+        const form = document.getElementById('webCheckoutForm');
+        if (form) {
+            form.reset();
+            // Убираем классы валидации
+            form.querySelectorAll('.form-control').forEach(input => {
+                input.classList.remove('is-invalid');
+            });
+        }
+        
+    } catch (error) {
+        console.error('Ошибка загрузки данных корзины:', error);
+        showAlert('Ошибка загрузки данных корзины', 'error');
+        closeWebCheckoutModal();
+    }
+}
+
+// Закрыть модальное окно веб-оформления
+function closeWebCheckoutModal() {
+    const modal = document.getElementById('webCheckoutModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+// Валидация формы веб-оформления
+function validateWebCheckoutForm() {
+    const form = document.getElementById('webCheckoutForm');
+    if (!form) return false;
+    
+    let isValid = true;
+    
+    // Валидация имени
+    const nameInput = document.getElementById('customerName');
+    if (nameInput) {
+        const name = nameInput.value.trim();
+        if (name.length < 2) {
+            nameInput.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            nameInput.classList.remove('is-invalid');
+        }
+    }
+    
+    // Валидация телефона
+    const phoneInput = document.getElementById('customerPhone');
+    if (phoneInput) {
+        const phone = phoneInput.value.trim();
+        const phoneRegex = /^[\+]?[0-9]{10,15}$/;
+        if (!phoneRegex.test(phone)) {
+            phoneInput.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            phoneInput.classList.remove('is-invalid');
+        }
+    }
+    
+    return isValid;
+}
+
+// Отправка веб-заказа
+async function submitWebOrder() {
+    // Валидация формы
+    if (!validateWebCheckoutForm()) {
+        showAlert('Пожалуйста, заполните все обязательные поля корректно', 'error');
+        return;
+    }
+    
+    // Защита от повторной отправки
+    if (isSubmittingOrder) {
+        showAlert('Заказ уже обрабатывается...', 'warning');
+        return;
+    }
+    
+    isSubmittingOrder = true;
+    
+    // Получаем данные формы
+    const nameInput = document.getElementById('customerName');
+    const phoneInput = document.getElementById('customerPhone');
+    const commentInput = document.getElementById('customerComment');
+    
+    const customerData = {
+        name: nameInput?.value.trim() || '',
+        phone: phoneInput?.value.trim() || '',
+        comment: commentInput?.value.trim() || ''
+    };
+    
+    // Блокируем кнопку
+    const submitBtn = document.getElementById('submitWebOrderBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+    }
+    
+    try {
+        // Получаем short_name бота
+        const shortNameMeta = document.querySelector('meta[name="short-name"]');
+        const botShortName = shortNameMeta ? shortNameMeta.getAttribute('content') : '';
+        
+        // Отправляем заказ
+        const response = await secureFetch('/cart/web-checkout', {
+            method: 'POST',
+            body: JSON.stringify({
+                bot_short_name: botShortName,
+                customer_name: customerData.name,
+                customer_phone: customerData.phone,
+                customer_comment: customerData.comment
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Закрываем модальное окно
+            closeWebCheckoutModal();
+            
+            // Показываем успешное сообщение
+            showAlert('Заказ успешно отправлен! Мы свяжемся с вами в ближайшее время.', 'success');
+            
+            // Обновляем счетчик корзины
+            updateCartCounter();
+            
+            // Закрываем корзину если открыта
+            closeCartModal();
+            
+        } else {
+            showAlert(data.message || 'Ошибка при отправке заказа', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка отправки веб-заказа:', error);
+        showAlert('Произошла ошибка при отправке заказа. Попробуйте позже.', 'error');
+    } finally {
+        isSubmittingOrder = false;
+        
+        // Разблокируем кнопку
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Отправить заказ';
+        }
+    }
+}
+
+// Экспорт функций для использования в HTML
+window.showWebCheckoutModal = showWebCheckoutModal;
+window.closeWebCheckoutModal = closeWebCheckoutModal;
+window.submitWebOrder = submitWebOrder;

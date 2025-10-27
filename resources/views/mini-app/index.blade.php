@@ -200,6 +200,117 @@
         </div>
     </div>
 
+    <!-- Модальное окно для оформления заказа в веб-версии -->
+    <div class="modal" id="webCheckoutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="modal-back" onclick="closeWebCheckoutModal()">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h3 class="modal-title">
+                        <i class="fas fa-clipboard-check"></i>
+                        Оформление заказа
+                    </h3>
+                </div>
+                <div class="modal-body" id="webCheckoutModalBody">
+                    <form id="webCheckoutForm" class="checkout-form">
+                        <div class="form-section">
+                            <h4 class="form-section-title">
+                                <i class="fas fa-user"></i>
+                                Ваши данные
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label for="customerName" class="form-label">
+                                    Ваше имя <span class="text-danger">*</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    class="form-control" 
+                                    id="customerName" 
+                                    name="customer_name"
+                                    placeholder="Введите ваше имя"
+                                    required
+                                    minlength="2"
+                                    maxlength="100"
+                                >
+                                <div class="invalid-feedback">
+                                    Пожалуйста, введите ваше имя (минимум 2 символа)
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="customerPhone" class="form-label">
+                                    Номер телефона <span class="text-danger">*</span>
+                                </label>
+                                <input 
+                                    type="tel" 
+                                    class="form-control" 
+                                    id="customerPhone" 
+                                    name="customer_phone"
+                                    placeholder="+7 (___) ___-__-__"
+                                    required
+                                    pattern="[\+]?[0-9]{10,15}"
+                                >
+                                <div class="invalid-feedback">
+                                    Пожалуйста, введите корректный номер телефона
+                                </div>
+                                <small class="form-text text-muted">
+                                    Введите номер в формате: +79991234567
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="customerComment" class="form-label">
+                                    Комментарий к заказу
+                                </label>
+                                <textarea 
+                                    class="form-control" 
+                                    id="customerComment" 
+                                    name="customer_comment"
+                                    rows="3"
+                                    placeholder="Дополнительные пожелания (необязательно)"
+                                    maxlength="500"
+                                ></textarea>
+                                <small class="form-text text-muted">
+                                    Максимум 500 символов
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4 class="form-section-title">
+                                <i class="fas fa-shopping-bag"></i>
+                                Состав заказа
+                            </h4>
+                            <div id="webCheckoutItems" class="checkout-items-list">
+                                <!-- Товары будут загружены динамически -->
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="checkout-total">
+                                <span class="checkout-total-label">Итого к оплате:</span>
+                                <span class="checkout-total-amount" id="webCheckoutTotal">0 ₽</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeWebCheckoutModal()">
+                        <i class="fas fa-times"></i>
+                        Отмена
+                    </button>
+                    <button type="button" class="btn-primary" onclick="submitWebOrder()" id="submitWebOrderBtn">
+                        <i class="fas fa-paper-plane"></i>
+                        Отправить заказ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Скрытые данные товаров для JavaScript -->
     <script type="application/json" id="products-data">
         @php

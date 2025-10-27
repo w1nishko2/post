@@ -30,10 +30,23 @@ class CartController extends Controller
             ], 400);
         }
 
+        // Убедимся, что сессия запущена
+        if (!Session::isStarted()) {
+            Session::start();
+        }
+
         $sessionId = Session::getId();
         $userId = Auth::id();
         $telegramUserId = $this->getTelegramUserId();
         $quantity = $request->quantity;
+
+        Log::info('Adding product to cart', [
+            'product_id' => $product->id,
+            'session_id' => $sessionId,
+            'user_id' => $userId,
+            'telegram_user_id' => $telegramUserId,
+            'quantity' => $quantity
+        ]);
 
         // Найти существующую позицию в корзине
         $cartItem = Cart::where('product_id', $product->id)
@@ -65,9 +78,11 @@ class CartController extends Controller
                 'quantity' => $newQuantity,
                 'price' => $product->price_with_markup, // Обновляем цену с учетом наценки
             ]);
+            
+            Log::info('Cart item updated', ['cart_item_id' => $cartItem->id, 'new_quantity' => $newQuantity]);
         } else {
             // Создать новую позицию
-            Cart::create([
+            $newCartItem = Cart::create([
                 'session_id' => $sessionId,
                 'user_id' => $userId,
                 'telegram_user_id' => $telegramUserId,
@@ -75,6 +90,8 @@ class CartController extends Controller
                 'quantity' => $quantity,
                 'price' => $product->price_with_markup, // Цена с учетом наценки
             ]);
+            
+            Log::info('New cart item created', ['cart_item_id' => $newCartItem->id]);
         }
 
         return response()->json([
@@ -100,12 +117,38 @@ class CartController extends Controller
     public function getCartData()
     {
         try {
+            $sessionId = Session::getId();
+            $userId = Auth::id();
+            
+            Log::info('Getting cart data', [
+                'session_id' => $sessionId,
+                'user_id' => $userId,
+                'telegram_user_id' => $this->getTelegramUserId()
+            ]);
+            
             $cartItems = $this->getCartItems();
             
+            Log::info('Cart items count', [
+                'count' => $cartItems->count()
+            ]);
+            
             $items = $cartItems->map(function ($item) {
+                // Проверяем наличие продукта
+                if (!$item->product) {
+                    Log::warning('Cart item without product', ['cart_item_id' => $item->id]);
+                    return null;
+                }
+                
                 return [
                     'id' => $item->id,
                     'product_id' => $item->product_id,
+                    'product' => [
+                        'id' => $item->product->id,
+                        'name' => $item->product->name,
+                        'article' => $item->product->article,
+                        'photo_url' => $item->product->photo_url,
+                        'main_photo_url' => $item->product->main_photo_url,
+                    ],
                     'name' => $item->product->name,
                     'article' => $item->product->article,
                     'photo_url' => $item->product->photo_url,
@@ -116,13 +159,13 @@ class CartController extends Controller
                     'total_price' => $item->total_price,
                     'formatted_total' => number_format((float) $item->total_price, 0, ',', ' ') . ' ₽',
                 ];
-            });
+            })->filter(); // Убираем null значения
 
             $totalAmount = $cartItems->sum('total_price');
 
             return response()->json([
                 'success' => true,
-                'items' => $items,
+                'items' => $items->values(), // Переиндексируем массив
                 'total' => number_format((float) $totalAmount, 0, ',', ' ') . ' ₽',
                 'formatted_total' => number_format((float) $totalAmount, 0, ',', ' ') . ' ₽',
                 'total_amount' => $totalAmount,
@@ -132,12 +175,14 @@ class CartController extends Controller
         } catch (\Exception $e) {
             Log::error('Cart data retrieval failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при получении данных корзины',
+                'message' => 'Ошибка при получении данных корзины: ' . $e->getMessage(),
                 'items' => [],
                 'total' => '0 ₽',
                 'total_amount' => 0,
@@ -539,6 +584,120 @@ class CartController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при проверке статуса заказа'
+            ], 500);
+        }
+    }
+
+    /**
+     * Оформление заказа из веб-версии (для браузера)
+     * Отправляет данные администратору бота в Telegram
+     */
+    public function webCheckout(Request $request)
+    {
+        try {
+            // Валидация данных
+            $request->validate([
+                'bot_short_name' => 'required|string',
+                'customer_name' => 'required|string|min:2|max:100',
+                'customer_phone' => 'required|string|regex:/^[\+]?[0-9]{10,15}$/',
+                'customer_comment' => 'nullable|string|max:500',
+            ], [
+                'customer_name.required' => 'Введите ваше имя',
+                'customer_name.min' => 'Имя должно содержать минимум 2 символа',
+                'customer_phone.required' => 'Введите номер телефона',
+                'customer_phone.regex' => 'Некорректный формат номера телефона',
+            ]);
+
+            // Получаем данные корзины
+            $cartItems = $this->getCartItems();
+
+            if ($cartItems->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Корзина пуста'
+                ], 400);
+            }
+
+            // Рассчитываем общую сумму
+            $totalAmount = $cartItems->sum('total_price');
+
+            // Получаем бота по short_name
+            $bot = \App\Models\TelegramBot::where('short_name', $request->bot_short_name)->first();
+
+            if (!$bot) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Бот не найден'
+                ], 404);
+            }
+
+            // Формируем сообщение для администратора
+            $message = "🛒 <b>Новый заказ с сайта!</b>\n\n";
+            $message .= "👤 <b>Клиент:</b> " . htmlspecialchars($request->customer_name) . "\n";
+            $message .= "📞 <b>Телефон:</b> " . htmlspecialchars($request->customer_phone) . "\n";
+            
+            if ($request->customer_comment) {
+                $message .= "💬 <b>Комментарий:</b> " . htmlspecialchars($request->customer_comment) . "\n";
+            }
+            
+            $message .= "\n<b>📦 Состав заказа:</b>\n";
+            
+            foreach ($cartItems as $item) {
+                $product = $item->product;
+                $message .= "\n• " . htmlspecialchars($product->name) . "\n";
+                $message .= "  Количество: {$item->quantity} шт.\n";
+                $message .= "  Цена: " . number_format($item->total_price, 0, ',', ' ') . " ₽\n";
+            }
+            
+            $message .= "\n💰 <b>Итого:</b> " . number_format($totalAmount, 0, ',', ' ') . " ₽";
+
+            // Отправляем уведомление администратору через Telegram
+            try {
+                $telegramApiUrl = "https://api.telegram.org/bot{$bot->bot_token}/sendMessage";
+                
+                $response = \Illuminate\Support\Facades\Http::post($telegramApiUrl, [
+                    'chat_id' => $bot->admin_id,
+                    'text' => $message,
+                    'parse_mode' => 'HTML'
+                ]);
+
+                if (!$response->successful()) {
+                    Log::error('Failed to send Telegram notification', [
+                        'bot_id' => $bot->id,
+                        'response' => $response->body()
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Exception while sending Telegram notification', [
+                    'bot_id' => $bot->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // Очищаем корзину
+            $this->clearCartItems();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Заказ успешно отправлен! Мы свяжемся с вами в ближайшее время.',
+                'total_amount' => $totalAmount
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка валидации данных',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Failed to process web checkout', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Произошла ошибка при оформлении заказа. Попробуйте позже.'
             ], 500);
         }
     }
