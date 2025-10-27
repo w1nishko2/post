@@ -31,6 +31,17 @@
     
     <!-- Swiper JS -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    
+    <!-- Динамическая цветовая схема администратора -->
+    <?php if(isset($colorScheme) && !empty($colorScheme)): ?>
+    <style>
+        :root {
+            <?php $__currentLoopData = $colorScheme; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $varName => $value): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <?php echo e($varName); ?>: <?php echo e($value); ?>;
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        }
+    </style>
+    <?php endif; ?>
 </head>
 <body class="mini-app-body">
     <?php echo $__env->yieldContent('content'); ?>

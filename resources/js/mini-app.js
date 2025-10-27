@@ -71,6 +71,27 @@ function secureFetch(url, options = {}) {
     return fetch(url, options);
 }
 
+// Проверка версии Telegram WebApp
+function checkTelegramVersion() {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return null;
+    
+    const version = parseFloat(tg.version || '0');
+    console.log(`[Telegram WebApp] Версия: ${tg.version}`);
+    
+    if (version < 6.1) {
+        console.warn('[Telegram WebApp] Устаревшая версия. Некоторые функции могут не работать.');
+        console.warn('[Telegram WebApp] Рекомендуется обновить Telegram до последней версии.');
+        
+        // Показываем пользователю уведомление о старой версии
+        setTimeout(() => {
+            showToast('Обновите Telegram для улучшенной работы приложения', 'warning');
+        }, 3000);
+    }
+    
+    return version;
+}
+
 // Основная функция инициализации
 function initApp() {
     // Предотвращаем повторную инициализацию
@@ -102,6 +123,9 @@ function initApp() {
         const tg = window.Telegram.WebApp;
         
         try {
+            // Проверяем версию API
+            const version = checkTelegramVersion();
+            
             tg.ready();
             tg.expand();
             
@@ -126,8 +150,17 @@ function initApp() {
             // Настраиваем поведение скролла для предотвращения сворачивания
             setupScrollBehavior();
             
+            // Включаем режим закрытия при свайпе вниз (версия 6.2+)
+            if (version >= 6.2 && typeof tg.enableClosingConfirmation === 'function') {
+                try {
+                    tg.enableClosingConfirmation();
+                } catch (error) {
+                    console.warn('enableClosingConfirmation не поддерживается:', error);
+                }
+            }
+            
             // Скрытие кнопки "Назад" (только для поддерживаемых версий)
-            if (tg.version && parseFloat(tg.version) >= 6.1 && tg.BackButton) {
+            if (version >= 6.1 && tg.BackButton) {
                 try {
                     if (typeof tg.BackButton.hide === 'function') {
                         tg.BackButton.hide();
@@ -255,14 +288,17 @@ function parseUserFromInitData(initData) {
 
 // Показать уведомление с проверкой совместимости
 function showAlert(message, type = 'info') {
-    // Попытка использовать Telegram WebApp уведомления
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
-        try {
-            window.Telegram.WebApp.showAlert(message);
+    try {
+        const tg = window.Telegram?.WebApp;
+        const version = parseFloat(tg?.version || '0');
+        
+        // showAlert поддерживается с версии 6.1+
+        if (tg && version >= 6.1 && typeof tg.showAlert === 'function') {
+            tg.showAlert(message);
             return;
-        } catch (error) {
-            console.warn('Не удалось показать Telegram уведомление:', error);
         }
+    } catch (error) {
+        console.warn('Не удалось показать Telegram уведомление:', error);
     }
     
     // Fallback на toast уведомления
@@ -274,7 +310,11 @@ function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toast-container') || createToastContainer();
     
     const toast = document.createElement('div');
-    toast.className = `toast align-items-center  bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
+    const bgClass = type === 'error' ? 'danger' : 
+                    type === 'success' ? 'success' : 
+                    type === 'warning' ? 'warning' : 
+                    'primary';
+    toast.className = `toast align-items-center bg-${bgClass} border-0`;
     toast.setAttribute('role', 'alert');
     toast.innerHTML = `
         <div class="d-flex">
@@ -1473,11 +1513,14 @@ function showCart() {
 // Безопасный haptic feedback
 function triggerHapticFeedback(type = 'light') {
     try {
-        if (window.Telegram?.WebApp?.HapticFeedback?.impactOccurred && 
-            typeof window.Telegram.WebApp.HapticFeedback.impactOccurred === 'function') {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
+        const tg = window.Telegram?.WebApp;
+        const version = parseFloat(tg?.version || '0');
+        
+        // HapticFeedback поддерживается с версии 6.1+
+        if (tg && version >= 6.1 && tg.HapticFeedback && 
+            typeof tg.HapticFeedback.impactOccurred === 'function') {
+            tg.HapticFeedback.impactOccurred(type);
         }
-        // Не делаем ничего если не поддерживается - это нормально
     } catch (error) {
         // Молча игнорируем ошибки haptic feedback
     }
@@ -1911,17 +1954,25 @@ function refreshCartContent() {
 
 // Функция удаления товара из корзины
 function removeFromCart(cartId) {
-    // Показываем красивое модальное подтверждение вместо стандартного confirm
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showConfirm) {
-        window.Telegram.WebApp.showConfirm('Удалить товар из корзины?', (confirmed) => {
-            if (confirmed) {
-                performRemoveFromCart(cartId);
-            }
-        });
-    } else {
-        if (!confirm('Удалить товар из корзины?')) {
+    const tg = window.Telegram?.WebApp;
+    const version = parseFloat(tg?.version || '0');
+    
+    // showConfirm поддерживается с версии 6.2+
+    if (tg && version >= 6.2 && typeof tg.showConfirm === 'function') {
+        try {
+            tg.showConfirm('Удалить товар из корзины?', (confirmed) => {
+                if (confirmed) {
+                    performRemoveFromCart(cartId);
+                }
+            });
             return;
+        } catch (error) {
+            console.warn('showConfirm не работает:', error);
         }
+    }
+    
+    // Fallback для старых версий
+    if (confirm('Удалить товар из корзины?')) {
         performRemoveFromCart(cartId);
     }
 }
@@ -1985,17 +2036,25 @@ function performRemoveFromCart(cartId) {
 
 // Функция очистки корзины
 function clearCart() {
-    // Используем Telegram WebApp подтверждение если доступно
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showConfirm) {
-        window.Telegram.WebApp.showConfirm('Очистить всю корзину?', (confirmed) => {
-            if (confirmed) {
-                performClearCart();
-            }
-        });
-    } else {
-        if (!confirm('Очистить всю корзину?')) {
+    const tg = window.Telegram?.WebApp;
+    const version = parseFloat(tg?.version || '0');
+    
+    // showConfirm поддерживается с версии 6.2+
+    if (tg && version >= 6.2 && typeof tg.showConfirm === 'function') {
+        try {
+            tg.showConfirm('Очистить всю корзину?', (confirmed) => {
+                if (confirmed) {
+                    performClearCart();
+                }
+            });
             return;
+        } catch (error) {
+            console.warn('showConfirm не работает:', error);
         }
+    }
+    
+    // Fallback для старых версий
+    if (confirm('Очистить всю корзину?')) {
         performClearCart();
     }
 }

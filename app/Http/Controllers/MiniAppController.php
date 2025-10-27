@@ -44,7 +44,11 @@ class MiniAppController extends Controller
                          ->orderBy('name')
                          ->get();
 
-        return view('mini-app.index', compact('bot', 'shortName', 'products', 'categories'));
+        // Получаем цветовую схему владельца бота
+        $owner = $bot->user;
+        $colorScheme = $owner ? $owner->getColorSchemeCss() : [];
+
+        return view('mini-app.index', compact('bot', 'shortName', 'products', 'categories', 'colorScheme'));
     }
 
     /**

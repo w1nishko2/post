@@ -621,14 +621,27 @@ class CartController extends Controller
             // Рассчитываем общую сумму
             $totalAmount = $cartItems->sum('total_price');
 
-            // Получаем бота по short_name
-            $bot = \App\Models\TelegramBot::where('short_name', $request->bot_short_name)->first();
+            // Получаем бота по mini_app_short_name
+            $bot = \App\Models\TelegramBot::where('mini_app_short_name', $request->bot_short_name)->first();
 
             if (!$bot) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Бот не найден'
                 ], 404);
+            }
+
+            // Проверяем, настроен ли admin_telegram_id для уведомлений
+            if (empty($bot->admin_telegram_id)) {
+                Log::warning('Admin Telegram ID not configured for bot', [
+                    'bot_id' => $bot->id,
+                    'bot_username' => $bot->bot_username
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Уведомления администратору не настроены. Пожалуйста, свяжитесь с владельцем магазина.'
+                ], 400);
             }
 
             // Формируем сообщение для администратора
@@ -656,7 +669,7 @@ class CartController extends Controller
                 $telegramApiUrl = "https://api.telegram.org/bot{$bot->bot_token}/sendMessage";
                 
                 $response = \Illuminate\Support\Facades\Http::post($telegramApiUrl, [
-                    'chat_id' => $bot->admin_id,
+                    'chat_id' => $bot->admin_telegram_id,
                     'text' => $message,
                     'parse_mode' => 'HTML'
                 ]);
@@ -664,14 +677,26 @@ class CartController extends Controller
                 if (!$response->successful()) {
                     Log::error('Failed to send Telegram notification', [
                         'bot_id' => $bot->id,
+                        'admin_telegram_id' => $bot->admin_telegram_id,
                         'response' => $response->body()
                     ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Не удалось отправить уведомление администратору. Попробуйте позже.'
+                    ], 500);
                 }
             } catch (\Exception $e) {
                 Log::error('Exception while sending Telegram notification', [
                     'bot_id' => $bot->id,
+                    'admin_telegram_id' => $bot->admin_telegram_id,
                     'error' => $e->getMessage()
                 ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Произошла ошибка при отправке уведомления. Попробуйте позже.'
+                ], 500);
             }
 
             // Очищаем корзину

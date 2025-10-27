@@ -31,6 +31,17 @@
     
     <!-- Swiper JS -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    
+    <!-- Динамическая цветовая схема администратора -->
+    @if(isset($colorScheme) && !empty($colorScheme))
+    <style>
+        :root {
+            @foreach($colorScheme as $varName => $value)
+            {{ $varName }}: {{ $value }};
+            @endforeach
+        }
+    </style>
+    @endif
 </head>
 <body class="mini-app-body">
     @yield('content')

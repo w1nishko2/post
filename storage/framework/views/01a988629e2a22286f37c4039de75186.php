@@ -176,6 +176,23 @@
                            placeholder="Мой магазин">
                 </div>
 
+                <div class="admin-form-group">
+                    <label for="admin_telegram_id" class="admin-form-label">ID администратора в Telegram</label>
+                    <input type="text" class="admin-form-control" id="admin_telegram_id" name="admin_telegram_id"
+                           placeholder="123456789">
+                    <div class="admin-form-text">Ваш Telegram ID для получения уведомлений о заказах. Узнать можно у @userinfobot</div>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="admin_telegram_username" class="admin-form-label">Username администратора</label>
+                    <div class="admin-input-group">
+                        <div class="admin-input-group-text">@</div>
+                        <input type="text" class="admin-form-control" id="admin_telegram_username" name="admin_telegram_username"
+                               placeholder="username">
+                    </div>
+                    <div class="admin-form-text">Ваш Telegram username для создания ссылок в заказах (необязательно)</div>
+                </div>
+
                 <div class="admin-form-group admin-mb-0">
                     <div class="admin-form-check">
                         <input type="checkbox" class="admin-form-check-input" id="is_active" name="is_active" value="1" checked>
@@ -232,6 +249,23 @@
                         <label for="bot_name_<?php echo e($bot->id); ?>" class="admin-form-label required">Название бота</label>
                         <input type="text" class="admin-form-control" id="bot_name_<?php echo e($bot->id); ?>" name="bot_name" 
                                value="<?php echo e($bot->bot_name); ?>" required>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label for="admin_telegram_id_<?php echo e($bot->id); ?>" class="admin-form-label">ID администратора в Telegram</label>
+                        <input type="text" class="admin-form-control" id="admin_telegram_id_<?php echo e($bot->id); ?>" name="admin_telegram_id"
+                               value="<?php echo e($bot->admin_telegram_id); ?>" placeholder="123456789">
+                        <div class="admin-form-text">Ваш Telegram ID для получения уведомлений о заказах. Узнать можно у @userinfobot</div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label for="admin_telegram_username_<?php echo e($bot->id); ?>" class="admin-form-label">Username администратора</label>
+                        <div class="admin-input-group">
+                            <div class="admin-input-group-text">@</div>
+                            <input type="text" class="admin-form-control" id="admin_telegram_username_<?php echo e($bot->id); ?>" name="admin_telegram_username"
+                                   value="<?php echo e(ltrim($bot->admin_telegram_username ?? '', '@')); ?>" placeholder="username">
+                        </div>
+                        <div class="admin-form-text">Ваш Telegram username для создания ссылок в заказах (необязательно)</div>
                     </div>
 
                     <div class="admin-form-group">
