@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Product;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\CheckoutQueue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -590,7 +592,7 @@ class CartController extends Controller
 
     /**
      * Оформление заказа из веб-версии (для браузера)
-     * Отправляет данные администратору бота в Telegram
+     * Создает заказ с резервированием товаров и отправляет данные администратору бота в Telegram
      */
     public function webCheckout(Request $request)
     {
@@ -618,9 +620,6 @@ class CartController extends Controller
                 ], 400);
             }
 
-            // Рассчитываем общую сумму
-            $totalAmount = $cartItems->sum('total_price');
-
             // Получаем бота по mini_app_short_name
             $bot = \App\Models\TelegramBot::where('mini_app_short_name', $request->bot_short_name)->first();
 
@@ -644,8 +643,97 @@ class CartController extends Controller
                 ], 400);
             }
 
+            DB::beginTransaction();
+
+            try {
+                // Проверяем наличие товаров и резервируем их
+                $reservationErrors = [];
+                $totalAmount = 0;
+
+                foreach ($cartItems as $cartItem) {
+                    if (!$cartItem->product) {
+                        $reservationErrors[] = "Товар ID {$cartItem->product_id} не найден";
+                        continue;
+                    }
+
+                    if (!$cartItem->product->isAvailableForReservation($cartItem->quantity)) {
+                        $reservationErrors[] = "Товар \"{$cartItem->product->name}\" недоступен в нужном количестве";
+                        continue;
+                    }
+
+                    // Резервируем товар
+                    if (!$cartItem->product->reserve($cartItem->quantity)) {
+                        $reservationErrors[] = "Не удалось зарезервировать товар \"{$cartItem->product->name}\"";
+                        continue;
+                    }
+
+                    $totalAmount += $cartItem->total_price;
+                }
+
+                // Если есть ошибки резервирования - откатываем транзакцию
+                if (!empty($reservationErrors)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ошибки при резервировании товаров: ' . implode(', ', $reservationErrors)
+                    ], 400);
+                }
+
+                // Создаём заказ в базе данных
+                $order = Order::create([
+                    'user_id' => Auth::id(),
+                    'session_id' => Session::getId(),
+                    'telegram_bot_id' => $bot->id,
+                    'customer_name' => $request->customer_name,
+                    'notes' => $request->customer_phone . ($request->customer_comment ? "\n" . $request->customer_comment : ''),
+                    'total_amount' => $totalAmount,
+                    'status' => Order::STATUS_PENDING,
+                    'expires_at' => \Carbon\Carbon::now('Europe/Moscow')->addHours(5),
+                ]);
+
+                // Создаём позиции заказа
+                foreach ($cartItems as $cartItem) {
+                    if (!$cartItem->product) {
+                        continue;
+                    }
+
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $cartItem->product_id,
+                        'product_name' => $cartItem->product->name,
+                        'product_article' => $cartItem->product->article,
+                        'product_photo_url' => $cartItem->product->photo_url,
+                        'quantity' => $cartItem->quantity,
+                        'price' => $cartItem->price,
+                        'total_price' => $cartItem->total_price,
+                    ]);
+                }
+
+                DB::commit();
+
+                Log::info('Web checkout order created', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'customer_name' => $request->customer_name,
+                    'total_amount' => $totalAmount
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Failed to create web checkout order', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Произошла ошибка при создании заказа. Попробуйте позже.'
+                ], 500);
+            }
+
             // Формируем сообщение для администратора
             $message = "🛒 <b>Новый заказ с сайта!</b>\n\n";
+            $message .= "📋 <b>Заказ:</b> #{$order->order_number}\n";
             $message .= "👤 <b>Клиент:</b> " . htmlspecialchars($request->customer_name) . "\n";
             $message .= "📞 <b>Телефон:</b> " . htmlspecialchars($request->customer_phone) . "\n";
             
@@ -655,56 +743,25 @@ class CartController extends Controller
             
             $message .= "\n<b>📦 Состав заказа:</b>\n";
             
-            foreach ($cartItems as $item) {
-                $product = $item->product;
-                $message .= "\n• " . htmlspecialchars($product->name) . "\n";
+            foreach ($order->items as $item) {
+                $message .= "\n• " . htmlspecialchars($item->product_name) . "\n";
                 $message .= "  Количество: {$item->quantity} шт.\n";
                 $message .= "  Цена: " . number_format($item->total_price, 0, ',', ' ') . " ₽\n";
             }
             
             $message .= "\n💰 <b>Итого:</b> " . number_format($totalAmount, 0, ',', ' ') . " ₽";
+            $message .= "\n\n⏰ <b>Действителен до:</b> " . $order->formatted_expires_at;
 
-            // Отправляем уведомление администратору через Telegram
-            try {
-                $telegramApiUrl = "https://api.telegram.org/bot{$bot->bot_token}/sendMessage";
-                
-                $response = \Illuminate\Support\Facades\Http::post($telegramApiUrl, [
-                    'chat_id' => $bot->admin_telegram_id,
-                    'text' => $message,
-                    'parse_mode' => 'HTML'
-                ]);
-
-                if (!$response->successful()) {
-                    Log::error('Failed to send Telegram notification', [
-                        'bot_id' => $bot->id,
-                        'admin_telegram_id' => $bot->admin_telegram_id,
-                        'response' => $response->body()
-                    ]);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Не удалось отправить уведомление администратору. Попробуйте позже.'
-                    ], 500);
-                }
-            } catch (\Exception $e) {
-                Log::error('Exception while sending Telegram notification', [
-                    'bot_id' => $bot->id,
-                    'admin_telegram_id' => $bot->admin_telegram_id,
-                    'error' => $e->getMessage()
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Произошла ошибка при отправке уведомления. Попробуйте позже.'
-                ], 500);
-            }
+            // Отправляем уведомление администратору через Job
+            \App\Jobs\SendTelegramNotifications::dispatch($order, $bot);
 
             // Очищаем корзину
             $this->clearCartItems();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Заказ успешно отправлен! Мы свяжемся с вами в ближайшее время.',
+                'message' => 'Заказ успешно оформлен! Мы свяжемся с вами в ближайшее время.',
+                'order_number' => $order->order_number,
                 'total_amount' => $totalAmount
             ]);
 

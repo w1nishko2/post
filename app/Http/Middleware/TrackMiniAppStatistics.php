@@ -101,6 +101,21 @@ class TrackMiniAppStatistics
             }
         }
 
+        // Логируем для отладки, если chat_id найден
+        if (isset($data['chat_id'])) {
+            Log::info('Mini App: Telegram Chat ID extracted', [
+                'chat_id' => $data['chat_id'],
+                'source' => $request->has('tgChatId') ? 'URL' : 'InitData',
+                'url' => $request->fullUrl()
+            ]);
+        } else {
+            Log::debug('Mini App: No Telegram Chat ID found', [
+                'url' => $request->fullUrl(),
+                'has_tgChatId' => $request->has('tgChatId'),
+                'has_init_data' => !empty($initData)
+            ]);
+        }
+
         return $data;
     }
 }

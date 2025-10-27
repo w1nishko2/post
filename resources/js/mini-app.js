@@ -51,9 +51,23 @@ function getCSRFToken() {
     return csrfMeta ? csrfMeta.getAttribute('content') : null;
 }
 
-// Безопасная функция для fetch запросов с CSRF защитой
+// Безопасная функция для fetch запросов с CSRF защитой и Telegram данными
 function secureFetch(url, options = {}) {
     const token = getCSRFToken();
+    
+    // Добавляем tgChatId к URL для статистики (только для Mini App API)
+    if (isTelegramEnvironment && userData && userData.id) {
+        try {
+            const urlObj = new URL(url, window.location.origin);
+            // Добавляем только для API запросов Mini App
+            if (urlObj.pathname.includes('/api/')) {
+                urlObj.searchParams.set('tgChatId', userData.id);
+                url = urlObj.toString();
+            }
+        } catch (e) {
+            console.debug('Не удалось добавить tgChatId к URL:', e);
+        }
+    }
     
     // Добавляем CSRF токен для POST/PUT/DELETE запросов
     if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
@@ -66,6 +80,14 @@ function secureFetch(url, options = {}) {
         if (token) {
             options.headers['X-CSRF-TOKEN'] = token;
         }
+    }
+    
+    // Добавляем Telegram WebApp Init Data в заголовки
+    if (isTelegramEnvironment && window.Telegram?.WebApp?.initData) {
+        options.headers = {
+            ...options.headers,
+            'X-Telegram-Web-App-Init-Data': window.Telegram.WebApp.initData
+        };
     }
     
     return fetch(url, options);
@@ -400,7 +422,7 @@ async function loadAllProducts() {
         // Если встроенные данные недоступны, загружаем через API
         const shortName = document.querySelector('meta[name="short-name"]')?.content || 
                          window.location.pathname.split('/')[1];
-        const response = await fetch(`/${shortName}/api/products`);
+        const response = await secureFetch(`/${shortName}/api/products`);
         
         if (response.ok) {
             allProducts = await response.json();
@@ -422,7 +444,7 @@ async function loadCategories() {
         
         const url = `/${shortName}/api/categories`;
         
-        const response = await fetch(url, {
+        const response = await secureFetch(url, {
             signal: controller.signal,
             headers: {
                 'Accept': 'application/json',
@@ -1174,7 +1196,7 @@ async function showProductDetails(productId) {
         }
 
         // Загружаем актуальные данные товара
-        const response = await fetch(`/${shortName}/api/products/${productId}`);
+        const response = await secureFetch(`/${shortName}/api/products/${productId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }

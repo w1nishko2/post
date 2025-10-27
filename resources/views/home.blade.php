@@ -319,20 +319,72 @@
                         </button>
                     </div>
                 <div class="admin-modal-body">
+                    <!-- Отображение ошибок валидации -->
+                    @if ($errors->any())
+                        <div class="admin-alert admin-alert-danger admin-mb-3">
+                            <i class="fas fa-exclamation-triangle admin-me-2"></i>
+                            <strong>Ошибки при сохранении:</strong>
+                            <ul class="admin-mb-0" style="margin-top: 8px; padding-left: 20px;">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                    
                     <div class="admin-form-group">
-                        <label for="mini_app_short_name_{{ $bot->id }}" class="admin-form-label">Короткое имя Mini App</label>
-                        <input type="text" class="admin-form-control" id="mini_app_short_name_setup_{{ $bot->id }}" 
-                               name="mini_app_short_name" value="{{ $bot->mini_app_short_name }}"
-                               placeholder="myshop">
-                        <div class="admin-form-text">Используется в URL Mini App</div>
+                        <label for="mini_app_short_name_setup_{{ $bot->id }}" class="admin-form-label required">Короткое имя Mini App</label>
+                        <input type="text" 
+                               class="admin-form-control" 
+                               id="mini_app_short_name_setup_{{ $bot->id }}" 
+                               name="mini_app_short_name" 
+                               value="{{ $bot->mini_app_short_name }}"
+                               placeholder="myshop"
+                               pattern="[a-zA-Z0-9_]+"
+                               required>
+                        <div class="admin-form-text">
+                            <i class="fas fa-info-circle"></i>
+                            Используется в URL Mini App. Только латинские буквы, цифры и подчеркивания
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label for="mini_app_url_setup_{{ $bot->id }}" class="admin-form-label">
+                            URL Mini App 
+                            <span class="admin-text-success" id="url_status_{{ $bot->id }}" style="display: none;">
+                                <i class="fas fa-check-circle"></i>
+                            </span>
+                        </label>
+                        <input type="text" 
+                               class="admin-form-control" 
+                               id="mini_app_url_setup_{{ $bot->id }}" 
+                               name="mini_app_url" 
+                               value="{{ $bot->mini_app_url }}" 
+                               readonly
+                               style="background-color: #f5f5f5; cursor: not-allowed;"
+                               placeholder="https://example.com/myshop">
+                        <div class="admin-form-text">
+                            <i class="fas fa-magic"></i> 
+                            Автоматически генерируется на основе короткого имени
+                        </div>
                     </div>
 
                     <div class="admin-form-group admin-mb-0">
-                        <label for="mini_app_url_{{ $bot->id }}" class="admin-form-label">URL Mini App</label>
-                        <input type="url" class="admin-form-control" id="mini_app_url_setup_{{ $bot->id }}" 
-                               name="mini_app_url" value="{{ $bot->mini_app_url }}" readonly
-                               placeholder="https://example.com/myshop">
-                        <div class="admin-form-text">Автоматически генерируется на основе короткого имени</div>
+                        <label for="menu_button_text_setup_{{ $bot->id }}" class="admin-form-label">
+                            Текст кнопки меню
+                            <span class="admin-text-muted" style="font-size: 0.85em;">(макс. 16 символов)</span>
+                        </label>
+                        <input type="text" 
+                               class="admin-form-control" 
+                               id="menu_button_text_setup_{{ $bot->id }}" 
+                               name="menu_button_text" 
+                               value="{{ $bot->menu_button['text'] ?? 'Открыть' }}"
+                               placeholder="Открыть"
+                               maxlength="16">
+                        <div class="admin-form-text">
+                            <i class="fas fa-text-width"></i> 
+                            Текст кнопки в меню Telegram (по умолчанию: "Открыть")
+                        </div>
                     </div>
                 </div>
                 <div class="admin-modal-footer">
@@ -392,16 +444,45 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Функция для обновления URL Mini App
-    function updateMiniAppUrl(shortNameInput, urlInput) {
+    function updateMiniAppUrl(shortNameInput, urlInput, botId = null) {
         try {
-            if (!shortNameInput || !urlInput) return;
+            if (!shortNameInput || !urlInput) {
+                console.error('updateMiniAppUrl: отсутствуют необходимые элементы');
+                return;
+            }
             
             const shortName = shortNameInput.value.trim();
+            console.log('Обновление URL для короткого имени:', shortName);
+            
             if (shortName) {
+                // Убираем readonly временно для обновления значения
+                urlInput.removeAttribute('readonly');
                 const fullUrl = `${baseUrl}/${shortName}`;
                 urlInput.value = fullUrl;
+                // Возвращаем readonly
+                urlInput.setAttribute('readonly', 'readonly');
+                console.log('URL обновлен на:', fullUrl);
+                
+                // Показываем индикатор успеха
+                if (botId) {
+                    const statusIndicator = document.getElementById(`url_status_${botId}`);
+                    if (statusIndicator) {
+                        statusIndicator.style.display = 'inline';
+                    }
+                }
             } else {
+                urlInput.removeAttribute('readonly');
                 urlInput.value = '';
+                urlInput.setAttribute('readonly', 'readonly');
+                console.log('URL очищен');
+                
+                // Скрываем индикатор
+                if (botId) {
+                    const statusIndicator = document.getElementById(`url_status_${botId}`);
+                    if (statusIndicator) {
+                        statusIndicator.style.display = 'none';
+                    }
+                }
             }
         } catch (error) {
             console.error('Ошибка в updateMiniAppUrl:', error);
@@ -443,13 +524,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Автоматическое формирование URL для всех ботов
     @foreach(auth()->user()->telegramBots ?? [] as $bot)
-        const setupShortNameInput{{ $bot->id }} = document.getElementById('mini_app_short_name_setup_{{ $bot->id }}');
-        const setupUrlInput{{ $bot->id }} = document.getElementById('mini_app_url_setup_{{ $bot->id }}');
-        if (setupShortNameInput{{ $bot->id }} && setupUrlInput{{ $bot->id }}) {
-            setupShortNameInput{{ $bot->id }}.addEventListener('input', function() {
-                updateMiniAppUrl(this, setupUrlInput{{ $bot->id }});
-            });
-        }
+        (function() {
+            const botId = {{ $bot->id }};
+            const setupShortNameInput = document.getElementById('mini_app_short_name_setup_' + botId);
+            const setupUrlInput = document.getElementById('mini_app_url_setup_' + botId);
+            const setupForm = document.querySelector('#setupMiniAppModal' + botId + ' form');
+            
+            if (setupShortNameInput && setupUrlInput) {
+                console.log('Инициализация для бота ' + botId);
+                
+                // Инициализируем URL при загрузке страницы, если есть короткое имя
+                const currentShortName = setupShortNameInput.value.trim();
+                if (currentShortName) {
+                    updateMiniAppUrl(setupShortNameInput, setupUrlInput, botId);
+                }
+                
+                // Добавляем обработчик на изменение короткого имени
+                setupShortNameInput.addEventListener('input', function() {
+                    console.log('Изменение короткого имени для бота ' + botId + ':', this.value);
+                    updateMiniAppUrl(this, setupUrlInput, botId);
+                });
+                
+                // Также обновляем при фокусе (на случай если модальное окно открывается)
+                setupShortNameInput.addEventListener('focus', function() {
+                    if (this.value.trim()) {
+                        updateMiniAppUrl(this, setupUrlInput, botId);
+                    }
+                });
+                
+                // Обработчик отправки формы - убедимся что URL заполнен
+                if (setupForm) {
+                    setupForm.addEventListener('submit', function(e) {
+                        const shortName = setupShortNameInput.value.trim();
+                        if (!shortName) {
+                            e.preventDefault();
+                            alert('Пожалуйста, введите короткое имя Mini App');
+                            setupShortNameInput.focus();
+                            return false;
+                        }
+                        
+                        // Принудительно обновляем URL перед отправкой
+                        updateMiniAppUrl(setupShortNameInput, setupUrlInput, botId);
+                        
+                        const url = setupUrlInput.value.trim();
+                        if (!url) {
+                            e.preventDefault();
+                            alert('Ошибка: URL Mini App не сформирован');
+                            return false;
+                        }
+                        
+                        console.log('Отправка формы с данными:', {
+                            short_name: shortName,
+                            url: url
+                        });
+                    });
+                }
+            } else {
+                console.error('Не найдены элементы для бота ' + botId);
+            }
+        })();
     @endforeach
 });
 </script>

@@ -10,6 +10,7 @@ use App\Services\TelegramBotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -188,29 +189,53 @@ class TelegramBotController extends Controller
      */
     public function setupMiniApp(SetupMiniAppRequest $request, TelegramBot $telegramBot)
     {
-        $validated = $request->validated();
+        try {
+            $validated = $request->validated();
 
-        // Настраиваем кнопку меню
-        $menuButton = [
-            'type' => 'web_app',
-            'text' => $validated['menu_button_text'] ?? 'Открыть приложение',
-            'web_app' => [
-                'url' => $validated['mini_app_url']
-            ]
-        ];
+            Log::info('Setup Mini App request', [
+                'bot_id' => $telegramBot->id,
+                'validated_data' => $validated,
+                'raw_request' => $request->all()
+            ]);
 
-        $telegramBot->update([
-            'mini_app_url' => $validated['mini_app_url'],
-            'mini_app_short_name' => $validated['mini_app_short_name'],
-            'menu_button' => $menuButton,
-            'last_updated_at' => now()
-        ]);
+            // Настраиваем кнопку меню
+            $menuButton = [
+                'type' => 'web_app',
+                'text' => $validated['menu_button_text'] ?? 'Открыть', // Максимум 16 символов
+                'web_app' => [
+                    'url' => $validated['mini_app_url']
+                ]
+            ];
 
-        // Настраиваем Mini App через сервис
-        $this->telegramBotService->setupMiniApp($telegramBot, $validated);
+            $updated = $telegramBot->update([
+                'mini_app_url' => $validated['mini_app_url'],
+                'mini_app_short_name' => $validated['mini_app_short_name'],
+                'menu_button' => $menuButton,
+                'last_updated_at' => now()
+            ]);
 
-        return redirect()->route('home')
-                        ->with('success', 'Mini App настроен!');
+            Log::info('Mini App setup completed', [
+                'bot_id' => $telegramBot->id,
+                'updated' => $updated,
+                'mini_app_url' => $telegramBot->fresh()->mini_app_url,
+                'mini_app_short_name' => $telegramBot->fresh()->mini_app_short_name
+            ]);
+
+            // Настраиваем Mini App через сервис
+            $this->telegramBotService->setupMiniApp($telegramBot, $validated);
+
+            return redirect()->route('home')
+                            ->with('success', 'Mini App успешно настроен! URL: ' . $validated['mini_app_url']);
+        } catch (\Exception $e) {
+            Log::error('Setup Mini App failed', [
+                'bot_id' => $telegramBot->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('home')
+                            ->with('error', 'Ошибка при настройке Mini App: ' . $e->getMessage());
+        }
     }
 
 

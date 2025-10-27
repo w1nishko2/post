@@ -91,22 +91,22 @@ class TelegramWebhookController extends Controller
         }
 
         try {
-            // Подтверждаем покупку (снимаем товары с резерва и с общего количества)
-            foreach ($order->items as $item) {
-                if ($item->product) {
-                    $item->product->confirmPurchase($item->quantity);
-                }
+            // Используем метод модели для подтверждения оплаты
+            // Он автоматически списывает товары и обновляет статус
+            $success = $order->confirmPayment();
+
+            if (!$success) {
+                $this->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при подтверждении оплаты', true);
+                return response()->json(['ok' => true]);
             }
 
-            // Обновляем статус заказа
-            $order->update(['status' => Order::STATUS_COMPLETED]);
-
-            // Уведомляем администратора об успешном подтверждении
+            // Обновляем сообщение администратору
             $this->editMessage($bot, $chatId, $messageId, 
                 "✅ <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n\n" .
                 "📋 Заказ #{$order->order_number} успешно оплачен\n" .
                 "💰 Сумма: {$order->formatted_total}\n\n" .
-                "🎉 Товары списаны со склада"
+                "🎉 Товары списаны со склада\n" .
+                "⏰ Подтверждено: " . now()->format('d.m.Y в H:i')
             );
 
             // Уведомляем клиента об успешной оплате
@@ -122,13 +122,15 @@ class TelegramWebhookController extends Controller
 
             Log::info('Payment confirmed successfully', [
                 'order_id' => $orderId,
+                'order_number' => $order->order_number,
                 'bot_id' => $bot->id
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to confirm payment', [
                 'order_id' => $orderId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             $this->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при подтверждении оплаты', true);

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SetupMiniAppRequest extends FormRequest
 {
@@ -29,7 +30,7 @@ class SetupMiniAppRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mini_app_url' => 'required|string|max:255',
+            'mini_app_url' => 'required|string|max:255|starts_with:http://,https://',
             'mini_app_short_name' => 'required|string|max:64|regex:/^[a-zA-Z0-9_]+$/',
             'menu_button_text' => 'nullable|string|max:16',
         ];
@@ -58,10 +59,18 @@ class SetupMiniAppRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Устанавливаем значение по умолчанию для текста кнопки
+        Log::info('SetupMiniAppRequest - prepareForValidation started', [
+            'has_short_name' => $this->has('mini_app_short_name'),
+            'short_name_value' => $this->input('mini_app_short_name'),
+            'has_url' => $this->has('mini_app_url'),
+            'url_value' => $this->input('mini_app_url'),
+            'all_inputs' => $this->all()
+        ]);
+
+        // Устанавливаем значение по умолчанию для текста кнопки (максимум 16 символов!)
         if (!$this->has('menu_button_text') || empty($this->menu_button_text)) {
             $this->merge([
-                'menu_button_text' => 'Открыть приложение'
+                'menu_button_text' => 'Открыть' // 7 символов - в пределах лимита
             ]);
         }
 
@@ -69,10 +78,22 @@ class SetupMiniAppRequest extends FormRequest
         if ($this->has('mini_app_short_name') && !empty($this->mini_app_short_name)) {
             $shortName = trim($this->mini_app_short_name);
             if (!empty($shortName)) {
+                // Формируем URL независимо от того, что передано в mini_app_url
+                $generatedUrl = config('app.url') . '/' . $shortName;
                 $this->merge([
-                    'mini_app_url' => config('app.url') . '/' . $shortName
+                    'mini_app_url' => $generatedUrl
+                ]);
+                
+                Log::info('Mini App URL generated in request', [
+                    'short_name' => $shortName,
+                    'generated_url' => $generatedUrl,
+                    'merged_data' => $this->all()
                 ]);
             }
         }
+
+        Log::info('SetupMiniAppRequest - prepareForValidation completed', [
+            'final_data' => $this->all()
+        ]);
     }
 }

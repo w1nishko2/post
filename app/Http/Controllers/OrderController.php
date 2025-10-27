@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -77,8 +78,8 @@ class OrderController extends Controller
      */
     public function cancel(Order $order)
     {
-        // Проверяем, что заказ принадлежит текущему пользователю
-        if ($order->user_id !== Auth::id()) {
+        // Проверяем, что заказ принадлежит текущему пользователю или владельцу бота
+        if ($order->user_id !== Auth::id() && $order->telegramBot->user_id !== Auth::id()) {
             abort(403, 'У вас нет доступа к этому заказу');
         }
 
@@ -90,19 +91,15 @@ class OrderController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            // Используем метод модели для отмены заказа и снятия резерва
+            $success = $order->cancelAndUnreserve();
 
-            // Возвращаем товары на склад
-            foreach ($order->items as $item) {
-                if ($item->product) {
-                    $item->product->increment('quantity', $item->quantity);
-                }
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не удалось отменить заказ'
+                ], 500);
             }
-
-            // Обновляем статус заказа
-            $order->update(['status' => Order::STATUS_CANCELLED]);
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -112,11 +109,62 @@ class OrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            Log::error('Failed to cancel order', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
             
             return response()->json([
                 'success' => false,
                 'message' => 'Произошла ошибка при отмене заказа'
+            ], 500);
+        }
+    }
+
+    /**
+     * Подтвердить оплату заказа (для владельца бота)
+     */
+    public function confirmPayment(Order $order)
+    {
+        // Проверяем, что пользователь - владелец бота
+        if ($order->telegramBot->user_id !== Auth::id()) {
+            abort(403, 'У вас нет доступа к этому заказу');
+        }
+
+        if ($order->status !== Order::STATUS_PENDING) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Этот заказ уже обработан'
+            ], 400);
+        }
+
+        try {
+            // Используем метод модели для подтверждения оплаты
+            $success = $order->confirmPayment();
+
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не удалось подтвердить оплату'
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Оплата подтверждена! Товары списаны со склада.',
+                'new_status' => $order->status_label,
+                'new_status_class' => $order->status_class,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to confirm payment', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Произошла ошибка при подтверждении оплаты'
             ], 500);
         }
     }

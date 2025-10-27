@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class Order extends BaseModel
@@ -26,6 +27,7 @@ class Order extends BaseModel
         'notes',
         'total_amount',
         'expires_at',
+        'payment_confirmed_at',
         'status',
         'order_number',
     ];
@@ -33,6 +35,7 @@ class Order extends BaseModel
     protected $casts = [
         'total_amount' => 'decimal:2',
         'expires_at' => 'datetime',
+        'payment_confirmed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -226,6 +229,53 @@ class Order extends BaseModel
         });
 
         return true;
+    }
+
+    /**
+     * Подтвердить оплату заказа и списать товары
+     */
+    public function confirmPayment(): bool
+    {
+        if ($this->status !== self::STATUS_PENDING) {
+            return false;
+        }
+
+        try {
+            DB::transaction(function () {
+                // Списываем зарезервированные товары
+                foreach ($this->items as $item) {
+                    if ($item->product) {
+                        // Подтверждаем покупку (уменьшаем quantity и reserved_quantity)
+                        $success = $item->product->confirmPurchase($item->quantity);
+                        if (!$success) {
+                            throw new \Exception("Не удалось подтвердить покупку товара {$item->product_name}");
+                        }
+                    }
+                }
+
+                // Обновляем статус заказа и время подтверждения
+                $this->update([
+                    'status' => self::STATUS_PROCESSING,
+                    'payment_confirmed_at' => Carbon::now('Europe/Moscow'),
+                ]);
+            });
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Ошибка подтверждения оплаты заказа', [
+                'order_id' => $this->id,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Проверить, подтверждена ли оплата
+     */
+    public function isPaymentConfirmed(): bool
+    {
+        return !is_null($this->payment_confirmed_at);
     }
 
     /**

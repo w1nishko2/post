@@ -113,6 +113,12 @@ class TrackVisitorStatistics
     {
         $path = $request->path();
         
+        // Пропускаем Mini App (у него свой middleware)
+        // Проверяем, является ли это запросом к Mini App
+        if ($this->isMiniAppRequest($request)) {
+            return true;
+        }
+        
         // Пропускаем административные страницы
         $skipPaths = [
             'login',
@@ -123,9 +129,22 @@ class TrackVisitorStatistics
             'telescope',
             '_debugbar',
             'horizon',
+            'image-proxy', // Служебные запросы изображений
         ];
 
         foreach ($skipPaths as $skipPath) {
+            if (str_starts_with($path, $skipPath)) {
+                return true;
+            }
+        }
+        
+        // Пропускаем служебные AJAX запросы корзины
+        $skipAjaxPaths = [
+            'cart/count',
+            'cart/get-data',
+        ];
+        
+        foreach ($skipAjaxPaths as $skipPath) {
             if (str_starts_with($path, $skipPath)) {
                 return true;
             }
@@ -154,6 +173,38 @@ class TrackVisitorStatistics
             return true;
         }
 
+        return false;
+    }
+
+    /**
+     * Проверить, является ли запрос к Mini App
+     */
+    private function isMiniAppRequest(Request $request)
+    {
+        $path = $request->path();
+        
+        // Проверяем паттерн Mini App API: shortName/api/*
+        if (preg_match('/^[a-zA-Z0-9_]+\/api\//', $path)) {
+            return true;
+        }
+        
+        // Проверяем основную страницу Mini App: только shortName
+        // Исключаем известные роуты приложения
+        $knownRoutes = [
+            'home', 'login', 'register', 'password', 'profile', 'products', 'orders', 
+            'cart', 'categories', 'bots', 'telegram-bots', 'statistics', 'admin'
+        ];
+        
+        if (!str_contains($path, '/')) {
+            // Это одиночное слово - может быть shortName
+            if (!in_array($path, $knownRoutes)) {
+                // Проверяем, есть ли роут с именем mini-app.show
+                if ($request->route() && $request->route()->getName() === 'mini-app.show') {
+                    return true;
+                }
+            }
+        }
+        
         return false;
     }
 
