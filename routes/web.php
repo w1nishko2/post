@@ -65,7 +65,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('bot.products.import');
             
         Route::post('/bots/{telegramBot}/products/ajax-import', [App\Http\Controllers\ProductController::class, 'ajaxImport'])
-            ->middleware('throttle:10,5') // Максимум 10 импортов в 5 минут
+            ->middleware(['throttle:10,5', 'force.json']) // Максимум 10 импортов в 5 минут + принудительный JSON
             ->name('bot.products.ajax-import');
         
         // Роуты для загрузки изображений товаров

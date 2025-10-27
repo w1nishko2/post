@@ -23,10 +23,11 @@ class Kernel extends ConsoleKernel
                  ->daily()
                  ->withoutOverlapping();
 
-        // Альтернативно можно использовать Job
-        // $schedule->job(new \App\Jobs\CancelExpiredOrdersJob)
-        //          ->everyTenMinutes()
-        //          ->withoutOverlapping();
+        // 🚀 НОВАЯ СИСТЕМА: Обработка очереди импорта (каждую минуту, по 50 товаров)
+        $schedule->command('import:process-queue --limit=50')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->runInBackground();
     }
 
     /**

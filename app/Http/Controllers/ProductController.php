@@ -9,7 +9,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Exports\ProductsTemplateExport;
 use App\Exports\ProductsDataExport;
-use App\Imports\ProductsImport;
+use App\Imports\ProductsImportQueue;
 use App\Services\ImageUploadService;
 
 use Illuminate\Http\Request;
@@ -621,33 +621,36 @@ class ProductController extends Controller
 
 
     /**
-     * Импорт товаров из Excel файла
+     * Импорт товаров из Excel файла (v3.0 Ultra-Fast Queue Import)
+     * Использует очередь в БД для мгновенного ответа пользователю
      */
     public function importFromExcel(Request $request, TelegramBot $telegramBot)
     {
-        // Убираем ограничение времени выполнения для больших импортов
-        set_time_limit(0);
-        ini_set('memory_limit', '512M');
+        // Убираем ограничения
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('memory_limit', '-1');
         
         // Проверяем, что бот принадлежит текущему пользователю
         if ($telegramBot->user_id !== Auth::id()) {
             abort(403, 'У вас нет доступа к этому боту.');
         }
+
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:102400', // 100MB
             'update_existing' => 'boolean',
             'download_images' => 'boolean',
         ], [
             'file.required' => 'Файл обязателен для загрузки.',
             'file.mimes' => 'Файл должен быть в формате Excel (xlsx, xls) или CSV.',
-            'file.max' => 'Размер файла не должен превышать 2 МБ.',
+            'file.max' => 'Размер файла не должен превышать 100 МБ.',
         ]);
 
         try {
             $updateExisting = $request->boolean('update_existing');
             $downloadImages = $request->boolean('download_images');
             
-            Log::info('Starting import', [
+            Log::info('🚀 Starting ULTRA-FAST QUEUE import', [
                 'user_id' => Auth::id(),
                 'bot_id' => $telegramBot->id,
                 'update_existing' => $updateExisting,
@@ -656,51 +659,40 @@ class ProductController extends Controller
                 'file_size' => $request->file('file')->getSize()
             ]);
             
-            $import = new ProductsImport($telegramBot->id, $updateExisting, $downloadImages, 'background');
+            // v3.0: Сначала ВСЁ в БД, потом CRON обрабатывает
+            $import = new ProductsImportQueue(
+                Auth::id(),
+                $telegramBot->id,
+                $updateExisting,
+                $downloadImages
+            );
+
+            // Сброс счётчика перед импортом
+            ProductsImportQueue::resetCounter();
+
+            // Импортируем (только запись в БД - БЫСТРО!)
             Excel::import($import, $request->file('file'));
 
-            $importedCount = $import->getImportedCount();
-            $updatedCount = $import->getUpdatedCount();
-            $skippedCount = $import->getSkippedCount();
-            $errors = $import->getImportErrors();
+            $totalImported = ProductsImportQueue::getTotalImported();
+            $sessionId = $import->getImportSessionId();
 
-            // Формируем сообщение о результатах импорта
-            $message = "Импорт завершен! Добавлено товаров: {$importedCount}";
-            
-            if ($updatedCount > 0) {
-                $message .= ", обновлено: {$updatedCount}";
-            }
-            
-            if ($skippedCount > 0) {
-                $message .= ", пропущено записей: {$skippedCount}";
-            }
-            
-            // Добавляем информацию о загрузке изображений
-            if ($downloadImages && ($importedCount > 0 || $updatedCount > 0)) {
-                $message .= ". Загрузка изображений запущена в фоновом режиме.";
-            }
+            Log::info('✅ ULTRA-FAST import completed', [
+                'session' => $sessionId,
+                'imported_to_queue' => $totalImported
+            ]);
 
-            if (!empty($errors)) {
-                $errorMessage = "Обнаружены ошибки:\n" . implode("\n", $errors);
-                
-                return redirect()->route('bot.products.index', $telegramBot)
-                    ->with('warning', $message)
-                    ->with('import_errors', $errorMessage);
-            }
-
-            if ($importedCount == 0 && $updatedCount == 0 && $skippedCount > 0) {
-                return redirect()->route('bot.products.index', $telegramBot)
-                    ->with('error', 'Не удалось импортировать ни одного товара. Проверьте формат файла и заголовки столбцов.');
-            }
+            $message = "Импорт завершён! {$totalImported} товаров добавлено в очередь обработки. CRON начнёт обработку автоматически (каждую минуту 50 товаров).";
 
             return redirect()->route('bot.products.index', $telegramBot)
-                ->with('success', $message);
+                ->with('success', $message)
+                ->with('import_session_id', $sessionId);
 
         } catch (\Exception $e) {
-            Log::error('Import error: ' . $e->getMessage(), [
+            Log::error('QUEUE Import error: ' . $e->getMessage(), [
                 'file' => $request->file('file')->getClientOriginalName(),
                 'user_id' => Auth::id(),
-                'bot_id' => $telegramBot->id
+                'bot_id' => $telegramBot->id,
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->route('bot.products.index', $telegramBot)
@@ -713,9 +705,12 @@ class ProductController extends Controller
      */
     public function ajaxImport(Request $request, TelegramBot $telegramBot)
     {
-        // Убираем ограничение времени выполнения для больших импортов
-        set_time_limit(0);
-        ini_set('memory_limit', '512M');
+        // ПОЛНОСТЬЮ убираем ограничения времени и памяти
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('max_input_time', '0');
+        @ini_set('memory_limit', '-1');
+        @ini_set('display_errors', '0'); // Не выводить ошибки в браузер
         
         // Проверяем, что бот принадлежит текущему пользователю
         if ($telegramBot->user_id !== Auth::id()) {
@@ -723,7 +718,7 @@ class ProductController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:102400', // 100MB для ОЧЕНЬ больших файлов
             'update_existing' => 'boolean',
             'download_images' => 'boolean',
         ]);
@@ -732,7 +727,7 @@ class ProductController extends Controller
             $updateExisting = $request->boolean('update_existing');
             $downloadImages = $request->boolean('download_images');
             
-            Log::info('Starting AJAX import', [
+            Log::info('🚀🚀🚀 Starting ULTRA-FAST QUEUE import', [
                 'user_id' => Auth::id(),
                 'bot_id' => $telegramBot->id,
                 'update_existing' => $updateExisting,
@@ -741,75 +736,57 @@ class ProductController extends Controller
                 'file_size' => $request->file('file')->getSize()
             ]);
             
-            $import = new ProductsImport($telegramBot->id, $updateExisting, $downloadImages, 'background');
+            // НОВАЯ СТРАТЕГИЯ: Сначала ВСЁ в БД, потом CRON обрабатывает
+            $import = new \App\Imports\ProductsImportQueue(
+                Auth::id(),
+                $telegramBot->id,
+                $updateExisting,
+                $downloadImages
+            );
+
+            // Сброс счётчика перед импортом
+            \App\Imports\ProductsImportQueue::resetCounter();
+
+            // Импортируем (только запись в БД - БЫСТРО!)
             Excel::import($import, $request->file('file'));
 
-            $importedCount = $import->getImportedCount();
-            $updatedCount = $import->getUpdatedCount();
-            $skippedCount = $import->getSkippedCount();
-            $errors = $import->getImportErrors();
+            $totalImported = \App\Imports\ProductsImportQueue::getTotalImported();
+            $sessionId = $import->getImportSessionId();
 
-            // Формируем сообщение о результатах импорта
-            $message = "Импорт завершен! Добавлено товаров: {$importedCount}";
-            
-            if ($updatedCount > 0) {
-                $message .= ", обновлено: {$updatedCount}";
-            }
-            
-            if ($skippedCount > 0) {
-                $message .= ", пропущено записей: {$skippedCount}";
-            }
-            
-            // Добавляем информацию о загрузке изображений
-            if ($downloadImages && ($importedCount > 0 || $updatedCount > 0)) {
-                $message .= ". Изображения загружаются в фоновом режиме.";
-            }
-
-            if (!empty($errors)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $message,
-                    'errors' => $errors,
-                    'stats' => [
-                        'imported' => $importedCount,
-                        'updated' => $updatedCount,
-                        'skipped' => $skippedCount
-                    ]
-                ]);
-            }
-
-            if ($importedCount == 0 && $updatedCount == 0 && $skippedCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Не удалось импортировать ни одного товара. Проверьте формат файла и заголовки столбцов.',
-                    'stats' => [
-                        'imported' => $importedCount,
-                        'updated' => $updatedCount,
-                        'skipped' => $skippedCount
-                    ]
-                ]);
-            }
+            Log::info('✅✅✅ ULTRA-FAST import completed', [
+                'session' => $sessionId,
+                'imported_to_queue' => $totalImported
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => "Импорт завершён! {$totalImported} товаров добавлено в очередь обработки. CRON начнёт обработку автоматически.",
+                'import_session_id' => $sessionId,
                 'stats' => [
-                    'imported' => $importedCount,
-                    'updated' => $updatedCount,
-                    'skipped' => $skippedCount
+                    'queued' => $totalImported,
+                    'type' => 'queue_table',
+                    'status' => 'queued',
+                    'info' => 'Товары сохранены в очередь. CRON обрабатывает их в фоне (каждую минуту).'
                 ]
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('AJAX Import error: ' . $e->getMessage(), [
-                'file' => $request->file('file')->getClientOriginalName(),
+        } catch (\Throwable $e) {
+            // Логируем полную информацию об ошибке
+            Log::error('❌ QUEUE Import error: ' . $e->getMessage(), [
+                'file' => $request->file('file') ? $request->file('file')->getClientOriginalName() : 'unknown',
                 'user_id' => Auth::id(),
-                'bot_id' => $telegramBot->id
+                'bot_id' => $telegramBot->id,
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file_path' => $e->getFile()
             ]);
-            
+
+            // Всегда возвращаем JSON
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при импорте файла: ' . $e->getMessage()
+                'message' => 'Произошла ошибка при импорте: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+                'type' => get_class($e)
             ], 500);
         }
     }
