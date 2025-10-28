@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
 class CartController extends Controller
@@ -420,7 +421,7 @@ class CartController extends Controller
             })->toArray();
 
             // Добавляем в очередь оформления
-            CheckoutQueue::create([
+            $checkoutItem = CheckoutQueue::create([
                 'session_id' => $checkoutSessionId,
                 'user_id' => Auth::id(),
                 'session_cart_id' => Session::getId(),
@@ -441,6 +442,14 @@ class CartController extends Controller
                 'bot_id' => $bot->id,
                 'items_count' => count($cartData)
             ]);
+
+            // ВАЖНО: Обрабатываем заказ СРАЗУ (fallback для отсутствия CRON)
+            try {
+                Artisan::call('checkout:process-queue', ['--limit' => 1]);
+                Log::info('Checkout processed immediately after adding to queue');
+            } catch (\Exception $e) {
+                Log::warning('Failed to process checkout immediately: ' . $e->getMessage());
+            }
 
             // Мгновенный ответ!
             return response()->json([

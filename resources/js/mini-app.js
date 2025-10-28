@@ -2172,9 +2172,6 @@ function proceedToCheckout() {
     
     isSubmittingOrder = true;
 
-    // Показываем загрузку
-    showAlert('Проверяем корзину...', 'info');
-
     // Сначала получаем актуальные данные корзины с сервера
     fetch('/cart', {
         method: 'GET',
@@ -2190,9 +2187,6 @@ function proceedToCheckout() {
             isSubmittingOrder = false;
             return;
         }
-
-        // Показываем загрузку оформления
-        showAlert('Оформляем заказ...', 'info');
 
         // Подготавливаем данные для отправки
         const orderData = {
@@ -2295,7 +2289,7 @@ function checkOrderStatus(checkoutSessionId) {
             if (data.success && data.status === 'completed' && data.order) {
                 // Заказ успешно создан!
                 clearInterval(checkInterval);
-                showAlert(`✅ Заказ оформлен! Номер: ${data.order.order_number}`, 'success');
+                showAlert(`✅ Заказ успешно оформлен! Номер: ${data.order.order_number}. Ожидайте подтверждения от администратора.`, 'success');
                 triggerHapticFeedback('success');
                 
             } else if (data.status === 'failed') {
@@ -2303,16 +2297,6 @@ function checkOrderStatus(checkoutSessionId) {
                 clearInterval(checkInterval);
                 showAlert(`❌ Ошибка: ${data.error || 'Не удалось оформить заказ'}`, 'error');
                 triggerHapticFeedback('error');
-                
-            } else if (data.status === 'processing') {
-                // Всё ещё обрабатывается
-                showAlert('⏳ Заказ обрабатывается...', 'info');
-                
-            } else if (data.status === 'pending') {
-                // В очереди
-                if (attempts % 5 === 0) { // Обновляем сообщение каждые 5 секунд
-                    showAlert('⏳ Заказ в очереди на обработку...', 'info');
-                }
             }
             
             // Останавливаем проверку если достигли лимита попыток

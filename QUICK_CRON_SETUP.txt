@@ -12,14 +12,15 @@
 
 ✅ КОМАНДА ДЛЯ CRONTAB:
 
-* * * * * cd /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html && php8.1 artisan schedule:run >> /dev/null 2>&1
 
 🔧 ЧТО НУЖНО ЗАМЕНИТЬ:
-   - YOUR_USERNAME → ваш логин на Sweb (например: user12345)
-   - YOUR_DOMAIN → ваш домен (например: myshop.com)
+   - YOUR_USERNAME → ваш логин на Sweb (например: gamechann2)
+   - YOUR_DOMAIN/public_html → путь к проекту (например: western-panda_ru)
+   - php8.1 → версия PHP (доступны: php8.4, php8.3, php8.2, php8.1, php8.0, php7.4)
 
 📝 ПРИМЕР:
-* * * * * cd /home/user12345/domains/myshop.com/public_html && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/gamechann2/western-panda_ru && php8.1 artisan schedule:run >> /dev/null 2>&1
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -30,15 +31,15 @@
 
 ✅ КОМАНДА 1 - Laravel Scheduler:
 
-* * * * * cd /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html && php8.1 artisan schedule:run >> /dev/null 2>&1
 
 ✅ КОМАНДА 2 - Queue Worker:
 
-* * * * * cd /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html && /usr/local/bin/php artisan queue:work database --sleep=3 --tries=3 --max-time=3600 >> /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html/storage/logs/queue.log 2>&1
+* * * * * cd /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html && php8.1 artisan queue:work database --sleep=3 --tries=3 --max-time=3600 >> /home/YOUR_USERNAME/domains/YOUR_DOMAIN/public_html/storage/logs/queue.log 2>&1
 
 📝 ПРИМЕР:
-* * * * * cd /home/user12345/domains/myshop.com/public_html && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
-* * * * * cd /home/user12345/domains/myshop.com/public_html && /usr/local/bin/php artisan queue:work database --sleep=3 --tries=3 --max-time=3600 >> /home/user12345/domains/myshop.com/public_html/storage/logs/queue.log 2>&1
+* * * * * cd /home/gamechann2/western-panda_ru && php8.1 artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/gamechann2/western-panda_ru && php8.1 artisan queue:work database --sleep=3 --tries=3 --max-time=3600 >> /home/gamechann2/western-panda_ru/storage/logs/queue.log 2>&1
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

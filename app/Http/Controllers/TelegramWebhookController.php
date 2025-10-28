@@ -81,12 +81,12 @@ class TelegramWebhookController extends Controller
         $order = Order::find($orderId);
 
         if (!$order) {
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Заказ не найден', true);
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Заказ не найден', true);
             return response()->json(['ok' => true]);
         }
 
         if ($order->status !== Order::STATUS_PENDING) {
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Заказ уже обработан', true);
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Заказ уже обработан', true);
             return response()->json(['ok' => true]);
         }
 
@@ -96,18 +96,21 @@ class TelegramWebhookController extends Controller
             $success = $order->confirmPayment();
 
             if (!$success) {
-                $this->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при подтверждении оплаты', true);
+                $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при подтверждении оплаты', true);
                 return response()->json(['ok' => true]);
             }
 
             // Обновляем сообщение администратору
-            $this->editMessage($bot, $chatId, $messageId, 
-                "✅ <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n\n" .
+            $updatedMessage = "✅ <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n\n" .
                 "📋 Заказ #{$order->order_number} успешно оплачен\n" .
                 "💰 Сумма: {$order->formatted_total}\n\n" .
                 "🎉 Товары списаны со склада\n" .
-                "⏰ Подтверждено: " . now()->format('d.m.Y в H:i')
-            );
+                "⏰ Подтверждено: " . now()->format('d.m.Y в H:i');
+            
+            $this->telegramService->editMessageText($bot, $chatId, $messageId, $updatedMessage);
+            
+            // Удаляем кнопки
+            $this->telegramService->editMessageReplyMarkup($bot, $chatId, $messageId);
 
             // Уведомляем клиента об успешной оплате
             if ($order->telegram_chat_id) {
@@ -118,7 +121,7 @@ class TelegramWebhookController extends Controller
                 );
             }
 
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Оплата подтверждена!');
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Оплата подтверждена!');
 
             Log::info('Payment confirmed successfully', [
                 'order_id' => $orderId,
@@ -133,7 +136,7 @@ class TelegramWebhookController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при подтверждении оплаты', true);
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при подтверждении оплаты', true);
         }
 
         return response()->json(['ok' => true]);
@@ -147,12 +150,12 @@ class TelegramWebhookController extends Controller
         $order = Order::find($orderId);
 
         if (!$order) {
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Заказ не найден', true);
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Заказ не найден', true);
             return response()->json(['ok' => true]);
         }
 
         if (!$order->canBeCancelled()) {
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Заказ нельзя отменить', true);
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Заказ нельзя отменить', true);
             return response()->json(['ok' => true]);
         }
 
@@ -161,12 +164,15 @@ class TelegramWebhookController extends Controller
             $order->cancelAndUnreserve();
 
             // Обновляем сообщение администратору
-            $this->editMessage($bot, $chatId, $messageId, 
-                "❌ <b>ЗАКАЗ ОТМЕНЕН</b>\n\n" .
+            $updatedMessage = "❌ <b>ЗАКАЗ ОТМЕНЕН</b>\n\n" .
                 "📋 Заказ #{$order->order_number} отменен администратором\n" .
                 "💰 Сумма: {$order->formatted_total}\n\n" .
-                "🔄 Товары возвращены на склад"
-            );
+                "🔄 Товары возвращены на склад";
+            
+            $this->telegramService->editMessageText($bot, $chatId, $messageId, $updatedMessage);
+            
+            // Удаляем кнопки
+            $this->telegramService->editMessageReplyMarkup($bot, $chatId, $messageId);
 
             // Уведомляем клиента об отмене
             if ($order->telegram_chat_id) {
@@ -177,7 +183,7 @@ class TelegramWebhookController extends Controller
                 );
             }
 
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Заказ отменен');
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Заказ отменен');
 
             Log::info('Order cancelled successfully', [
                 'order_id' => $orderId,
@@ -190,7 +196,7 @@ class TelegramWebhookController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            $this->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при отмене заказа', true);
+            $this->telegramService->answerCallbackQuery($bot, $callbackQueryId, 'Ошибка при отмене заказа', true);
         }
 
         return response()->json(['ok' => true]);

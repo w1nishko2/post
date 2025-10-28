@@ -121,6 +121,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('orders', App\Http\Controllers\OrderController::class)->only(['index', 'show']);
     Route::patch('orders/{order}/status', [App\Http\Controllers\OrderController::class, 'updateStatus'])->name('orders.update-status');
     Route::patch('orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::patch('orders/{order}/complete', [App\Http\Controllers\OrderController::class, 'complete'])->name('orders.complete');
     Route::patch('orders/{order}/confirm-payment', [App\Http\Controllers\OrderController::class, 'confirmPayment'])->name('orders.confirm-payment');
     Route::get('api/orders/bot', [App\Http\Controllers\OrderController::class, 'botOrders'])->name('orders.bot');
     Route::get('api/orders/stats', [App\Http\Controllers\OrderController::class, 'stats'])->name('orders.stats');

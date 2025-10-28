@@ -21,12 +21,40 @@ class OrderController extends Controller
     /**
      * Отобразить список заказов пользователя
      */
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::where('user_id', Auth::id())
-            ->with(['items.product', 'telegramBot'])
+        $query = Order::query();
+        
+        // Показываем заказы где текущий пользователь либо покупатель, либо владелец бота
+        $query->where(function($q) {
+            $q->where('user_id', Auth::id()) // Заказы пользователя как покупателя (веб-заказы)
+              ->orWhereHas('telegramBot', function($botQuery) {
+                  $botQuery->where('user_id', Auth::id()); // Заказы через ботов пользователя (Mini App заказы)
+              });
+        });
+
+        // Применяем фильтры
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('bot_id')) {
+            $query->where('telegram_bot_id', $request->bot_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $perPage = $request->get('per_page', 15);
+        $orders = $query->with(['items.product', 'telegramBot'])
             ->latest()
-            ->paginate(15);
+            ->paginate($perPage)
+            ->appends($request->query());
 
         return view('orders.index', compact('orders'));
     }
@@ -165,6 +193,53 @@ class OrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Произошла ошибка при подтверждении оплаты'
+            ], 500);
+        }
+    }
+
+    /**
+     * Завершить заказ (отметить как выполненный)
+     */
+    public function complete(Order $order)
+    {
+        // Проверяем, что заказ принадлежит текущему пользователю или пользователь - владелец бота
+        if ($order->user_id !== Auth::id() && $order->telegramBot->user_id !== Auth::id()) {
+            abort(403, 'У вас нет доступа к этому заказу');
+        }
+
+        if ($order->status === Order::STATUS_COMPLETED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Заказ уже выполнен'
+            ], 400);
+        }
+
+        if ($order->status === Order::STATUS_CANCELLED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Нельзя завершить отмененный заказ'
+            ], 400);
+        }
+
+        try {
+            $order->update(['status' => Order::STATUS_COMPLETED]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Заказ отмечен как выполненный',
+                'new_status' => $order->status_label,
+                'new_status_class' => $order->status_class,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to complete order', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Произошла ошибка при завершении заказа'
             ], 500);
         }
     }
